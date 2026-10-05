@@ -1,0 +1,203 @@
+class_name BattleAgent
+extends RigidBody2D
+const MAX_BT_DELTA:float = 2.0
+enum Facing{RIGHT,DOWN,LEFT,UP}
+signal inflicted_damage(who:Node2D,amount:int,damage_target:Node2D)
+
+const SPRITE_DIR:int = 4
+const SPRITE_DIR_COEF:float = PI/(SPRITE_DIR/2.0)
+const SPRITE_H_BIAS:float = 0.84
+
+var dialogic_timeline:DialogicTimeline
+var dialogic_timeline_label:String=""
+
+@export_category("Gameplay")
+@export var faction: StringName = Constants.ENEMY_GROUP
+@export var action: StringName = &"move":
+	set=set_action
+@export var target:Node2D
+
+@export_category("Physics & Optimization")
+@export var acceleration: float = 20.0
+@export var decceleration: float = 40.0
+@export var speed:float = 64
+@export var max_speed:float = 64
+var desired_velocity:Vector2 = Vector2.ZERO
+
+var damage_inflicted:float = 0
+
+var bt_delta: float = 0
+var thinking: bool = false
+var tick_offset: int = 0
+var spatial_hash:Object
+
+@export_range(0.0, 90, 0.05, "radians_as_degrees") var sight_cone: float = PI / 2
+@export_range(0, 60, 1) var skip_frames: int = 8
+
+@onready var nav_agent: NavigationAgent2D = %NavigationAgent2D
+@onready var bt_player: BTPlayer = $BTPlayer
+@onready var animation_player: AnimationPlayer = $AnimationPlayer
+
+var use_flow_field=false
+var flow_field:FlowField
+var facing:Vector2
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_INHERIT
+	spatial_hash.update()
+	spatial_hash.hash_location_changed.connect(on_hash_location_changed)
+	GameManager.request_hashmap_near.connect(spatial_hash.on_request_hashmap_near)
+	add_to_group("overworld_agents")
+	animation_player.animation_started.connect(set_facing)
+	tick_offset = randi() % Engine.physics_ticks_per_second
+	refresh_hp()
+	nav_agent.waypoint_reached.connect(think.unbind(1))
+	configure_physics(faction)
+	if NavigationServer2D.map_is_active(get_world_2d().get_navigation_map()):
+		_setup_bt_player()
+	else:
+		#print_debug("Awaiting NavigationServer")
+		await NavigationServer2D.map_changed
+		_setup_bt_player()
+
+func _on_mouse_entered():
+	#print_debug("mouse entered")
+	Cursor.set_cursor(Cursor.Type.TALK)
+
+func _on_mouse_exited():
+	Cursor.set_cursor(Cursor.Type.DEFAULT)
+
+func set_facing(animation:StringName):
+	match animation:
+		&"idle_0",&"move_0":
+			facing = Vector2.RIGHT
+		&"idle_1",&"move_1":
+			facing = Vector2.DOWN
+		&"idle_2",&"move_2":
+			facing = Vector2.LEFT
+		&"idle_3",&"move_3":
+			facing = Vector2.UP
+		_:
+			facing = Vector2.RIGHT
+
+func set_action(new_action:StringName):
+	action = new_action
+	contact_monitor = new_action == &"attack"
+
+func configure_physics(_faction:StringName):
+	var faction_def:Factions.Faction = Factions.faction_list[_faction]
+	collision_layer = faction_def.physics_layer
+	collision_mask = faction_def.physics_mask #| collision_layer
+	nav_agent.navigation_layers = faction_def.nav_layer
+	nav_agent.avoidance_layers = faction_def.avoid_own
+	nav_agent.avoidance_mask = Factions.master_avoid
+	if dialogic_timeline:
+		collision_layer = collision_layer | (1<<Constants.PHYS_INTERACT)
+		input_pickable = true
+		mouse_entered.connect(_on_mouse_entered)
+		mouse_exited.connect(_on_mouse_exited)
+		
+
+func _physics_process(delta) -> void:
+	bt_delta += delta
+	if contact_monitor:
+		attack(delta)
+	if (Engine.get_physics_frames() + tick_offset) % (skip_frames + 1) == 0:
+		spatial_hash.update()
+		if use_flow_field:
+			follow_flow_field()
+	if bt_delta > MAX_BT_DELTA and not thinking:
+		#print_debug("Backup think")
+		spatial_hash.update()
+		think()
+
+
+func move(velocity:Vector2,delta_frames:float = skip_frames+1):
+	apply_central_force(velocity*(delta_frames+linear_damp))
+
+#region BehaviorTree
+## Call the BT player for update.
+func think():
+	if not thinking: # if it's been more than a frame since we last thought
+		#print_debug(name, " thinking")
+		thinking = true
+		for i: int in Engine.physics_ticks_per_second:
+			if (Engine.get_physics_frames() + tick_offset) % (skip_frames + 1) == 0: # Only run this every skip frames.
+				bt_player.update(bt_delta)
+				bt_delta = 0 # reset since we just thought.
+				break
+			else:
+				await get_tree().physics_frame
+
+
+func bt_status(status:BT.Status):
+	thinking = false # not thinking anymore.
+	if status == BT.FAILURE:
+		print_debug(name, "experienced behaviour tree failure.")
+
+## Sets up the behaviour tree player, binds blackboard variables to properties and sets the behaviour tree player to active.
+func _setup_bt_player():
+	bt_player.blackboard.bind_var_to_property(&"target", self , &"target", true)
+	bt_player.blackboard.bind_var_to_property(&"action", self , &"action", true)
+	bt_player.blackboard.bind_var_to_property(&"skip_frames", self , &"skip_frames", true)
+	bt_player.blackboard.set_var(&"faction", faction) # Set faction
+	bt_player.blackboard.set_var(&"max_speed", max_speed)
+	bt_player.blackboard.set_var(&"speed", max_speed)
+	bt_player.updated.connect(bt_status)
+	animation_player.animation_finished.connect(think.unbind(1)) # Call BT player when we finish an animation
+	#nav_agent.navigation_finished.connect(think)
+	await get_tree().current_scene.ready
+	bt_player.set_active(true)
+	bt_player.update(1.0 / Engine.physics_ticks_per_second) # Update since it's manual.
+	#damage_recieved.connect(think.unbind(1))
+#endregion
+
+
+func activate_flow_field(target_flow_field:FlowField):
+	use_flow_field = true
+	flow_field = target_flow_field
+
+func on_hash_location_changed(new_location:Vector2i):
+	if use_flow_field:
+		SpatialMap.agent_request_flow_field.emit(self,new_location)
+
+
+func follow_flow_field() -> void:
+	var distance:float = global_position.distance_to(target.global_position)
+	var dir=flow_field.get_direction(global_position)
+	desired_velocity = dir * min(distance,speed)
+	#agent.linear_damp = MAX_LINEAR_DAMP * flow_field.get_move_multiplier(flow_field.get_grid_coords(agent.global_position))
+	move(desired_velocity)
+	animation_player.play("move_"+str(BattleAgent.get_direction_index(dir)),-1,max(0.25,linear_velocity.length_squared()/(max_speed*max_speed)))
+
+## Spatial Hash related
+func _exit_tree() -> void:
+	spatial_hash.free()
+
+func _enter_tree() -> void:
+	spatial_hash = SpatialHash.new(self)
+
+func get_goal() ->Node2D:
+	## todo make this more elegant
+	var goal:Node2D
+	if faction == &"player":
+		goal = get_tree().current_scene.player_faction_goal
+	else:
+		goal = get_tree().current_scene.enemy_faction_goal
+	return goal
+
+func on_interact():
+	Dialogic.start(dialogic_timeline,dialogic_timeline_label)
+
+static func get_direction_index(input_vector: Vector2) -> int:
+	var biased_vector:Vector2 = Vector2(input_vector.x, input_vector.y * SPRITE_H_BIAS) #bias to horizontal by reducing the vertical slightly.
+	var angle:float = biased_vector.angle()
+	if angle < 0:
+		angle += 2 * PI
+	return int((angle + PI/SPRITE_DIR) / SPRITE_DIR_COEF) % SPRITE_DIR
+
+static func teleport(body:RigidBody2D,new_global_position:Vector2):
+	PhysicsServer2D.body_set_state(body.get_rid(),PhysicsServer2D.BODY_STATE_TRANSFORM,Transform2D.IDENTITY.translated(new_global_position))
+	body.reset_physics_interpolation()
+	body.on_hash_location_changed(Vector2i(new_global_position/Constants.SPATIAL_HASH_SIZE))
+	body.think()
