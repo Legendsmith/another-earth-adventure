@@ -39,7 +39,8 @@ public partial class TrajectoryPrediction : RefCounted
 	}
 
 	/// <summary>
-	/// Array of {body, follows_body, anchor, anchor_time, ghost, points, start_time, end_time}.
+	/// Array of {body, follows_body, anchor, anchor_time, ghost, points, velocities, times, start_time, end_time}
+	/// (points and velocities are relative to the segment's body).
 	/// Draw each segment's points offset by the body's current position when follows_body is true,
 	/// otherwise offset by anchor (a world position).
 	/// </summary>
@@ -70,13 +71,20 @@ public partial class TrajectoryPrediction : RefCounted
 		int count = Result.Times.Count;
 		int last = Math.Min(end, count - 1); // Include the first point of the next run so segments join up.
 		var rel = new Vector2[last - start + 1];
+		var relVelocities = new Vector2[last - start + 1];
+		var times = new double[last - start + 1];
 		double anchorTime = Result.Times[start];
 		double minDistance = double.PositiveInfinity;
 		for (int i = start; i <= last; i++)
 		{
 			Vector2D p = Result.Positions[i];
-			Vector2D r = body >= 0 ? p - Ephemeris.GetPosition(body, Result.Times[i]) : p;
+			Vector2D bodyPos = Vector2D.Zero, bodyVel = Vector2D.Zero;
+			if (body >= 0)
+				Ephemeris.GetState(body, Result.Times[i], out bodyPos, out bodyVel);
+			Vector2D r = p - bodyPos;
 			rel[i - start] = r.ToVector2();
+			relVelocities[i - start] = (Result.Velocities[i] - bodyVel).ToVector2();
+			times[i - start] = Result.Times[i];
 			if (i < end && r.LengthSquared < minDistance)
 			{
 				minDistance = r.LengthSquared;
@@ -94,6 +102,8 @@ public partial class TrajectoryPrediction : RefCounted
 			{ "anchor_time", anchorTime },
 			{ "ghost", moving && !follows },
 			{ "points", rel },
+			{ "velocities", relVelocities },
+			{ "times", times },
 			{ "start_time", Result.Times[start] },
 			{ "end_time", Result.Times[last] },
 		};

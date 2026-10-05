@@ -345,7 +345,8 @@ public partial class OrbitalSystem : Node
 	/// <summary>
 	/// Synchronous trajectory prediction from a ship's current state (see <see cref="StateTime"/>).
 	/// Options: max_time (s, 600), sample_every (ticks, 10), stop_after_orbits (1.0), watch_body (-1),
-	/// watch_from/watch_until (s), burns (Array of {time, delta_v} plus optional thrust/mass/exhaust_velocity for finite burns).
+	/// watch_from/watch_until (s), burns (Array of {time, delta_v} or maneuver nodes {time, prograde, radial}, plus optional
+	/// thrust/mass/exhaust_velocity for finite burns).
 	/// </summary>
 	public TrajectoryPrediction Predict(Vector2 position, Vector2 velocity, Dictionary options)
 	{
@@ -513,7 +514,20 @@ public partial class OrbitalSystem : Node
 			foreach (Variant item in burns.AsGodotArray())
 			{
 				Dictionary burn = item.AsGodotDictionary();
-				settings.Burns.Add(ParseEngine(burn).Make(burn["time"].AsDouble(), burn["delta_v"].AsVector2()));
+				ImpulseBurn planned;
+				if (burn.ContainsKey("prograde") || burn.ContainsKey("radial"))
+				{
+					// Orbital-frame burn (maneuver node): delta_v = (prograde, radial-out) at burn start.
+					var local = new Vector2D(burn.TryGetValue("prograde", out Variant p) ? p.AsDouble() : 0.0,
+						burn.TryGetValue("radial", out Variant r) ? r.AsDouble() : 0.0);
+					planned = ParseEngine(burn).Make(burn["time"].AsDouble(), local);
+					planned.OrbitalFrame = true;
+				}
+				else
+				{
+					planned = ParseEngine(burn).Make(burn["time"].AsDouble(), burn["delta_v"].AsVector2());
+				}
+				settings.Burns.Add(planned);
 			}
 		}
 		return settings;

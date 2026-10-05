@@ -1,4 +1,4 @@
-﻿class_name TrajectoryRenderer
+class_name TrajectoryRenderer
 extends Node2D
 ## Draws a ship's predicted path (KSP-style patched display) from the C# trajectory predictor.
 ## The part around the current body follows that body; encounters are drawn around a "ghost" of the
@@ -8,6 +8,8 @@ extends Node2D
 @export var ship: Spaceship
 ## Optional: draws the autopilot's next planned burn.
 @export var navigator: OrbitalNavigator
+## Optional: the player's maneuver nodes are included in the prediction.
+@export var maneuvers: ManeuverPlanner
 ## Celestial body to report the closest approach to (-1 = none).
 @export var target_index: int = -1
 ## Real seconds between prediction refreshes.
@@ -42,6 +44,13 @@ func _ready() -> void:
 	_font = ThemeDB.fallback_font
 	top_level = true
 	z_index = 10
+	if maneuvers:
+		maneuvers.nodes_changed.connect(request_refresh)
+
+
+## Re-predict as soon as the current request finishes (e.g. while a maneuver is being edited).
+func request_refresh() -> void:
+	_last_request_ms = -100000
 
 
 func _physics_process(_delta: float) -> void:
@@ -57,6 +66,13 @@ func _physics_process(_delta: float) -> void:
 		"watch_body": target_index,
 		"sample_every": 6,
 	}
+	if maneuvers and not maneuvers.nodes.is_empty():
+		var burns := maneuvers.get_prediction_burns()
+		options.burns = burns
+		if not burns.is_empty():
+			# Always show at least one orbit past the last maneuver.
+			var last_time: float = burns.back().time - _orbital_system.SimTime
+			options.max_time = maxf(prediction_time, last_time + prediction_time)
 	var job: RefCounted = _orbital_system.PredictAsync(ship.global_position, ship.linear_velocity, options)
 	job.connect(&"Completed", _on_prediction)
 
@@ -134,6 +150,57 @@ func _draw_planned_burn(pixel: float) -> void:
 	draw_line(ship.global_position, ship.global_position + arrow, burn_color, -1.0)
 	var eta: float = burn.time - _orbital_system.SimTime
 	_draw_label(ship.global_position + arrow, "burn %.1f px/s in %ds" % [dv.length(), roundi(eta)], burn_color, pixel)
+
+
+#region Path queries (used by the maneuver editor)
+
+## World position on the displayed path at `time`, with the relative velocity and the frame body there.
+## Returns {} when the time is not on the predicted path.
+func path_state_at(time: float) -> Dictionary:
+	for segment: Dictionary in _segments:
+		var times: PackedFloat64Array = segment.times
+		if times.is_empty() or time < times[0] or time > times[times.size() - 1]:
+			continue
+		var i := times.bsearch(time)
+		i = clampi(i, 1, times.size() - 1)
+		var span := times[i] - times[i - 1]
+		var f := 0.0 if span <= 0.0 else clampf((time - times[i - 1]) / span, 0.0, 1.0)
+		var points: PackedVector2Array = segment.points
+		var velocities: PackedVector2Array = segment.velocities
+		var rel := points[i - 1].lerp(points[i], f)
+		return {
+			"position": rel + _segment_offset(segment),
+			"relative_position": rel,
+			"relative_velocity": velocities[i - 1].lerp(velocities[i], f),
+			"body": segment.body,
+		}
+	return {}
+
+
+## Time of the displayed path point nearest to `world_point`, or -1 when none is within `max_distance`.
+## Only times after `not_before` are considered.
+func nearest_path_time(world_point: Vector2, max_distance: float, not_before: float = -INF) -> float:
+	var best_time := -1.0
+	var best := max_distance * max_distance
+	for segment: Dictionary in _segments:
+		var offset := _segment_offset(segment)
+		var points: PackedVector2Array = segment.points
+		var times: PackedFloat64Array = segment.times
+		for i in range(1, points.size()):
+			if times[i] < not_before:
+				continue
+			var a := points[i - 1] + offset
+			var b := points[i] + offset
+			var closest := Geometry2D.get_closest_point_to_segment(world_point, a, b)
+			var d := closest.distance_squared_to(world_point)
+			if d < best:
+				best = d
+				var ab := a.distance_to(b)
+				var f := 0.0 if ab <= 0.0 else a.distance_to(closest) / ab
+				best_time = maxf(lerpf(times[i - 1], times[i], f), not_before)
+	return best_time
+
+#endregion
 
 
 func _draw_marker(p: Vector2, color: Color, pixel: float) -> void:

@@ -9,6 +9,8 @@
 [ext_resource type="Script" uid="uid://boiygsxlif6k4" path="res://scripts/space/orbit_lines.gd" id="7_lines"]
 [ext_resource type="Script" uid="uid://dkx8rcv7a3rr5" path="res://scripts/space/space_camera.gd" id="8_camera"]
 [ext_resource type="Script" uid="uid://bmyrc2gn2l7ve" path="res://scripts/space/space_hud.gd" id="9_hud"]
+[ext_resource type="Script" uid="uid://cp17a81w3w84m" path="res://scripts/space/maneuver_planner.gd" id="10_maneuvers"]
+[ext_resource type="Script" uid="uid://bw7sowcws345m" path="res://scripts/space/maneuver_editor.gd" id="11_editor"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_sun"]
 radius = 400.0
@@ -89,10 +91,14 @@ position = Vector2(6000, -260)
 script = ExtResource("4_nav")
 auto_start = false
 
-[node name="Controller" type="Node" parent="PlayerShip" unique_id=2015075626 node_paths=PackedStringArray("navigator", "renderer")]
+[node name="Maneuvers" type="Node" parent="PlayerShip" unique_id=1705097401]
+script = ExtResource("10_maneuvers")
+
+[node name="Controller" type="Node" parent="PlayerShip" unique_id=2015075626 node_paths=PackedStringArray("navigator", "renderer", "maneuvers")]
 script = ExtResource("5_player")
 navigator = NodePath("../Navigator")
 renderer = NodePath("../../TrajectoryRenderer")
+maneuvers = NodePath("../Maneuvers")
 
 [node name="FreighterToVerdant" parent="." unique_id=589077253 instance=ExtResource("3_ship")]
 position = Vector2(6000, 320)
@@ -110,19 +116,26 @@ hull_color = Color(0.75, 0.6, 1, 1)
 script = ExtResource("4_nav")
 target_body = NodePath("../../Sun/Dusk/Pale")
 
-[node name="TrajectoryRenderer" type="Node2D" parent="." unique_id=1467716869 node_paths=PackedStringArray("ship", "navigator")]
+[node name="TrajectoryRenderer" type="Node2D" parent="." unique_id=1467716869 node_paths=PackedStringArray("ship", "navigator", "maneuvers")]
 script = ExtResource("6_render")
 ship = NodePath("../PlayerShip")
 navigator = NodePath("../PlayerShip/Navigator")
+maneuvers = NodePath("../PlayerShip/Maneuvers")
+
+[node name="ManeuverEditor" type="Node2D" parent="." unique_id=205719572 node_paths=PackedStringArray("renderer", "planner")]
+script = ExtResource("11_editor")
+renderer = NodePath("../TrajectoryRenderer")
+planner = NodePath("../PlayerShip/Maneuvers")
 
 [node name="Camera2D" type="Camera2D" parent="." unique_id=925694663 node_paths=PackedStringArray("target")]
 zoom = Vector2(0.5, 0.5)
 script = ExtResource("8_camera")
 target = NodePath("../PlayerShip")
 
-[node name="SpaceHud" type="CanvasLayer" parent="." unique_id=1834291820 node_paths=PackedStringArray("ship", "controller", "navigator", "renderer")]
+[node name="SpaceHud" type="CanvasLayer" parent="." unique_id=1834291820 node_paths=PackedStringArray("ship", "controller", "navigator", "renderer", "maneuvers")]
 script = ExtResource("9_hud")
 ship = NodePath("../PlayerShip")
 controller = NodePath("../PlayerShip/Controller")
 navigator = NodePath("../PlayerShip/Navigator")
 renderer = NodePath("../TrajectoryRenderer")
+maneuvers = NodePath("../PlayerShip/Maneuvers")

@@ -5,9 +5,11 @@ extends CanvasLayer
 @export var controller: PlayerShipController
 @export var navigator: OrbitalNavigator
 @export var renderer: TrajectoryRenderer
+@export var maneuvers: ManeuverPlanner
 
 const STATE_NAMES := ["Off", "Planning", "Waiting for burn", "Burning", "Coasting", "Arrived", "Failed"]
-const HELP := "W/Up thrust  A/D turn  Tab target  N autopilot  , . time warp  Wheel zoom"
+const HELP := "Click path: add maneuver   Drag handles: plan burn   Drag node: move   Right-click/Del: remove\n" \
+	+ "Tab target  N autopilot  , . time warp  Wheel zoom   Emergency: W thrust, A/D turn"
 
 var _orbital_system: Node
 var _label: Label
@@ -47,6 +49,12 @@ func _process(_delta: float) -> void:
 		lines.append(line)
 	else:
 		lines.append("No target")
+
+	if maneuvers and not maneuvers.nodes.is_empty():
+		var node: Dictionary = maneuvers.nodes[0]
+		var status := "executing" if maneuvers.is_executing(node) else "in %s" % _format_time(maneuvers.get_burn_start(node) - _orbital_system.SimTime)
+		lines.append("Maneuver %s: Δv %.2f (total %.2f over %d)" % [status, maneuvers.get_delta_v(node),
+			maneuvers.get_total_delta_v(), maneuvers.nodes.size()])
 
 	if navigator:
 		var line := "Autopilot: %s" % STATE_NAMES[navigator.state]

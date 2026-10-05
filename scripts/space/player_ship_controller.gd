@@ -1,12 +1,14 @@
 class_name PlayerShipController
 extends Node
-## Manual flight controls for the parent Spaceship, target selection, time warp and the autopilot toggle.
-## Any manual input disengages the autopilot.
+## Player flight: maneuver nodes are the primary way to navigate (see ManeuverEditor); direct thrust and turning
+## are an emergency override that aborts any burn in progress and disengages the autopilot. Also handles target
+## selection, time warp and the autopilot toggle.
 
 signal target_changed(body_index: int)
 
 @export var navigator: OrbitalNavigator
 @export var renderer: TrajectoryRenderer
+@export var maneuvers: ManeuverPlanner
 
 var ship: Spaceship
 var target_index: int = -1
@@ -16,13 +18,24 @@ var orbital_system: Node
 func _ready() -> void:
 	ship = get_parent() as Spaceship
 	orbital_system = get_tree().get_first_node_in_group(Constants.ORBITAL_SYSTEM_GROUP)
+	if maneuvers and navigator:
+		# Planning a maneuver by hand takes over from the autopilot.
+		maneuvers.nodes_changed.connect(func() -> void:
+			if not maneuvers.nodes.is_empty() and navigator.is_active():
+				navigator.cancel())
 
 
 func _physics_process(_delta: float) -> void:
 	var thrust := Input.get_action_strength(&"ship_thrust")
 	var turn := Input.get_axis(&"ship_rotate_left", &"ship_rotate_right")
-	if navigator and navigator.is_active() and (thrust > 0.0 or turn != 0.0):
-		navigator.cancel()
+	if thrust > 0.0 or turn != 0.0:
+		# Emergency manual control overrides everything automatic.
+		if navigator and navigator.is_active():
+			navigator.cancel()
+		if maneuvers:
+			maneuvers.abort_current()
+		if orbital_system.TimeWarp > 1:
+			orbital_system.SetTimeWarpIndex(0)
 	ship.throttle = thrust
 	ship.steer = turn
 
@@ -62,4 +75,6 @@ func toggle_autopilot() -> void:
 		# Drop out of time warp when taking manual control.
 		orbital_system.SetTimeWarpIndex(0)
 	elif target_index >= 0:
+		if maneuvers:
+			maneuvers.clear()
 		navigator.navigate_to(orbital_system.GetBody(target_index))

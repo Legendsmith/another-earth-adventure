@@ -18,6 +18,11 @@ public struct ImpulseBurn
 	/// <summary>Ship mass when the burn starts.</summary>
 	public double Mass;
 	public double ExhaustVelocity;
+	/// <summary>
+	/// When set, <see cref="DeltaV"/> is (prograde, radial-out) relative to the dominant body when the burn starts,
+	/// instead of an inertial vector. This is how player maneuver nodes are defined and executed.
+	/// </summary>
+	public bool OrbitalFrame;
 
 	public ImpulseBurn(double time, Vector2D deltaV)
 	{
@@ -26,6 +31,7 @@ public struct ImpulseBurn
 		Thrust = 0.0;
 		Mass = 0.0;
 		ExhaustVelocity = 0.0;
+		OrbitalFrame = false;
 	}
 
 	public bool IsFinite => Thrust > 0.0 && Mass > 0.0 && ExhaustVelocity > 0.0;
@@ -34,6 +40,17 @@ public struct ImpulseBurn
 	public double Duration => IsFinite
 		? Mass * (1.0 - Math.Exp(-DeltaV.Length / ExhaustVelocity)) / (Thrust / ExhaustVelocity)
 		: 0.0;
+
+	/// <summary>Prograde/radial-out unit vectors of a ship state relative to a body.</summary>
+	public static void OrbitalAxes(Vector2D relPosition, Vector2D relVelocity, out Vector2D prograde, out Vector2D radialOut)
+	{
+		prograde = relVelocity.Normalized();
+		if (prograde.LengthSquared == 0.0)
+			prograde = relPosition.Normalized().Perpendicular;
+		radialOut = prograde.Perpendicular;
+		if (radialOut.Dot(relPosition) < 0.0)
+			radialOut = -radialOut;
+	}
 
 	public double StartTime => Time - 0.5 * Duration;
 }
@@ -200,6 +217,13 @@ public static class TrajectoryPredictor
 			while (activeRemaining <= 0.0 && burnIndex < burns.Count && burns[burnIndex].StartTime <= time + dt * 1e-3)
 			{
 				ImpulseBurn burn = burns[burnIndex++];
+				if (burn.OrbitalFrame)
+				{
+					Vector2D relPos = dominant >= 0 ? pos - bodyPos[dominant] : pos;
+					Vector2D relVel = dominant >= 0 ? vel - bodyVel[dominant] : vel;
+					ImpulseBurn.OrbitalAxes(relPos, relVel, out Vector2D prograde, out Vector2D radialOut);
+					burn.DeltaV = prograde * burn.DeltaV.X + radialOut * burn.DeltaV.Y;
+				}
 				if (burn.IsFinite)
 				{
 					activeRemaining = burn.DeltaV.Length;
