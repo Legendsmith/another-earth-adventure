@@ -46,8 +46,8 @@ const CELESTIAL_BODY_GROUP := &"celestial_bodies"
 
 const MASTER_BUS: StringName = &"Master"
 const MUSIC_BUS: StringName = &"Music"
-const SFX_BUS: StringName = &"Sfx"
-const CHARACTER_VOICING: StringName = &"Character Voicing"
+const SFX_BUS: StringName = &"Effects"
+const CHARACTER_VOICING: StringName = &"Voices"
 
 const MASTER_BUS_INDEX: int = 0
 const MUSIC_BUS_INDEX: int = 1
