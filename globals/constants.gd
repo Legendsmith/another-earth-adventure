@@ -32,6 +32,15 @@ const SPATIAL_HASH_SIZE := 1024
 
 #endregion
 
+#region Space Travel
+
+## Group of the C# OrbitalSystem node (AnotherEarth.Orbital.OrbitalSystem.GroupName).
+const ORBITAL_SYSTEM_GROUP := &"orbital_system"
+## Group of every C# CelestialBody (AnotherEarth.Orbital.CelestialBody.GroupName).
+const CELESTIAL_BODY_GROUP := &"celestial_bodies"
+
+#endregion
+
 
 #region Audio Bus Information
 

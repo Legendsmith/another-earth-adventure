@@ -1,3 +1,128 @@
-[gd_scene format=3 uid="uid://cg7jx7idvycnf"]
+[gd_scene load_steps=20 format=3 uid="uid://cg7jx7idvycnf"]
+
+[ext_resource type="Script" path="res://scripts/orbital/OrbitalSystem.cs" id="1_system"]
+[ext_resource type="Script" path="res://scripts/orbital/CelestialBody.cs" id="2_body"]
+[ext_resource type="PackedScene" path="res://world/space/spaceship.tscn" id="3_ship"]
+[ext_resource type="Script" path="res://scripts/space/orbital_navigator.gd" id="4_nav"]
+[ext_resource type="Script" path="res://scripts/space/player_ship_controller.gd" id="5_player"]
+[ext_resource type="Script" path="res://scripts/space/trajectory_renderer.gd" id="6_render"]
+[ext_resource type="Script" path="res://scripts/space/orbit_lines.gd" id="7_lines"]
+[ext_resource type="Script" path="res://scripts/space/space_camera.gd" id="8_camera"]
+[ext_resource type="Script" path="res://scripts/space/space_hud.gd" id="9_hud"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_sun"]
+radius = 400.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_ferra"]
+radius = 120.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_dusk"]
+radius = 180.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_pale"]
+radius = 45.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_verdant"]
+radius = 150.0
 
 [node name="SpaceTravelOverworld" type="Node2D" unique_id=512653754]
+
+[node name="OrbitalSystem" type="Node" parent="."]
+script = ExtResource("1_system")
+
+[node name="Sun" type="AnimatableBody2D" parent="."]
+script = ExtResource("2_body")
+Mu = 23700000.0
+Radius = 400.0
+BodyColor = Color(1, 0.85, 0.4, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Sun"]
+shape = SubResource("CircleShape2D_sun")
+
+[node name="Ferra" type="AnimatableBody2D" parent="Sun"]
+position = Vector2(6000, 0)
+script = ExtResource("2_body")
+Mu = 685000.0
+Radius = 120.0
+BodyColor = Color(0.4, 0.65, 1, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Sun/Ferra"]
+shape = SubResource("CircleShape2D_ferra")
+
+[node name="Dusk" type="AnimatableBody2D" parent="Sun"]
+position = Vector2(-7778.17, 7778.17)
+script = ExtResource("2_body")
+Mu = 1500000.0
+Radius = 180.0
+BodyColor = Color(0.85, 0.45, 0.35, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Sun/Dusk"]
+shape = SubResource("CircleShape2D_dusk")
+
+[node name="Pale" type="AnimatableBody2D" parent="Sun/Dusk"]
+position = Vector2(900, 0)
+script = ExtResource("2_body")
+Mu = 60000.0
+Radius = 45.0
+BodyColor = Color(0.8, 0.8, 0.8, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Sun/Dusk/Pale"]
+shape = SubResource("CircleShape2D_pale")
+
+[node name="Verdant" type="AnimatableBody2D" parent="Sun"]
+position = Vector2(9000, 15588.46)
+script = ExtResource("2_body")
+Mu = 900000.0
+Radius = 150.0
+BodyColor = Color(0.45, 0.85, 0.5, 1)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Sun/Verdant"]
+shape = SubResource("CircleShape2D_verdant")
+
+[node name="OrbitLines" type="Node2D" parent="."]
+script = ExtResource("7_lines")
+
+[node name="PlayerShip" parent="." instance=ExtResource("3_ship")]
+position = Vector2(6000, -260)
+
+[node name="Navigator" type="Node" parent="PlayerShip"]
+script = ExtResource("4_nav")
+auto_start = false
+
+[node name="Controller" type="Node" parent="PlayerShip" node_paths=PackedStringArray("navigator", "renderer")]
+script = ExtResource("5_player")
+navigator = NodePath("../Navigator")
+renderer = NodePath("../../TrajectoryRenderer")
+
+[node name="FreighterToVerdant" parent="." instance=ExtResource("3_ship")]
+position = Vector2(6000, 320)
+hull_color = Color(1, 0.7, 0.4, 1)
+
+[node name="Navigator" type="Node" parent="FreighterToVerdant" node_paths=PackedStringArray("target_body")]
+script = ExtResource("4_nav")
+target_body = NodePath("../../Sun/Verdant")
+
+[node name="ScoutToPale" parent="." instance=ExtResource("3_ship")]
+position = Vector2(5620, 0)
+hull_color = Color(0.75, 0.6, 1, 1)
+
+[node name="Navigator" type="Node" parent="ScoutToPale" node_paths=PackedStringArray("target_body")]
+script = ExtResource("4_nav")
+target_body = NodePath("../../Sun/Dusk/Pale")
+
+[node name="TrajectoryRenderer" type="Node2D" parent="." node_paths=PackedStringArray("ship", "navigator")]
+script = ExtResource("6_render")
+ship = NodePath("../PlayerShip")
+navigator = NodePath("../PlayerShip/Navigator")
+
+[node name="Camera2D" type="Camera2D" parent="." node_paths=PackedStringArray("target")]
+zoom = Vector2(0.5, 0.5)
+script = ExtResource("8_camera")
+target = NodePath("../PlayerShip")
+
+[node name="SpaceHud" type="CanvasLayer" parent="." node_paths=PackedStringArray("ship", "controller", "navigator", "renderer")]
+script = ExtResource("9_hud")
+ship = NodePath("../PlayerShip")
+controller = NodePath("../PlayerShip/Controller")
+navigator = NodePath("../PlayerShip/Navigator")
+renderer = NodePath("../TrajectoryRenderer")
