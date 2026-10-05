@@ -16,15 +16,15 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-Cursor="*uid://cged1pq4dniq6"
+GameManager="*uid://or5hd5dlt0kq"
+Dialogic="*uid://ds2q0uclmolvu"
 Factions="*uid://c1ev4athehupm"
 GameSettings="*uid://cowb0y3ulunmj"
 SpatialMap="*uid://lacf4oy41vby"
-Dialogic="*uid://ds2q0uclmolvu"
 GUIDE="*uid://p2jwrgjcbexr"
 UnlockableContent="*uid://p3ilsmea4pp7"
 VerySimpleTwitch="*uid://b67spqib1p8ar"
-GameManager="*uid://jg6nhkpudsrj"
+Cursor="*uid://cged1pq4dniq6"
 
 [dialogic]
 
@@ -97,6 +97,7 @@ toggle_autopilot={
 
 [physics]
 
+2d/physics_engine="Rapier2D"
 3d/physics_engine="Jolt Physics"
 
 [rendering]
