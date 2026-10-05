@@ -28,7 +28,7 @@ const UPDATE:StringName = &"updating"
 const NAV_LAYER_ALL := 1
 const AVOIDANCE_OFFSET := 0
 const FLOW_FIELD_GROUP := &"flow_field_target"
-const SPATIAL_HASH_SIZE := 512
+const SPATIAL_HASH_SIZE := 1024
 
 #endregion
 
@@ -48,4 +48,5 @@ const CHARACTER_VOICING_INDEX: int = 3
 #endregion
 
 #region Dialogic Constants
+const DIALOG_FIRST:String = "first"
 const DIALOG_REPEAT:String = "repeat"

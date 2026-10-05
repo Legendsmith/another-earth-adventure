@@ -2,7 +2,7 @@ class_name BattleAgent
 extends RigidBody2D
 const MAX_BT_DELTA:float = 2.0
 enum Facing{RIGHT,DOWN,LEFT,UP}
-signal inflicted_damage(who:Node2D,amount:int,damage_target:Node2D)
+signal contact(me:Node2D,who:Node2D,delta:float)
 
 const SPRITE_DIR:int = 4
 const SPRITE_DIR_COEF:float = PI/(SPRITE_DIR/2.0)
@@ -50,7 +50,6 @@ func _ready() -> void:
 	add_to_group("overworld_agents")
 	animation_player.animation_started.connect(set_facing)
 	tick_offset = randi() % Engine.physics_ticks_per_second
-	refresh_hp()
 	nav_agent.waypoint_reached.connect(think.unbind(1))
 	configure_physics(faction)
 	if NavigationServer2D.map_is_active(get_world_2d().get_navigation_map()):
@@ -111,6 +110,9 @@ func _physics_process(delta) -> void:
 		spatial_hash.update()
 		think()
 
+func attack(delta:float) -> void:
+	for node:Node2D in get_colliding_bodies():
+		contact.emit(self,node,delta)
 
 func move(velocity:Vector2,delta_frames:float = skip_frames+1):
 	apply_central_force(velocity*(delta_frames+linear_damp))
