@@ -7,7 +7,7 @@ extends Node2D
 ##   the handle is pulled, the faster delta-v changes; hold Shift for fine control. Pushing back reduces it.
 ##   Several handles can be used one after another to combine directions.
 ## - Drag the node itself to slide it along the path.
-## - Right-click a node, or press Delete, to remove it.
+## - Right-click a node or its part of the planned trajectory, or press Delete, to remove it.
 
 signal selection_changed(node: Dictionary)
 
@@ -131,12 +131,28 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 		elif button.button_index == MOUSE_BUTTON_RIGHT and button.pressed:
 			var node := _node_at(world)
+			if node.is_empty():
+				node = _maneuver_for_planned_path(world)
 			if not node.is_empty():
 				planner.remove_node(node)
 				get_viewport().set_input_as_handled()
 	elif event.is_action_pressed(&"maneuver_delete") and not selected.is_empty():
 		planner.remove_node(selected)
 		get_viewport().set_input_as_handled()
+
+
+## The maneuver whose effect is drawn at `world` on the planned trajectory: the last node before that point.
+func _maneuver_for_planned_path(world: Vector2) -> Dictionary:
+	if not renderer.planned_prediction:
+		return {}
+	var time := renderer.nearest_path_time(world, pick_distance * _pixel(), renderer.planned_from())
+	if time < 0.0:
+		return {}
+	var found: Dictionary = {}
+	for node in planner.nodes:
+		if planner.get_burn_start(node) <= time:
+			found = node
+	return found
 
 
 func _on_left_press(world: Vector2) -> void:

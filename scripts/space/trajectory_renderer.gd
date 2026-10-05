@@ -8,7 +8,8 @@ extends Node2D
 @export var ship: Spaceship
 ## Optional: draws the autopilot's next planned burn.
 @export var navigator: OrbitalNavigator
-## Optional: the player's maneuver nodes are included in the prediction.
+## Optional: the player's maneuver nodes. While any are planned, the current (coasting) trajectory stays visible
+## and the planned trajectory is drawn on top of it from the first maneuver onward.
 @export var maneuvers: ManeuverPlanner
 ## Celestial body to report the closest approach to (-1 = none).
 @export var target_index: int = -1
@@ -26,14 +27,24 @@ extends Node2D
 @export var marker_color := Color(1.0, 1.0, 1.0, 0.9)
 @export var collision_color := Color(1.0, 0.3, 0.3)
 @export var burn_color := Color(0.4, 1.0, 0.5)
+## Trajectory after the player's planned maneuvers.
+@export var planned_color := Color(1.0, 0.55, 0.85, 0.95)
+## Planned trajectory inside another body's sphere (encounters).
+@export var planned_encounter_color := Color(1.0, 0.4, 0.6, 0.95)
 
+## Current trajectory: the ship coasting with no planned maneuvers.
 var prediction: RefCounted
+## Trajectory including the player's planned maneuvers (null when none are planned).
+var planned_prediction: RefCounted
+## Closest approach to the target along the planned trajectory if there is one, else the current one.
 var closest_approach: Dictionary = {}
 
 var _orbital_system: Node
 var _segments: Array = []
 var _events: Array = []
-var _pending := false
+var _planned_segments: Array = []
+var _planned_events: Array = []
+var _pending := 0
 var _last_request_ms := -100000
 var _font: Font
 var _offset := Vector2.ZERO
@@ -54,11 +65,10 @@ func request_refresh() -> void:
 
 
 func _physics_process(_delta: float) -> void:
-	if not is_instance_valid(ship) or not _orbital_system or not _orbital_system.IsReady or _pending:
+	if not is_instance_valid(ship) or not _orbital_system or not _orbital_system.IsReady or _pending > 0:
 		return
 	if Time.get_ticks_msec() - _last_request_ms < refresh_interval * 1000.0:
 		return
-	_pending = true
 	_last_request_ms = Time.get_ticks_msec()
 	var options := {
 		"max_time": prediction_time,
@@ -66,23 +76,64 @@ func _physics_process(_delta: float) -> void:
 		"watch_body": target_index,
 		"sample_every": 6,
 	}
-	if maneuvers and not maneuvers.nodes.is_empty():
-		var burns := maneuvers.get_prediction_burns()
-		options.burns = burns
-		if not burns.is_empty():
-			# Always show at least one orbit past the last maneuver.
-			var last_time: float = burns.back().time - _orbital_system.SimTime
-			options.max_time = maxf(prediction_time, last_time + prediction_time)
-	var job: RefCounted = _orbital_system.PredictAsync(ship.global_position, ship.linear_velocity, options)
+	# Both predictions start from the same ship state, so they line up exactly before the first maneuver.
+	var start_position := ship.global_position
+	var start_velocity := ship.linear_velocity
+	_pending = 1
+	var burns := maneuvers.get_prediction_burns() if maneuvers else []
+	if not burns.is_empty():
+		_pending = 2
+		var planned := options.duplicate()
+		planned.burns = burns
+		# Always show at least one orbit past the last maneuver.
+		var last_time: float = burns.back().time - _orbital_system.SimTime
+		planned.max_time = maxf(prediction_time, last_time + prediction_time)
+		var planned_job: RefCounted = _orbital_system.PredictAsync(start_position, start_velocity, planned)
+		planned_job.connect(&"Completed", _on_planned_prediction)
+	elif planned_prediction:
+		planned_prediction = null
+		_planned_segments = []
+		_planned_events = []
+	var job: RefCounted = _orbital_system.PredictAsync(start_position, start_velocity, options)
 	job.connect(&"Completed", _on_prediction)
 
 
 func _on_prediction(result: RefCounted) -> void:
-	_pending = false
+	_pending -= 1
 	prediction = result
 	_segments = result.BuildPathSegments()
 	_events = result.GetEvents()
-	closest_approach = result.GetClosestApproach() if target_index >= 0 else {}
+	_update_closest_approach()
+
+
+func _on_planned_prediction(result: RefCounted) -> void:
+	_pending -= 1
+	if not maneuvers or maneuvers.nodes.is_empty():
+		return # All maneuvers were removed while this was computing.
+	planned_prediction = result
+	_planned_segments = result.BuildPathSegments()
+	_planned_events = result.GetEvents()
+	_update_closest_approach()
+
+
+func _update_closest_approach() -> void:
+	if target_index < 0:
+		closest_approach = {}
+		return
+	var source := planned_prediction if planned_prediction else prediction
+	closest_approach = source.GetClosestApproach() if source else {}
+
+
+## Simulation time from which the planned trajectory differs from the current one (INF when nothing is planned).
+func planned_from() -> float:
+	if not planned_prediction or not maneuvers or maneuvers.nodes.is_empty():
+		return INF
+	return maneuvers.get_burn_start(maneuvers.nodes[0])
+
+
+## Segments used for picking and placing maneuver nodes: the planned path when there is one.
+func _query_segments() -> Array:
+	return _planned_segments if planned_prediction else _segments
 
 
 func _process(_delta: float) -> void:
@@ -101,42 +152,56 @@ func _draw() -> void:
 	if not prediction:
 		return
 	var pixel := 1.0 / get_canvas_transform().get_scale().x # one screen pixel in world units
+	var from_time := planned_from()
+	_draw_trajectory(_segments, _events, prediction.InitialBody, -INF, path_color, encounter_color, marker_color, pixel)
+	if from_time < INF:
+		_draw_trajectory(_planned_segments, _planned_events, planned_prediction.InitialBody, from_time,
+			planned_color, planned_encounter_color, planned_color, pixel)
+	_set_offset(Vector2.ZERO)
+	_draw_planned_burn(pixel)
 
-	for i in _segments.size():
-		var segment: Dictionary = _segments[i]
-		var offset := _segment_offset(segment)
-		var color := path_color if segment.body == prediction.InitialBody else encounter_color
-		_set_offset(offset)
+
+## Draws one prediction's path, ghosts and markers, skipping everything before `from_time`.
+func _draw_trajectory(segments: Array, events: Array, initial_body: int, from_time: float, color: Color,
+		other_color: Color, markers: Color, pixel: float) -> void:
+	for segment: Dictionary in segments:
+		var times: PackedFloat64Array = segment.times
+		if times.is_empty() or times[times.size() - 1] < from_time:
+			continue
 		var points: PackedVector2Array = segment.points
+		if times[0] < from_time:
+			var first := times.bsearch(from_time)
+			points = points.slice(maxi(first - 1, 0))
+		_set_offset(_segment_offset(segment))
 		if points.size() >= 2:
-			draw_polyline(points, color, -1.0)
+			draw_polyline(points, color if segment.body == initial_body else other_color, -1.0)
 		if segment.ghost:
 			var radius: float = _orbital_system.GetBodyRadius(segment.body)
-			draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48, ghost_color, -1.0)
-			_draw_label(Vector2(radius, -radius), _orbital_system.GetBodyName(segment.body), ghost_color, pixel)
+			var ghost := Color(other_color, ghost_color.a)
+			draw_arc(Vector2.ZERO, radius, 0.0, TAU, 48, ghost, -1.0)
+			_draw_label(Vector2(radius, -radius), _orbital_system.GetBodyName(segment.body), ghost, pixel)
 
-	for event: Dictionary in _events:
-		var segment: Dictionary = _segments[event.segment]
+	for event: Dictionary in events:
+		if event.time < from_time:
+			continue
+		var segment: Dictionary = segments[event.segment]
 		_set_offset(_segment_offset(segment))
 		var p: Vector2 = event.local_position
 		match event.type:
 			"periapsis":
-				_draw_marker(p, marker_color, pixel)
-				_draw_label(p, "Pe %d" % roundi(event.distance - _orbital_system.GetBodyRadius(event.body)), marker_color, pixel)
+				_draw_marker(p, markers, pixel)
+				_draw_label(p, "Pe %d" % roundi(event.distance - _orbital_system.GetBodyRadius(event.body)), markers, pixel)
 			"apoapsis":
-				_draw_marker(p, marker_color, pixel)
-				_draw_label(p, "Ap %d" % roundi(event.distance - _orbital_system.GetBodyRadius(event.body)), marker_color, pixel)
+				_draw_marker(p, markers, pixel)
+				_draw_label(p, "Ap %d" % roundi(event.distance - _orbital_system.GetBodyRadius(event.body)), markers, pixel)
 			"collision":
 				_draw_marker(p, collision_color, pixel * 1.5)
 				_draw_label(p, "IMPACT", collision_color, pixel)
 			"closest_approach":
-				_draw_marker(p, encounter_color, pixel)
-				_draw_label(p, "CA %d" % roundi(event.distance), encounter_color, pixel)
+				_draw_marker(p, other_color, pixel)
+				_draw_label(p, "CA %d" % roundi(event.distance), other_color, pixel)
 			"sphere_enter", "sphere_exit":
-				draw_circle(p, 3.0 * pixel, color_with_alpha(path_color, 0.6))
-
-	_set_offset(Vector2.ZERO)
-	_draw_planned_burn(pixel)
+				draw_circle(p, 3.0 * pixel, color_with_alpha(color, 0.6))
 
 
 func _draw_planned_burn(pixel: float) -> void:
@@ -157,7 +222,7 @@ func _draw_planned_burn(pixel: float) -> void:
 ## World position on the displayed path at `time`, with the relative velocity and the frame body there.
 ## Returns {} when the time is not on the predicted path.
 func path_state_at(time: float) -> Dictionary:
-	for segment: Dictionary in _segments:
+	for segment: Dictionary in _query_segments():
 		var times: PackedFloat64Array = segment.times
 		if times.is_empty() or time < times[0] or time > times[times.size() - 1]:
 			continue
@@ -182,7 +247,7 @@ func path_state_at(time: float) -> Dictionary:
 func nearest_path_time(world_point: Vector2, max_distance: float, not_before: float = -INF) -> float:
 	var best_time := -1.0
 	var best := max_distance * max_distance
-	for segment: Dictionary in _segments:
+	for segment: Dictionary in _query_segments():
 		var offset := _segment_offset(segment)
 		var points: PackedVector2Array = segment.points
 		var times: PackedFloat64Array = segment.times
