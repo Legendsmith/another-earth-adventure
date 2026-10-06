@@ -93,7 +93,8 @@ public sealed class PredictionSettings
 	public bool RecordApsides = true;
 	public bool RecordSamples = true;
 	/// <summary>
-	/// Body to track the closest approach to, or -1. Only tracked while the ship's dominant body is the watched body,
+	/// Body to track the closest approach to, or -1. The closest approach is the first periapsis pass inside the body's
+	/// sphere if there is one (otherwise the overall minimum distance). Only tracked while the ship's dominant body is the watched body,
 	/// one of its ancestors or one of its moons, so passes while orbiting some other body (e.g. the departure planet) are ignored.
 	/// </summary>
 	public int WatchBody = -1;
@@ -148,6 +149,9 @@ public sealed class PredictionResult
 	/// <summary>False when the closest approach is at the first or last tracked tick (the ship never turned back).</summary>
 	public bool ClosestApproachIsMinimum;
 	internal double WatchFirstTime = double.NaN;
+	internal bool ClosestApproachInside;
+	/// <summary>Set after the first periapsis pass inside the watched body's sphere; later passes are ignored.</summary>
+	public bool ClosestApproachLocked;
 	internal double WatchLastTime = double.NaN;
 
 	/// <summary>Closest approach distance signed by the direction of the pass (positive = positive angular momentum about the body).</summary>
@@ -433,10 +437,20 @@ public static class TrajectoryPredictor
 		if (double.IsNaN(result.WatchFirstTime))
 			result.WatchFirstTime = time;
 		result.WatchLastTime = time;
+		if (result.ClosestApproachLocked)
+			return;
 		Vector2D rel = pos - bodyPos[w];
 		double d = rel.Length;
-		if (d < result.ClosestApproachDistance)
+		if (d >= result.ClosestApproachDistance)
 		{
+			// Receding after a periapsis inside the body's sphere: that pass is the encounter. Later (possibly closer)
+			// passes belong to a different orbit that the encounter's burn will change, so stop tracking.
+			if (result.ClosestApproachInside)
+				result.ClosestApproachLocked = true;
+			return;
+		}
+		{
+			result.ClosestApproachInside = dominant == w || ephemeris.IsAncestorOf(w, dominant);
 			result.HasClosestApproach = true;
 			result.ClosestApproachDistance = d;
 			result.ClosestApproachTime = time;

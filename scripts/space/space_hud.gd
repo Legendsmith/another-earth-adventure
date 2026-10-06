@@ -1,19 +1,17 @@
 extends CanvasLayer
-## Flight readout: clock, warp, fuel, current orbit, target encounter and autopilot status.
+## Flight readout: clock, warp, fuel, current orbit, target encounter, maneuvers and navigation computer status.
 
 @export var ship: Spaceship
 @export var controller: PlayerShipController
-@export var navigator: OrbitalNavigator
+@export var navigation_computer: NavigationComputer
 @export var renderer: TrajectoryRenderer
 @export var maneuvers: ManeuverPlanner
 
-const STATE_NAMES := ["Off", "Planning", "Waiting for burn", "Burning", "Coasting", "Arrived", "Failed"]
 const HELP := "Click path: add maneuver   Drag handles: plan burn   Drag node: move   Right-click/Del: remove\n" \
-	+ "Tab target  N autopilot  , . time warp  Wheel zoom   Emergency: W thrust, A/D turn"
+	+ "Tab target  N plot course  , . time warp  Wheel zoom   Emergency: W thrust, A/D turn"
 
 var _orbital_system: Node
 var _label: Label
-var _last_failure := ""
 
 
 func _ready() -> void:
@@ -23,8 +21,6 @@ func _ready() -> void:
 	_label.position = Vector2(16, 16)
 	_label.add_theme_color_override(&"font_shadow_color", Color.BLACK)
 	add_child(_label)
-	if navigator:
-		navigator.navigation_failed.connect(func(reason: String) -> void: _last_failure = reason)
 
 
 func _process(_delta: float) -> void:
@@ -60,15 +56,8 @@ func _process(_delta: float) -> void:
 		lines.append("Maneuver %s: Δv %.2f (total %.2f over %d)" % [status, maneuvers.get_delta_v(node),
 			maneuvers.get_total_delta_v(), maneuvers.nodes.size()])
 
-	if navigator:
-		var line := "Autopilot: %s" % STATE_NAMES[navigator.state]
-		if navigator.state == OrbitalNavigator.State.FAILED:
-			line += " (%s)" % _last_failure
-		if not navigator.plan.is_empty() and navigator.is_active():
-			line += "   route: %s, est. Δv %.1f" % [navigator.plan.message, navigator.plan.estimated_delta_v]
-			if navigator.plan.assist_body >= 0:
-				line += " via %s" % _orbital_system.GetBodyName(navigator.plan.assist_body)
-		lines.append(line)
+	if navigation_computer:
+		lines.append("Nav computer: %s" % navigation_computer.status)
 	lines.append(HELP)
 	_label.text = "\n".join(lines)
 

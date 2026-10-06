@@ -223,12 +223,18 @@ func _process(delta: float) -> void:
 			Handle.RETROGRADE: selected.prograde -= change
 			Handle.RADIAL: selected.radial += change
 			Handle.ANTI_RADIAL: selected.radial -= change
+		_take_over(selected)
 		planner.node_edited(selected)
 	elif _dragging_node:
 		var time := renderer.nearest_path_time(world, INF, _orbital_system.SimTime + min_lead_time)
 		if time >= 0.0 and absf(time - selected.time) > 1e-3:
 			selected.time = time
+			_take_over(selected)
 			planner.node_edited(selected)
+
+## A node edited by hand belongs to the player: the navigation computer no longer maintains it.
+func _take_over(node: Dictionary) -> void:
+	node.erase("course")
 
 #endregion
 

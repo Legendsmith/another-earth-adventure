@@ -1,12 +1,12 @@
 class_name PlayerShipController
 extends Node
 ## Player flight: maneuver nodes are the primary way to navigate (see ManeuverEditor); direct thrust and turning
-## are an emergency override that aborts any burn in progress and disengages the autopilot. Also handles target
-## selection, time warp and the autopilot toggle.
+## are an emergency override that aborts any burn in progress. The navigation computer (N) plots a course to the
+## selected target as maneuver nodes. Also handles target selection and time warp.
 
 signal target_changed(body_index: int)
 
-@export var navigator: OrbitalNavigator
+@export var navigation_computer: NavigationComputer
 @export var renderer: TrajectoryRenderer
 @export var maneuvers: ManeuverPlanner
 
@@ -18,11 +18,6 @@ var orbital_system: Node
 func _ready() -> void:
 	ship = get_parent() as Spaceship
 	orbital_system = get_tree().get_first_node_in_group(Constants.ORBITAL_SYSTEM_GROUP)
-	if maneuvers and navigator:
-		# Planning a maneuver by hand takes over from the autopilot.
-		maneuvers.nodes_changed.connect(func() -> void:
-			if not maneuvers.nodes.is_empty() and navigator.is_active():
-				navigator.cancel())
 
 
 func _physics_process(_delta: float) -> void:
@@ -30,8 +25,6 @@ func _physics_process(_delta: float) -> void:
 	var turn := Input.get_axis(&"ship_rotate_left", &"ship_rotate_right")
 	if thrust > 0.0 or turn != 0.0:
 		# Emergency manual control overrides everything automatic.
-		if navigator and navigator.is_active():
-			navigator.cancel()
 		if maneuvers:
 			maneuvers.abort_current()
 		if orbital_system.TimeWarp > 1:
@@ -48,7 +41,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed(&"cycle_target"):
 		cycle_target()
 	elif event.is_action_pressed(&"toggle_autopilot"):
-		toggle_autopilot()
+		plot_course()
 	else:
 		return
 	get_viewport().set_input_as_handled()
@@ -67,14 +60,11 @@ func cycle_target() -> void:
 	target_changed.emit(target_index)
 
 
-func toggle_autopilot() -> void:
-	if not navigator:
+## Asks the navigation computer for a course to the selected target; the result replaces the maneuver nodes.
+func plot_course() -> void:
+	if not navigation_computer:
 		return
-	if navigator.is_active():
-		navigator.cancel()
-		# Drop out of time warp when taking manual control.
-		orbital_system.SetTimeWarpIndex(0)
-	elif target_index >= 0:
-		if maneuvers:
-			maneuvers.clear()
-		navigator.navigate_to(orbital_system.GetBody(target_index))
+	if target_index < 0:
+		navigation_computer.status = "No course: select a target first (Tab)"
+		return
+	navigation_computer.plot_course(orbital_system.GetBody(target_index))

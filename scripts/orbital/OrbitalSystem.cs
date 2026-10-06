@@ -382,23 +382,86 @@ public partial class OrbitalSystem : Node
 		if (_ephemeris == null)
 			return null;
 		Ephemeris eph = _ephemeris;
-		var request = new TransferRequest
-		{
-			Position = position,
-			Velocity = velocity,
-			Time = StateTime,
-			Dt = PhysicsDt,
-			Target = target,
-			Capture = options.TryGetValue("capture", out Variant capture) ? capture.AsBool() : true,
-			ArrivalPeriapsis = options.TryGetValue("arrival_periapsis", out Variant rp) ? rp.AsDouble() : 0.0,
-			AllowGravityAssist = options.TryGetValue("allow_gravity_assist", out Variant ga) ? ga.AsBool() : true,
-			AssistAdvantage = options.TryGetValue("assist_advantage", out Variant adv) ? adv.AsDouble() : 0.9,
-			MinLeadTime = options.TryGetValue("min_lead_time", out Variant lead) ? lead.AsDouble() : 8.0,
-			MaxSearchWindow = options.TryGetValue("max_search_window", out Variant window) ? window.AsDouble() : 0.0,
-			Refine = options.TryGetValue("refine", out Variant refine) ? refine.AsBool() : true,
-			Engine = ParseEngine(options),
-		};
+		TransferRequest request = BuildTransferRequest(position, velocity, target, options);
 		return RunJob(() => TransferPlanner.Plan(eph, request), plan => PlanToDictionary(plan));
+	}
+
+	/// <summary>
+	/// Navigation computer: plans a transfer to <paramref name="target"/> and converts it into maneuver nodes in the
+	/// orbital frame (same options as <see cref="PlanTransferAsync"/>). The job's Completed signal delivers
+	/// {valid, message, route, nodes: [{time, prograde, radial, kind}], encounters: [{body, time, periapsis, capture,
+	/// is_final, flyby_prograde_delta_v}], total_delta_v, arrival_body, reaches_target, assist_body, arrival_periapsis}.
+	/// </summary>
+	public OrbitalJob PlotCourseAsync(Vector2 position, Vector2 velocity, int target, Dictionary options)
+	{
+		if (_ephemeris == null)
+			return null;
+		Ephemeris eph = _ephemeris;
+		TransferRequest request = BuildTransferRequest(position, velocity, target, options);
+		return RunJob(() => CoursePlotter.Plot(eph, request), plot => CourseToDictionary(plot));
+	}
+
+	/// <summary>
+	/// Course maintenance: re-plots the remaining <paramref name="encounters"/> of a plotted course (as returned by
+	/// <see cref="PlotCourseAsync"/>) from the ship's current state, adding a correction node when needed and re-solving
+	/// the periapsis burns. Same result format as <see cref="PlotCourseAsync"/>; options as for planning
+	/// (min_lead_time and the engine).
+	/// </summary>
+	public OrbitalJob ContinueCourseAsync(Vector2 position, Vector2 velocity, int target, Array<Dictionary> encounters,
+		Dictionary options)
+	{
+		if (_ephemeris == null)
+			return null;
+		Ephemeris eph = _ephemeris;
+		TransferRequest request = BuildTransferRequest(position, velocity, target, options);
+		var remaining = new List<CourseEncounter>();
+		foreach (Dictionary e in encounters)
+		{
+			remaining.Add(new CourseEncounter
+			{
+				Body = e["body"].AsInt32(),
+				Time = e["time"].AsDouble(),
+				Periapsis = e["periapsis"].AsDouble(),
+				Capture = e["capture"].AsBool(),
+				IsFinal = e["is_final"].AsBool(),
+				FlybyProgradeDeltaV = e.TryGetValue("flyby_prograde_delta_v", out Variant f) ? f.AsDouble() : 0.0,
+			});
+		}
+		return RunJob(() => CoursePlotter.Continue(eph, request, remaining), plot => CourseToDictionary(plot));
+	}
+
+	private static Dictionary CourseToDictionary(CoursePlot plot)
+	{
+		var nodes = new Array<Dictionary>();
+		foreach (PlottedNode n in plot.Nodes)
+		{
+			nodes.Add(new Dictionary
+			{
+				{ "time", n.Time }, { "prograde", n.Prograde }, { "radial", n.Radial }, { "kind", n.Kind },
+			});
+		}
+		var encounters = new Array<Dictionary>();
+		foreach (CourseEncounter e in plot.Encounters)
+		{
+			encounters.Add(new Dictionary
+			{
+				{ "body", e.Body }, { "time", e.Time }, { "periapsis", e.Periapsis }, { "capture", e.Capture },
+				{ "is_final", e.IsFinal }, { "flyby_prograde_delta_v", e.FlybyProgradeDeltaV },
+			});
+		}
+		return new Dictionary
+		{
+			{ "valid", plot.Valid },
+			{ "message", plot.Message },
+			{ "route", plot.Route },
+			{ "nodes", nodes },
+			{ "encounters", encounters },
+			{ "total_delta_v", plot.TotalDeltaV },
+			{ "arrival_body", plot.ArrivalBody },
+			{ "reaches_target", plot.ReachesTarget },
+			{ "assist_body", plot.AssistBody },
+			{ "arrival_periapsis", plot.ArrivalPeriapsis },
+		};
 	}
 
 	/// <summary>
@@ -479,6 +542,26 @@ public partial class OrbitalSystem : Node
 			{ "refine_miss", plan.RefineMiss },
 			{ "burns", burns },
 			{ "encounters", encounters },
+		};
+	}
+
+	private TransferRequest BuildTransferRequest(Vector2 position, Vector2 velocity, int target, Dictionary options)
+	{
+		return new TransferRequest
+		{
+			Position = position,
+			Velocity = velocity,
+			Time = StateTime,
+			Dt = PhysicsDt,
+			Target = target,
+			Capture = options.TryGetValue("capture", out Variant capture) ? capture.AsBool() : true,
+			ArrivalPeriapsis = options.TryGetValue("arrival_periapsis", out Variant rp) ? rp.AsDouble() : 0.0,
+			AllowGravityAssist = options.TryGetValue("allow_gravity_assist", out Variant ga) ? ga.AsBool() : true,
+			AssistAdvantage = options.TryGetValue("assist_advantage", out Variant adv) ? adv.AsDouble() : 0.9,
+			MinLeadTime = options.TryGetValue("min_lead_time", out Variant lead) ? lead.AsDouble() : 8.0,
+			MaxSearchWindow = options.TryGetValue("max_search_window", out Variant window) ? window.AsDouble() : 0.0,
+			Refine = options.TryGetValue("refine", out Variant refine) ? refine.AsBool() : true,
+			Engine = ParseEngine(options),
 		};
 	}
 
