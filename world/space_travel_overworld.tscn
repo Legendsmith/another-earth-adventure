@@ -11,7 +11,7 @@
 [ext_resource type="Script" uid="uid://bmyrc2gn2l7ve" path="res://scripts/space/space_hud.gd" id="9_hud"]
 [ext_resource type="Script" uid="uid://cp17a81w3w84m" path="res://scripts/space/maneuver_planner.gd" id="10_maneuvers"]
 [ext_resource type="Script" uid="uid://bw7sowcws345m" path="res://scripts/space/maneuver_editor.gd" id="11_editor"]
-[ext_resource type="Script" path="res://scripts/space/navigation_computer.gd" id="12_navcomp"]
+[ext_resource type="Script" uid="uid://b5qc5pemwhy5t" path="res://scripts/space/navigation_computer.gd" id="12_navcomp"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_sun"]
 radius = 400.0
