@@ -47,6 +47,20 @@ project/assembly_name="Another Earth AdVenture"
 
 enabled=PackedStringArray("res://addons/ActionIcon/plugin.cfg", "res://addons/dialogic/plugin.cfg", "res://addons/guide/plugin.cfg", "res://addons/scene_reference/plugin.cfg", "res://addons/unlockable_content/plugin.cfg", "res://addons/very-simple-twitch/plugin.cfg")
 
+[file_customization]
+
+folder_colors={
+"res://addons/": "gray",
+"res://ai/": "blue",
+"res://audio/": "orange",
+"res://data/": "orange",
+"res://globals/": "purple",
+"res://scripts/": "teal",
+"res://texture/": "orange",
+"res://ui/": "green",
+"res://world/": "yellow"
+}
+
 [input]
 
 dialogic_default_action={
