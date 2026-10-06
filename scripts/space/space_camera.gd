@@ -12,6 +12,7 @@ var _target_zoom: float
 
 func _ready() -> void:
 	_target_zoom = zoom.x
+	process_mode = Node.PROCESS_MODE_ALWAYS # Pan and zoom while paused for planning.
 
 
 func _process(delta: float) -> void:

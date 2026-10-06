@@ -8,8 +8,12 @@ extends Node2D
 ##   Several handles can be used one after another to combine directions.
 ## - Drag the node itself to slide it along the path.
 ## - Right-click a node or its part of the planned trajectory, or press Delete, to remove it.
+##
+## While a node is selected the player is planning: the simulation is paused (if `pause_while_planning`).
+## Deselecting (clicking empty space, Escape, or removing the node) leaves planning, deleting any empty nodes.
 
 signal selection_changed(node: Dictionary)
+signal planning_changed(planning: bool)
 
 enum Handle { NONE = -1, PROGRADE, RETROGRADE, RADIAL, ANTI_RADIAL }
 
@@ -29,6 +33,8 @@ const HANDLE_NAMES := ["Prograde", "Retrograde", "Radial", "Anti-radial"]
 @export var full_pull: float = 90.0
 ## New nodes must be at least this far ahead, in simulation seconds.
 @export var min_lead_time: float = 3.0
+## Pause the simulation while a maneuver node is selected for editing.
+@export var pause_while_planning: bool = true
 
 @export_group("Colors")
 @export var prograde_color := Color(1.0, 0.85, 0.25)
@@ -49,7 +55,18 @@ func _ready() -> void:
 	_font = ThemeDB.fallback_font
 	top_level = true
 	z_index = 20
+	# Editing must keep working while the tree is paused for planning.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	planner.nodes_changed.connect(_on_nodes_changed)
+
+
+func _exit_tree() -> void:
+	if is_planning() and pause_while_planning:
+		get_tree().paused = false
+
+
+func is_planning() -> bool:
+	return not selected.is_empty()
 
 
 func _on_nodes_changed() -> void:
@@ -58,10 +75,17 @@ func _on_nodes_changed() -> void:
 
 
 func _select(node: Dictionary) -> void:
+	var was_planning := is_planning()
 	selected = node
 	_drag_handle = Handle.NONE
 	_dragging_node = false
 	selection_changed.emit(node)
+	if is_planning() != was_planning:
+		if not is_planning():
+			planner.remove_empty_nodes() # Leaving the planner: drop nodes that change nothing.
+		if pause_while_planning:
+			get_tree().paused = is_planning()
+		planning_changed.emit(is_planning())
 
 
 #region Geometry
@@ -138,6 +162,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 	elif event.is_action_pressed(&"maneuver_delete") and not selected.is_empty():
 		planner.remove_node(selected)
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed(&"ui_cancel") and is_planning():
+		_select({})
 		get_viewport().set_input_as_handled()
 
 

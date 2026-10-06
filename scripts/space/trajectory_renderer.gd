@@ -55,6 +55,8 @@ func _ready() -> void:
 	_font = ThemeDB.fallback_font
 	top_level = true
 	z_index = 10
+	# Keep predicting and drawing while the simulation is paused for maneuver planning.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	if maneuvers:
 		maneuvers.nodes_changed.connect(request_refresh)
 

@@ -18,6 +18,7 @@ var _last_failure := ""
 
 func _ready() -> void:
 	_orbital_system = get_tree().get_first_node_in_group(Constants.ORBITAL_SYSTEM_GROUP)
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	_label = Label.new()
 	_label.position = Vector2(16, 16)
 	_label.add_theme_color_override(&"font_shadow_color", Color.BLACK)
@@ -30,7 +31,10 @@ func _process(_delta: float) -> void:
 	if not is_instance_valid(ship) or not _orbital_system.IsReady:
 		return
 	var lines: PackedStringArray = []
-	lines.append("T+%s   warp x%d" % [_format_time(_orbital_system.SimTime), _orbital_system.TimeWarp])
+	var clock := "T+%s   warp x%d" % [_format_time(_orbital_system.SimTime), _orbital_system.TimeWarp]
+	if get_tree().paused:
+		clock += "   PAUSED (planning - Esc or click empty space to resume)"
+	lines.append(clock)
 	lines.append("Fuel %.2f / %.2f   Δv left %.1f px/s" % [ship.fuel, ship.fuel_capacity, ship.get_delta_v_remaining()])
 
 	var body: int = _orbital_system.FindDominantBody(ship.global_position)

@@ -23,6 +23,9 @@ var orbital_system: Node
 ## Sorted by time.
 var nodes: Array[Dictionary] = []
 
+## Nodes below this delta-v (px/s) count as empty.
+const EMPTY_DELTA_V := 1e-3
+
 var _executing: Dictionary = {}
 
 
@@ -69,6 +72,22 @@ func node_edited(_node: Dictionary) -> void:
 	nodes_changed.emit()
 
 
+## True when a node has no delta-v, i.e. it would not change the trajectory.
+func is_empty_node(node: Dictionary) -> bool:
+	return get_delta_v(node) < EMPTY_DELTA_V
+
+
+## Removes every node that would not change the trajectory. Returns how many were removed.
+func remove_empty_nodes() -> int:
+	var empty := nodes.filter(func(n: Dictionary) -> bool: return is_empty_node(n) and not is_same(n, _executing))
+	if empty.is_empty():
+		return 0
+	for node in empty:
+		nodes.erase(node)
+	nodes_changed.emit()
+	return empty.size()
+
+
 func is_executing(node: Dictionary) -> bool:
 	return is_same(node, _executing)
 
@@ -99,8 +118,8 @@ func get_burn_start(node: Dictionary) -> float:
 func get_prediction_burns() -> Array:
 	var burns := []
 	for node in nodes:
-		if is_same(node, _executing):
-			continue # Already being flown: the ship's real state includes it.
+		if is_same(node, _executing) or is_empty_node(node):
+			continue # Being flown (already in the ship's real state), or changes nothing.
 		burns.append({
 			"time": node.time,
 			"prograde": node.prograde,
@@ -134,10 +153,13 @@ func _sort() -> void:
 func _physics_process(_delta: float) -> void:
 	if nodes.is_empty() or not _executing.is_empty() or not orbital_system.IsReady:
 		return
-	var node: Dictionary = nodes[0]
-	if get_delta_v(node) < 1e-3:
-		return # Empty node: a placeholder the player is still editing.
 	var now: float = orbital_system.SimTime
+	var node: Dictionary = nodes[0]
+	if is_empty_node(node):
+		# An empty node changes nothing: never let it block the nodes after it.
+		if now >= node.time:
+			remove_node(node)
+		return
 	var start := get_burn_start(node)
 	if now > start + stale_after:
 		remove_node(node) # Missed (e.g. placed in the past); never fire a burn at the wrong point.
