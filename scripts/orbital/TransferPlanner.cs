@@ -73,6 +73,8 @@ public sealed class TransferRequest
 	public bool Capture = true;
 	/// <summary>Desired periapsis radius at the target; 0 picks a default from the body's size.</summary>
 	public double ArrivalPeriapsis;
+	/// <summary>Capture into an ellipse with this apoapsis radius at the target (0 = circular orbit).</summary>
+	public double CaptureApoapsis;
 	public bool AllowGravityAssist = true;
 	/// <summary>Earliest a burn may be scheduled after the request time (time to turn the ship around).</summary>
 	public double MinLeadTime = 8.0;
@@ -84,6 +86,8 @@ public sealed class TransferRequest
 	/// <summary>A gravity assist route is only chosen if it costs less than this fraction of the best direct route.</summary>
 	public double AssistAdvantage = 0.9;
 	public bool Refine = true;
+	/// <summary>Largest course correction the navigation computer may add (0 = unlimited).</summary>
+	public double MaxCorrectionDeltaV;
 	/// <summary>Ship engine, so the planner simulates finite burns (default: impulsive).</summary>
 	public EngineModel Engine;
 }
@@ -238,6 +242,8 @@ public static class TransferPlanner
 		bool retrograde = bodies[arrival].Orbit.Retrograde;
 		double arrivalPeriapsis = arrival == target ? targetPeriapsis : DefaultPeriapsis(bodies[arrival]);
 		double arrivalMu = bodies[arrival].Mu;
+		// Stops on the way to a moon always capture, so the next hop departs from a proper orbit.
+		bool captureAtArrival = req.Capture || arrival != target;
 
 		double rDep = departure >= 0 ? (bp[departure] - bp[central]).Length : (req.Position - bp[central]).Length;
 		double rArr = (bp[arrival] - bp[central]).Length;
@@ -294,7 +300,10 @@ public static class TransferPlanner
 			return Math.Abs(periapsisSpeed - ds.ShipRelVel.Length);
 		}
 
-		double ArrivalCost(Vector2D vInfinity) => req.Capture ? CaptureCost(bodies[arrival], vInfinity.Length, arrivalPeriapsis) : 0.0;
+		// An intercept burns nothing on arrival, but slow arrivals are still preferred: fast crossings are hard to aim
+		// precisely and expensive to stop from afterwards (e.g. to park). They count at a quarter of a capture.
+		double ArrivalCost(Vector2D vInfinity) =>
+			CaptureCost(bodies[arrival], vInfinity.Length, arrivalPeriapsis) * (captureAtArrival ? 1.0 : 0.25);
 
 		bool StateRelativeToCentral(int body, double t, out Vector2D r, out Vector2D v)
 		{
@@ -325,8 +334,11 @@ public static class TransferPlanner
 
 		// --- Direct transfer search ---
 		var best = new Candidate { Cost = double.PositiveInfinity };
+		// Best candidate per departure time, to shortlist several windows for ejection targeting below.
+		var perDeparture = new List<Candidate>();
 		foreach (DepartureState ds in departures)
 		{
+			var bestHere = new Candidate { Cost = double.PositiveInfinity };
 			for (int j = 0; j < req.TimeOfFlightSamples; j++)
 			{
 				double tof = hohmann * (0.35 + 1.65 * j / Math.Max(1, req.TimeOfFlightSamples - 1));
@@ -337,14 +349,20 @@ public static class TransferPlanner
 				double dep = DepartureCost(v1, ds);
 				double arr = ArrivalCost(v2 - vArr);
 				double cost = dep + arr;
-				if (cost < best.Cost)
+				if (cost < bestHere.Cost)
 				{
-					best = new Candidate
+					bestHere = new Candidate
 					{
 						Cost = cost, DepartureCost = dep, ArrivalCost = arr, Departure = ds, V1 = v1, ArrivalTime = ta,
 						FlybyTime = double.NaN,
 					};
 				}
+			}
+			if (double.IsFinite(bestHere.Cost))
+			{
+				perDeparture.Add(bestHere);
+				if (bestHere.Cost < best.Cost)
+					best = bestHere;
 			}
 		}
 
@@ -419,7 +437,40 @@ public static class TransferPlanner
 		}
 
 		// --- Build the maneuver list ---
-		PlannedBurn departureBurn = departure < 0
+		PlannedBurn departureBurn = null;
+		bool ejectionScanned = false;
+		if (!useAssist && departure >= 0 && req.Refine)
+		{
+			// Patched conics misjudge escapes when the planet's star raises big tides, so the cheapest-looking window
+			// can need a far bigger burn in reality. Run the real escape targeting on a shortlist of windows and keep
+			// the cheapest actual departure.
+			double bestActual = double.PositiveInfinity;
+			// Windows within one parking orbit collapse to the same escape after the scan: space them a period apart.
+			DepartureState first = departures[0];
+			double parkingPeriod = 2.0 * Math.PI * first.ShipRel.LengthSquared /
+				Math.Max(Math.Abs(first.ShipRel.Cross(first.ShipRelVel)), 1e-9);
+			foreach (Candidate c in Shortlist(perDeparture, 4, parkingPeriod))
+			{
+				PlannedBurn burn = BuildEjectionBurn(eph, coast, departure, central, c, arrival, c.ArrivalTime, retrograde,
+					req, t0);
+				if (burn == null)
+					continue;
+				ScanEjection(eph, coast, burn, req.Dt, central, arrival, c.ArrivalTime, retrograde, t0 + req.MinLeadTime,
+					req.Engine);
+				double actual = burn.DeltaV.Length + c.ArrivalCost;
+				Trace?.Invoke($"window t={c.Departure.Time:F0} estimate={c.Cost:F1} actual={actual:F1}");
+				if (actual < bestActual)
+				{
+					bestActual = actual;
+					chosen = c;
+					departureBurn = burn;
+				}
+			}
+			ejectionScanned = departureBurn != null;
+			if (ejectionScanned)
+				chosen.Cost = bestActual;
+		}
+		departureBurn ??= departure < 0
 			? new PlannedBurn
 			{
 				Kind = BurnKind.Impulse, Time = chosen.Departure.Time, DeltaV = chosen.V1 - chosen.Departure.VHave,
@@ -452,10 +503,10 @@ public static class TransferPlanner
 			Body = arrival,
 			Time = chosen.ArrivalTime,
 			Periapsis = retrograde ? -arrivalPeriapsis : arrivalPeriapsis,
-			Capture = req.Capture,
+			Capture = captureAtArrival,
 			IsFinal = arrival == target,
 		});
-		if (req.Capture)
+		if (captureAtArrival)
 			plan.Burns.Add(new PlannedBurn { Kind = BurnKind.CapturePeriapsis, Time = chosen.ArrivalTime, Body = arrival });
 
 		plan.EstimatedDeltaV = chosen.Cost;
@@ -472,7 +523,7 @@ public static class TransferPlanner
 			int burnSample = coast.SampleIndexAt(departureBurn.Time + req.Dt * 0.5);
 			Vector2D burnPos, burnVel;
 			departureBurn.Time = coast.Times[burnSample];
-			if (departureBurn.Kind == BurnKind.Ejection)
+			if (departureBurn.Kind == BurnKind.Ejection && !ejectionScanned)
 			{
 				ScanEjection(eph, coast, departureBurn, req.Dt, central, first.Body, first.Time, retrograde,
 					t0 + req.MinLeadTime, req.Engine);
@@ -525,6 +576,22 @@ public static class TransferPlanner
 		Vector2D along = radial.Perpendicular * spin;
 		burn.ReferenceAngle = rel.Angle;
 		burn.LocalDeltaV = new Vector2D(burn.DeltaV.Dot(radial), burn.DeltaV.Dot(along));
+	}
+
+	/// <summary>The cheapest <paramref name="count"/> candidates whose departures are at least <paramref name="spacing"/> apart.</summary>
+	private static List<Candidate> Shortlist(List<Candidate> candidates, int count, double spacing)
+	{
+		var sorted = new List<Candidate>(candidates);
+		sorted.Sort((a, b) => a.Cost.CompareTo(b.Cost));
+		var picked = new List<Candidate>();
+		foreach (Candidate c in sorted)
+		{
+			if (picked.Count >= count)
+				break;
+			if (picked.TrueForAll(p => Math.Abs(p.Departure.Time - c.Departure.Time) >= spacing))
+				picked.Add(c);
+		}
+		return picked;
 	}
 
 	/// <summary>

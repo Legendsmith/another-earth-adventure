@@ -42,6 +42,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		cycle_target()
 	elif event.is_action_pressed(&"toggle_autopilot"):
 		plot_course()
+	elif event.is_action_pressed(&"nav_mode_cycle"):
+		if navigation_computer:
+			navigation_computer.cycle_mode()
 	else:
 		return
 	get_viewport().set_input_as_handled()
@@ -51,10 +54,8 @@ func cycle_target() -> void:
 	var count: int = orbital_system.BodyCount
 	if count == 0:
 		return
-	# Skip the root body (the star): there is nothing to travel to.
+	# Every body is a valid target: the star or the planet being orbited can be chosen for Park.
 	target_index = wrapi(target_index + 1, -1, count)
-	if target_index >= 0 and orbital_system.GetBodyParent(target_index) < 0:
-		target_index = wrapi(target_index + 1, -1, count)
 	if renderer:
 		renderer.target_index = target_index
 	target_changed.emit(target_index)

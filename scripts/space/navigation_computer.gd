@@ -10,19 +10,36 @@ extends Node
 ## re-solving the capture/flyby burns. Moon destinations are reached in hops: after capturing around the parent
 ## body, the next leg is plotted automatically. Editing one of the course's nodes by hand hands that node to the
 ## player; when no course nodes are left, maintenance stops.
+##
+## Modes:
+## - INTERCEPT: a close pass of the destination (periapsis `intercept_distance`), no capture.
+## - ORBIT: capture into an elliptical orbit. Only for bodies that themselves orbit something (not the star).
+## - PARK: capture into a circular parking orbit; the ship then freezes into it (Spaceship.park). Also valid for the
+##   body currently being orbited, to park after an intercept or from an elliptical orbit.
 
 signal course_plotted(result: Dictionary)
 signal course_updated(result: Dictionary)
 signal course_completed(body_index: int)
 signal plot_failed(reason: String)
+signal mode_changed(mode: Mode)
+
+enum Mode { INTERCEPT, ORBIT, PARK }
+
+const MODE_NAMES := ["Intercept", "Orbit", "Park"]
 
 @export var maneuvers: ManeuverPlanner
-## Circularise at the destination (otherwise the course only intercepts it).
-@export var capture: bool = true
+@export var mode: Mode = Mode.PARK:
+	set(value):
+		mode = value
+		mode_changed.emit(value)
+## Closest-approach (periapsis) radius for Intercept, in px from the body's centre (0 = automatic).
+@export var intercept_distance: float = 0.0
+## Orbit mode: apoapsis = arrival periapsis × this ratio (limited to the body's sphere of influence).
+@export var orbit_apoapsis_ratio: float = 3.0
 @export var allow_gravity_assist: bool = true
 ## A gravity-assist course is chosen when it costs less than this fraction of the best direct course.
 @export var gravity_assist_advantage: float = 0.9
-## Desired periapsis radius at the destination (0 = automatic).
+## Periapsis radius of the Orbit and Park orbits (0 = automatic from the body's size).
 @export var arrival_periapsis: float = 0.0
 ## Earliest the first burn may be, in simulation seconds (time to review the course and turn the ship).
 @export var min_lead_time: float = 15.0
@@ -30,6 +47,8 @@ signal plot_failed(reason: String)
 @export var correction_lead_time: float = 8.0
 ## Real seconds a plot may take; scaled by time warp and added to the lead times.
 @export var planning_budget: float = 4.0
+## Largest single course correction, as a fraction of the remaining delta-v.
+@export_range(0.0, 1.0) var max_correction_fraction: float = 0.25
 ## Re-plot the course in flight to correct execution errors.
 @export var maintain_course: bool = true
 ## Fractions of each coast leg at which the course is re-checked (in addition to after every burn).
@@ -50,6 +69,11 @@ var _encounters: Array = []
 var _needs_update: bool = false
 var _sphere_updated: Dictionary = {}
 var _replacing: bool = false
+# Set while the planner reports a completed course burn, so its node removal is not mistaken for a hand-over.
+var _completing: bool = false
+# Extra lead time for re-plots after a departure window passed while plotting.
+var _extra_lead: float = 0.0
+var _plot_started: float = 0.0
 var _leg_start: float = 0.0
 var _checks_done: int = 0
 
@@ -64,22 +88,56 @@ func _ready() -> void:
 	maneuvers.nodes_changed.connect(_on_nodes_changed)
 
 
+## An active course (e.g. coasting to an intercept), or a plot in progress, keeps the ship under physics.
+func blocks_parking() -> bool:
+	return course_active or is_plotting
+
+
 #region Plotting
 
-## Plots a course to `body` (a CelestialBody) and replaces the current maneuver nodes with it.
+func cycle_mode() -> void:
+	mode = ((mode + 1) % MODE_NAMES.size()) as Mode
+
+
+## Plots a course to `body` (a CelestialBody) in the current mode and replaces the current maneuver nodes with it.
 func plot_course(body: Node2D) -> void:
+	_extra_lead = 0.0
+	_plot_course(body)
+
+
+func _plot_course(body: Node2D) -> void:
 	var target: int = orbital_system.GetBodyIndex(body)
 	if target < 0:
 		_fail("unknown destination")
 		return
+	var body_name: String = orbital_system.GetBodyName(target)
+	var current := _is_current_body(target)
+	match mode:
+		Mode.INTERCEPT:
+			if current:
+				_fail("already within %s's sphere of influence" % body_name)
+				return
+		Mode.ORBIT:
+			if orbital_system.GetBodyParent(target) < 0:
+				_fail("Orbit needs a body that orbits something; use Park around %s" % body_name)
+				return
+			if current:
+				_fail("already orbiting %s; use Park to circularise" % body_name)
+				return
+		Mode.PARK:
+			if current and _park_now(target):
+				return
 	_serial += 1
 	var serial := _serial
 	_target = target
 	course_active = false
 	is_plotting = true
+	_plot_started = orbital_system.SimTime
 	status = "Plotting course to %s..." % orbital_system.GetBodyName(target)
-	var job: RefCounted = orbital_system.PlotCourseAsync(ship.global_position, ship.linear_velocity, target,
-		_options(min_lead_time))
+	# Courses are predicted under full physics, so the ship must leave its parking orbit now, not when the plot arrives.
+	ship.unpark()
+	var job: RefCounted = orbital_system.PlotCourseAsync(ship.get_state_position(), ship.get_state_velocity(), target,
+		_options(min_lead_time + _extra_lead))
 	job.connect(&"Completed", func(result: Dictionary) -> void: _on_plotted(result, serial))
 
 
@@ -90,13 +148,51 @@ func cancel() -> void:
 	status = "Idle"
 
 
+## True when `target` is the body the ship is orbiting (or one of its ancestors, e.g. the star while around a planet).
+func _is_current_body(target: int) -> bool:
+	var body: int = orbital_system.FindDominantBody(ship.get_state_position())
+	while body >= 0:
+		if body == target:
+			return true
+		body = orbital_system.GetBodyParent(body)
+	return false
+
+
+## Park immediately if the ship is already parked or already in a near-circular orbit around `target`.
+func _park_now(target: int) -> bool:
+	var body_name: String = orbital_system.GetBodyName(target)
+	if ship.is_parked() and ship.get_parked_body() == target:
+		status = "Already parked around %s" % body_name
+		return true
+	if orbital_system.FindDominantBody(ship.get_state_position()) != target:
+		return false
+	var info: Dictionary = orbital_system.GetOrbitInfo(ship.get_state_position(), ship.get_state_velocity(), target)
+	if info.bound and info.eccentricity <= ship.park_eccentricity and maneuvers.nodes.is_empty() and ship.park(target):
+		status = "Parked around %s" % body_name
+		course_completed.emit(target)
+		return true
+	return false
+
+
+## Default capture periapsis, mirroring TransferPlanner.DefaultPeriapsis.
+func _arrival_periapsis(target: int) -> float:
+	if arrival_periapsis > 0.0:
+		return arrival_periapsis
+	var radius: float = orbital_system.GetBodyRadius(target)
+	var sphere: float = orbital_system.GetBodySphereOfInfluence(target)
+	return maxf(minf(radius * 2.0, sphere * 0.3), radius * 1.3)
+
+
 func _options(lead_time: float) -> Dictionary:
+	var periapsis := intercept_distance if mode == Mode.INTERCEPT else _arrival_periapsis(_target)
 	return {
-		"capture": capture,
+		"capture": mode != Mode.INTERCEPT,
+		"capture_apoapsis": periapsis * orbit_apoapsis_ratio if mode == Mode.ORBIT else 0.0,
 		"allow_gravity_assist": allow_gravity_assist,
 		"assist_advantage": gravity_assist_advantage,
-		"arrival_periapsis": arrival_periapsis,
+		"arrival_periapsis": periapsis,
 		"min_lead_time": lead_time + planning_budget * orbital_system.TimeWarp,
+		"max_correction_delta_v": maxf(1.0, ship.get_delta_v_remaining() * max_correction_fraction),
 		"thrust": ship.max_thrust,
 		"mass": ship.dry_mass + ship.fuel,
 		"exhaust_velocity": ship.exhaust_velocity,
@@ -115,6 +211,12 @@ func _on_plotted(result: Dictionary, serial: int) -> void:
 		_fail("needs %.1f px/s, only %.1f left" % [result.total_delta_v, ship.get_delta_v_remaining()])
 		return
 	if result.nodes[0].time - orbital_system.SimTime < 1.0:
+		# Plotting took longer than the lead time allowed for: try again with more lead time.
+		var elapsed: float = orbital_system.SimTime - _plot_started
+		if _extra_lead < 4.0 * min_lead_time + elapsed:
+			_extra_lead = maxf(2.0 * _extra_lead, elapsed + min_lead_time)
+			_plot_course(orbital_system.GetBody(_target))
+			return
 		_fail("departure window passed while plotting, try again")
 		return
 
@@ -144,10 +246,11 @@ func _update_status(result: Dictionary) -> void:
 	if result.assist_body >= 0:
 		via = " via %s" % orbital_system.GetBodyName(result.assist_body)
 	var remaining := _course_delta_v()
+	var what: String = MODE_NAMES[mode]
 	if result.reaches_target:
-		status = "Course to %s%s: %d burns, Δv %.1f" % [destination, via, _course_node_count(), remaining]
+		status = "%s %s%s: %d burns, Δv %.1f" % [what, destination, via, _course_node_count(), remaining]
 	else:
-		status = "Course to %s (then on to %s): %d burns, Δv %.1f" % [
+		status = what + " course to %s (then on to %s): %d burns, Δv %.1f" % [
 			orbital_system.GetBodyName(result.arrival_body), destination, _course_node_count(), remaining]
 
 
@@ -179,7 +282,16 @@ func _physics_process(_delta: float) -> void:
 	if ship.is_burning() or _burn_imminent():
 		return
 	var encounter: Dictionary = _encounters[0]
-	var dominant: int = orbital_system.FindDominantBody(ship.global_position)
+	var dominant: int = orbital_system.FindDominantBody(ship.get_state_position())
+	if not encounter.capture and encounter.get("is_final", true) and orbital_system.SimTime > float(encounter.time) \
+			and maneuvers.nodes.filter(func(n: Dictionary) -> bool: return n.get("course", false)).is_empty():
+		_encounters.pop_front()
+		_complete() # Intercept: the closest approach has been passed.
+		return
+	if dominant == encounter.body and _receding_from(encounter.body):
+		# Past periapsis inside the destination's sphere: the capture burn is due as soon as possible, and re-plotting
+		# would only push it later and higher. Leave the plan alone.
+		return
 	if dominant == encounter.body and not _sphere_updated.has(encounter.body):
 		# Arrived in the destination's sphere: refine the periapsis and capture/flyby burn from the actual approach.
 		_sphere_updated[encounter.body] = true
@@ -202,6 +314,13 @@ func _burn_imminent() -> bool:
 	return false
 
 
+func _receding_from(body: int) -> bool:
+	var now: float = orbital_system.SimTime
+	var rel: Vector2 = ship.get_state_position() - orbital_system.GetBodyPosition(body, now)
+	var rel_vel: Vector2 = ship.get_state_velocity() - orbital_system.GetBodyVelocity(body, now)
+	return rel.dot(rel_vel) > 0.0
+
+
 func _is_on_route(dominant: int, body: int) -> bool:
 	if dominant < 0:
 		return false
@@ -218,7 +337,8 @@ func _request_update() -> void:
 	var serial := _serial
 	var encounters: Array[Dictionary] = []
 	encounters.assign(_encounters)
-	var job: RefCounted = orbital_system.ContinueCourseAsync(ship.global_position, ship.linear_velocity, _target,
+	ship.unpark()
+	var job: RefCounted = orbital_system.ContinueCourseAsync(ship.get_state_position(), ship.get_state_velocity(), _target,
 		encounters, _options(correction_lead_time))
 	job.connect(&"Completed", func(result: Dictionary) -> void: _on_updated(result, serial))
 
@@ -229,10 +349,11 @@ func _on_updated(result: Dictionary, serial: int) -> void:
 	is_plotting = false
 	if not course_active:
 		return
-	if not result.valid:
+	if not result.valid and result.message != "no_burns_needed":
 		# Keep flying the existing nodes; try again after the next burn.
 		status = "Course update failed (%s), keeping current plan" % _describe_failure(result.message)
 		return
+	# "no_burns_needed" is a valid update too: on course, and (for an intercept) nothing left to burn.
 	# Replace the course's pending nodes; nodes the player placed or took over are left alone.
 	_replacing = true
 	for node in maneuvers.nodes.duplicate():
@@ -245,6 +366,26 @@ func _on_updated(result: Dictionary, serial: int) -> void:
 	course_updated.emit(result)
 
 
+func _complete() -> void:
+	course_active = false
+	var body_name: String = orbital_system.GetBodyName(_target)
+	match mode:
+		Mode.PARK:
+			# The capture leaves a near-circular orbit: freeze it into an exact parking orbit.
+			if ship.park(_target):
+				status = "Parked around %s" % body_name
+			else:
+				status = "In orbit around %s (could not park)" % body_name
+		Mode.ORBIT:
+			var info: Dictionary = orbital_system.GetOrbitInfo(ship.get_state_position(), ship.get_state_velocity(), _target)
+			var radius: float = orbital_system.GetBodyRadius(_target)
+			status = "In orbit around %s: Pe %d  Ap %d" % [body_name, roundi(info.periapsis - radius), roundi(info.apoapsis - radius)]
+		Mode.INTERCEPT:
+			var info: Dictionary = orbital_system.GetOrbitInfo(ship.get_state_position(), ship.get_state_velocity(), _target)
+			status = "Intercepted %s (closest approach %d px)" % [body_name, roundi(info.periapsis)]
+	course_completed.emit(_target)
+
+
 func _start_leg() -> void:
 	_leg_start = orbital_system.SimTime
 	_checks_done = 0
@@ -253,14 +394,13 @@ func _start_leg() -> void:
 func _on_maneuver_completed(node: Dictionary) -> void:
 	if not course_active or not node.get("course", false):
 		return
+	_completing = true # The planner emits nodes_changed right after this.
 	_start_leg()
 	match node.get("kind", ""):
 		"capture":
 			var encounter: Dictionary = _encounters.pop_front() if not _encounters.is_empty() else {}
 			if encounter.get("is_final", true):
-				course_active = false
-				status = "Arrived in orbit around %s" % orbital_system.GetBodyName(_target)
-				course_completed.emit(_target)
+				_complete()
 			else:
 				# Captured around the parent of a moon destination: plot the next hop.
 				plot_course(orbital_system.GetBody(_target))
@@ -273,6 +413,9 @@ func _on_maneuver_completed(node: Dictionary) -> void:
 
 
 func _on_nodes_changed() -> void:
+	if _completing:
+		_completing = false
+		return
 	if _replacing or not course_active:
 		return
 	if _course_node_count() == 0:

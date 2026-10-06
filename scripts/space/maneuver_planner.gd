@@ -11,7 +11,8 @@ signal nodes_changed
 signal maneuver_started(node: Dictionary)
 signal maneuver_completed(node: Dictionary)
 
-## Drop out of time warp this many real seconds before a burn starts.
+## Time warp is stepped down so the ship starts turning for a burn at least this many real seconds ahead, and is
+## capped at 1x until the burn completes.
 @export var warp_stop_lead: float = 4.0
 ## Start turning toward the burn direction this many simulation seconds before the turn is strictly needed.
 @export var align_margin: float = 2.0
@@ -88,6 +89,11 @@ func remove_empty_nodes() -> int:
 	return empty.size()
 
 
+## Pending maneuvers keep the ship out of its parking orbit (see Spaceship.park).
+func blocks_parking() -> bool:
+	return not nodes.is_empty()
+
+
 func is_executing(node: Dictionary) -> bool:
 	return is_same(node, _executing)
 
@@ -151,7 +157,10 @@ func _sort() -> void:
 #region Execution
 
 func _physics_process(_delta: float) -> void:
-	if nodes.is_empty() or not _executing.is_empty() or not orbital_system.IsReady:
+	if not orbital_system.IsReady:
+		return
+	_update_warp_cap()
+	if nodes.is_empty() or not _executing.is_empty():
 		return
 	var now: float = orbital_system.SimTime
 	var node: Dictionary = nodes[0]
@@ -166,9 +175,6 @@ func _physics_process(_delta: float) -> void:
 		return
 
 	var delta_v := current_delta_v(node)
-	var warp: int = orbital_system.TimeWarp
-	if warp > 1 and start - now < (warp_stop_lead + align_margin) * warp:
-		orbital_system.SetTimeWarpIndex(0)
 	if now >= start - ship.get_turn_time(delta_v) - align_margin:
 		ship.hold_heading(delta_v)
 	if now >= start:
@@ -178,12 +184,36 @@ func _physics_process(_delta: float) -> void:
 		maneuver_started.emit(node)
 
 
+## Caps time warp as the next burn approaches (stepping down a level at a time) and holds 1x while it runs.
+func _update_warp_cap() -> void:
+	var cap := -1
+	if not _executing.is_empty() or ship.is_burning():
+		cap = 0
+	else:
+		for node in nodes:
+			if is_empty_node(node):
+				continue
+			var start := get_burn_start(node)
+			var turn_start := start - ship.get_turn_time(current_delta_v(node)) - align_margin
+			cap = orbital_system.WarpIndexForLead(turn_start - orbital_system.SimTime, warp_stop_lead)
+			break
+	if cap >= orbital_system.WarpLevels.size() - 1:
+		cap = -1
+	if cap != orbital_system.WarpCapIndex:
+		orbital_system.WarpCapIndex = cap
+
+
+func _exit_tree() -> void:
+	if orbital_system != null and is_instance_valid(orbital_system):
+		orbital_system.WarpCapIndex = -1
+
+
 ## Inertial delta-v of a node from the ship's current state (prograde/radial relative to the dominant body).
 func current_delta_v(node: Dictionary) -> Vector2:
 	var now: float = orbital_system.SimTime
-	var body: int = orbital_system.FindDominantBody(ship.global_position)
-	var rel_pos := ship.global_position
-	var rel_vel := ship.linear_velocity
+	var body: int = orbital_system.FindDominantBody(ship.get_state_position())
+	var rel_pos := ship.get_state_position()
+	var rel_vel := ship.get_state_velocity()
 	if body >= 0:
 		rel_pos -= orbital_system.GetBodyPosition(body, now)
 		rel_vel -= orbital_system.GetBodyVelocity(body, now)

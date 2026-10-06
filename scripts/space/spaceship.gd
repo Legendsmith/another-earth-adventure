@@ -10,6 +10,8 @@ signal burn_started(delta_v: Vector2)
 signal burn_completed(achieved: Vector2)
 signal fuel_depleted
 signal crashed(body: Node)
+signal parked(body: int)
+signal unparked
 
 @export_category("Engine")
 @export var dry_mass: float = 10.0
@@ -31,6 +33,15 @@ signal crashed(body: Node)
 @export var start_in_circular_orbit: bool = true
 @export var orbit_retrograde: bool = false
 
+@export_category("Parking Orbit")
+## Freeze into an exact circular "parking orbit" when the orbit is circular and nothing needs the ship.
+## A parked ship is moved along its circle without any force integration: no cost, and no floating point drift.
+@export var auto_park: bool = true
+## Maximum eccentricity that counts as circular for automatic parking.
+@export var park_eccentricity: float = 0.03
+## Seconds (simulation) between automatic parking checks.
+@export var park_check_interval: float = 1.0
+
 @export_category("Visual")
 @export var hull_color: Color = Color(0.9, 0.95, 1.0)
 @export var flame_color: Color = Color(1.0, 0.6, 0.2)
@@ -48,6 +59,14 @@ var _burn_remaining := Vector2.ZERO
 var _burn_achieved := Vector2.ZERO
 var _held_heading := Vector2.ZERO
 var _current_thrust := 0.0
+
+# Parking orbit: circle of radius _park_radius around _park_body, angle = _park_angle0 + _park_rate * (t - _park_t0).
+var _park_body := -1
+var _park_radius := 0.0
+var _park_rate := 0.0
+var _park_angle0 := 0.0
+var _park_t0 := 0.0
+var _next_park_check := 0.0
 
 
 func _ready() -> void:
@@ -71,6 +90,15 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if is_parked():
+		if _wants_control():
+			unpark()
+		else:
+			_update_parked()
+			return
+	elif auto_park and orbital_system and orbital_system.IsReady and orbital_system.SimTime >= _next_park_check:
+		_next_park_check = orbital_system.SimTime + park_check_interval
+		_try_auto_park()
 	# Mass is updated at the start of the tick so the physics step uses the mass the thrust was computed for.
 	mass = dry_mass + fuel
 	var nose := Vector2.RIGHT.rotated(global_rotation)
@@ -127,6 +155,7 @@ func get_turn_time(direction: Vector2) -> float:
 
 ## Starts an automatic burn: turns to the remaining delta-v vector and thrusts until it is used up.
 func execute_burn(delta_v: Vector2) -> void:
+	unpark()
 	_burning = true
 	_burn_remaining = delta_v
 	_burn_achieved = Vector2.ZERO
@@ -148,6 +177,7 @@ func get_burn_remaining() -> Vector2:
 
 ## Keeps the nose pointed along `direction` while not burning (used to pre-orient before a burn).
 func hold_heading(direction: Vector2) -> void:
+	unpark()
 	_held_heading = direction.normalized()
 
 
@@ -183,6 +213,124 @@ func _consume_fuel(force: float, delta: float) -> float:
 	if _burning:
 		_finish_burn()
 	return force
+
+#endregion
+
+
+#region Parking orbit
+
+func is_parked() -> bool:
+	return _park_body >= 0
+
+
+## Body index of the parking orbit, or -1.
+func get_parked_body() -> int:
+	return _park_body
+
+
+## Freezes the ship into a circular orbit around `body` at its current distance and direction of travel.
+## Returns false if the ship is not in that body's sphere of influence.
+func park(body: int = -1) -> bool:
+	if not orbital_system or not orbital_system.IsReady:
+		return false
+	if body < 0:
+		body = orbital_system.FindDominantBody(global_position)
+	if body < 0 or _burning:
+		return false
+	var now: float = orbital_system.SimTime
+	var rel: Vector2 = global_position - orbital_system.GetBodyPosition(body, now)
+	var rel_vel: Vector2 = linear_velocity - orbital_system.GetBodyVelocity(body, now)
+	if rel.length() >= orbital_system.GetBodySphereOfInfluence(body):
+		return false
+	var spin := 1.0 if rel.cross(rel_vel) >= 0.0 else -1.0
+	_park_body = body
+	_park_radius = rel.length()
+	_park_rate = spin * sqrt(orbital_system.GetBodyMu(body) / pow(_park_radius, 3.0))
+	_park_angle0 = rel.angle()
+	_park_t0 = now
+	_held_heading = Vector2.ZERO
+	angular_velocity = 0.0
+	# A frozen kinematic body ignores gravity and forces; it is moved along the circle in _update_parked().
+	freeze_mode = RigidBody2D.FREEZE_MODE_KINEMATIC
+	freeze = true
+	parked.emit(body)
+	return true
+
+
+## Leaves the parking orbit with the exact circular velocity, back under full physics.
+func unpark() -> void:
+	if not is_parked():
+		return
+	# Leave from the exact state at the time the next physics step integrates from (OrbitalSystem.StateTime),
+	# so the free flight continues the circle seamlessly whenever in the tick this is called.
+	var now: float = orbital_system.SimTime
+	var exit_position := get_state_position()
+	var exit_velocity := get_state_velocity()
+	_park_body = -1
+	freeze = false
+	global_position = exit_position
+	linear_velocity = exit_velocity
+	angular_velocity = 0.0
+	_next_park_check = now + park_check_interval
+	unparked.emit()
+
+
+## Position and velocity to hand to the orbital solvers: they belong to OrbitalSystem.StateTime.
+## For a parked ship they are computed exactly at that time, whatever point of the physics tick this is called at
+## (the node position is only updated during the ship's own physics tick, so it can lag one tick behind).
+func get_state_position() -> Vector2:
+	if not is_parked():
+		return global_position
+	var t: float = orbital_system.StateTime
+	return orbital_system.GetBodyPosition(_park_body, t) + Vector2.from_angle(_parked_angle(t)) * _park_radius
+
+
+func get_state_velocity() -> Vector2:
+	if not is_parked():
+		return linear_velocity
+	var t: float = orbital_system.StateTime
+	return orbital_system.GetBodyVelocity(_park_body, t) + _parked_relative_velocity(t)
+
+
+func _parked_angle(time: float) -> float:
+	return _park_angle0 + _park_rate * (time - _park_t0)
+
+
+func _parked_relative_velocity(time: float) -> Vector2:
+	var radial := Vector2.from_angle(_parked_angle(time))
+	return Vector2(-radial.y, radial.x) * _park_rate * _park_radius
+
+
+func _update_parked() -> void:
+	var now: float = orbital_system.SimTime
+	global_position = orbital_system.GetBodyPosition(_park_body, now) + Vector2.from_angle(_parked_angle(now)) * _park_radius
+	queue_redraw()
+
+
+## Something needs the ship under power: manual input, a burn, a held heading, or a blocking child
+## (a node with `blocks_parking()`, e.g. pending maneuvers or an active autopilot).
+func _wants_control() -> bool:
+	if _burning or throttle > 0.0 or steer != 0.0 or _held_heading != Vector2.ZERO:
+		return true
+	for child in get_children():
+		if child.has_method(&"blocks_parking") and child.blocks_parking():
+			return true
+	return false
+
+
+func _try_auto_park() -> void:
+	if _wants_control():
+		return
+	var body: int = orbital_system.FindDominantBody(global_position)
+	if body < 0:
+		return
+	var info: Dictionary = orbital_system.GetOrbitInfo(global_position, linear_velocity, body)
+	if info.is_empty() or not info.bound or info.eccentricity > park_eccentricity:
+		return
+	var limit: float = minf(orbital_system.GetBodySphereOfInfluence(body), orbital_system.GetBodyGravityRange(body))
+	if info.periapsis < orbital_system.GetBodyRadius(body) * 1.02 or info.apoapsis > limit * 0.95:
+		return
+	park(body)
 
 #endregion
 

@@ -8,7 +8,7 @@ extends CanvasLayer
 @export var maneuvers: ManeuverPlanner
 
 const HELP := "Click path: add maneuver   Drag handles: plan burn   Drag node: move   Right-click/Del: remove\n" \
-	+ "Tab target  N plot course  , . time warp  Wheel zoom   Emergency: W thrust, A/D turn"
+	+ "Tab target  M nav mode  N plot course  , . time warp  Wheel zoom   Emergency: W thrust, A/D turn"
 
 var _orbital_system: Node
 var _label: Label
@@ -28,14 +28,16 @@ func _process(_delta: float) -> void:
 		return
 	var lines: PackedStringArray = []
 	var clock := "T+%s   warp x%d" % [_format_time(_orbital_system.SimTime), _orbital_system.TimeWarp]
+	if _orbital_system.IsWarpCapped:
+		clock += " (max x%d, burn ahead)" % _orbital_system.WarpLevels[_orbital_system.WarpCapIndex]
 	if get_tree().paused:
 		clock += "   PAUSED (planning - Esc or click empty space to resume)"
 	lines.append(clock)
 	lines.append("Fuel %.2f / %.2f   Δv left %.1f px/s" % [ship.fuel, ship.fuel_capacity, ship.get_delta_v_remaining()])
 
-	var body: int = _orbital_system.FindDominantBody(ship.global_position)
+	var body: int = _orbital_system.FindDominantBody(ship.get_state_position())
 	if body >= 0:
-		var info: Dictionary = _orbital_system.GetOrbitInfo(ship.global_position, ship.linear_velocity, body)
+		var info: Dictionary = _orbital_system.GetOrbitInfo(ship.get_state_position(), ship.get_state_velocity(), body)
 		var radius: float = _orbital_system.GetBodyRadius(body)
 		var apo := "escape" if not info.bound else "%d" % roundi(info.apoapsis - radius)
 		lines.append("Orbiting %s   Pe %d  Ap %s  (altitude)" % [_orbital_system.GetBodyName(body), roundi(info.periapsis - radius), apo])
@@ -57,7 +59,9 @@ func _process(_delta: float) -> void:
 			maneuvers.get_total_delta_v(), maneuvers.nodes.size()])
 
 	if navigation_computer:
-		lines.append("Nav computer: %s" % navigation_computer.status)
+		var parked := "   [parked]" if ship.is_parked() else ""
+		lines.append("Nav computer [%s]: %s%s" % [NavigationComputer.MODE_NAMES[navigation_computer.mode],
+			navigation_computer.status, parked])
 	lines.append(HELP)
 	_label.text = "\n".join(lines)
 

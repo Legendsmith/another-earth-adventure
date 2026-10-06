@@ -79,8 +79,8 @@ func _physics_process(_delta: float) -> void:
 		"sample_every": 6,
 	}
 	# Both predictions start from the same ship state, so they line up exactly before the first maneuver.
-	var start_position := ship.global_position
-	var start_velocity := ship.linear_velocity
+	var start_position := ship.get_state_position()
+	var start_velocity := ship.get_state_velocity()
 	_pending = 1
 	var burns := maneuvers.get_prediction_burns() if maneuvers else []
 	if not burns.is_empty():

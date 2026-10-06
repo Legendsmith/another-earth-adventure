@@ -97,6 +97,11 @@ func cancel() -> void:
 	_set_state(State.IDLE)
 
 
+## While flying a transfer the ship must stay under physics; once arrived it may park.
+func blocks_parking() -> bool:
+	return is_active()
+
+
 func is_active() -> bool:
 	return state in [State.PLANNING, State.WAITING_FOR_BURN, State.BURNING, State.COASTING]
 
@@ -138,7 +143,7 @@ func _plan() -> void:
 		"min_lead_time": min_lead_time + planning_budget * orbital_system.TimeWarp,
 	}
 	options.merge(_engine())
-	var job: RefCounted = orbital_system.PlanTransferAsync(ship.global_position, ship.linear_velocity, target_index, options)
+	var job: RefCounted = orbital_system.PlanTransferAsync(ship.get_state_position(), ship.get_state_velocity(), target_index, options)
 	job.connect(&"Completed", func(result: Dictionary) -> void: _on_plan(result, serial))
 
 
@@ -218,8 +223,8 @@ func _track_ejection_point(burn: Dictionary, now: float) -> void:
 	if not burn.has("planned_time"):
 		burn.planned_time = burn.time
 	var body: int = burn.body
-	var rel: Vector2 = ship.global_position - orbital_system.GetBodyPosition(body, now)
-	var rel_vel: Vector2 = ship.linear_velocity - orbital_system.GetBodyVelocity(body, now)
+	var rel: Vector2 = ship.get_state_position() - orbital_system.GetBodyPosition(body, now)
+	var rel_vel: Vector2 = ship.get_state_velocity() - orbital_system.GetBodyVelocity(body, now)
 	var h := rel.cross(rel_vel)
 	var spin := 1.0 if h >= 0.0 else -1.0
 	var angular_rate := absf(h) / rel.length_squared()
@@ -289,13 +294,13 @@ func _update_station_keeping() -> void:
 	if station_keeping_periapsis <= 0.0 or ship.is_burning() or target_index < 0:
 		return
 	var now: float = orbital_system.SimTime
-	var info: Dictionary = orbital_system.GetOrbitInfo(ship.global_position, ship.linear_velocity, target_index)
+	var info: Dictionary = orbital_system.GetOrbitInfo(ship.get_state_position(), ship.get_state_velocity(), target_index)
 	var radius: float = orbital_system.GetBodyRadius(target_index)
 	if info.is_empty() or info.periapsis > radius * station_keeping_periapsis:
 		return
 	# Circular velocity at the current point, keeping the direction of travel.
-	var rel: Vector2 = ship.global_position - orbital_system.GetBodyPosition(target_index, now)
-	var rel_vel: Vector2 = ship.linear_velocity - orbital_system.GetBodyVelocity(target_index, now)
+	var rel: Vector2 = ship.get_state_position() - orbital_system.GetBodyPosition(target_index, now)
+	var rel_vel: Vector2 = ship.get_state_velocity() - orbital_system.GetBodyVelocity(target_index, now)
 	var spin := 1.0 if rel.cross(rel_vel) >= 0.0 else -1.0
 	var circular := Vector2(-rel.y, rel.x).normalized() * spin * sqrt(orbital_system.GetBodyMu(target_index) / rel.length())
 	var delta_v := circular - rel_vel
@@ -322,7 +327,7 @@ func _update_coasting() -> void:
 
 	var encounter: Dictionary = _encounters[0]
 	var now: float = orbital_system.SimTime
-	var dominant: int = orbital_system.FindDominantBody(ship.global_position)
+	var dominant: int = orbital_system.FindDominantBody(ship.get_state_position())
 	var body: int = encounter.body
 
 	if dominant == body:
@@ -384,7 +389,7 @@ func _resolve_periapsis_burn(burn: Dictionary) -> void:
 	_busy = true
 	var serial := _serial
 	var options := {"max_time": 900.0, "watch_body": burn.body, "stop_after_orbits": 0.0, "sample_every": 30}
-	var job: RefCounted = orbital_system.PredictAsync(ship.global_position, ship.linear_velocity, options)
+	var job: RefCounted = orbital_system.PredictAsync(ship.get_state_position(), ship.get_state_velocity(), options)
 	job.connect(&"Completed", func(prediction: RefCounted) -> void: _on_periapsis_predicted(prediction, burn, serial))
 
 
@@ -437,7 +442,7 @@ func _target_flyby_burn(burn: Dictionary, estimate: Vector2) -> void:
 	var now: float = orbital_system.SimTime
 	var horizon: float = maxf(next.time, now) + maxf(120.0, 0.5 * (next.time - now))
 	var max_dv := maxf(1.0, ship.get_delta_v_remaining() * 0.5)
-	var job: RefCounted = orbital_system.RefineBurnAsync(ship.global_position, ship.linear_velocity, burn.time,
+	var job: RefCounted = orbital_system.RefineBurnAsync(ship.get_state_position(), ship.get_state_velocity(), burn.time,
 		estimate, next.body, next.periapsis, next.time, false, horizon, max_dv, _engine())
 	job.connect(&"Completed", func(result: Dictionary) -> void:
 		if serial != _serial:
@@ -464,7 +469,7 @@ func _request_correction(encounter: Dictionary) -> void:
 	var burn_time := now + min_lead_time
 	var horizon: float = maxf(encounter.time, now) + maxf(120.0, 0.5 * (encounter.time - now))
 	var max_dv := maxf(1.0, ship.get_delta_v_remaining() * max_correction_fraction)
-	var job: RefCounted = orbital_system.RefineBurnAsync(ship.global_position, ship.linear_velocity, burn_time,
+	var job: RefCounted = orbital_system.RefineBurnAsync(ship.get_state_position(), ship.get_state_velocity(), burn_time,
 		Vector2.ZERO, encounter.body, encounter.periapsis, encounter.time, false, horizon, max_dv, _engine())
 	job.connect(&"Completed", func(result: Dictionary) -> void: _on_correction(result, burn_time, encounter, serial))
 

@@ -33,6 +33,21 @@ public partial class OrbitalSystem : Node
 	public bool IsReady => _ephemeris != null;
 	public int TimeWarp => WarpLevels.Length > 0 ? WarpLevels[_warpIndex] : 1;
 	public int TimeWarpIndex => _warpIndex;
+	/// <summary>
+	/// Highest warp index currently allowed (-1 = no cap). Lowering it below the current warp drops warp at once;
+	/// warp requests above it are clamped. Used to slow time ahead of and during burns.
+	/// </summary>
+	public int WarpCapIndex
+	{
+		get => _warpCapIndex;
+		set
+		{
+			_warpCapIndex = value < 0 ? -1 : value;
+			if (_warpCapIndex >= 0 && _warpIndex > _warpCapIndex)
+				SetTimeWarpIndex(_warpIndex);
+		}
+	}
+	public bool IsWarpCapped => _warpCapIndex >= 0 && _warpCapIndex < WarpLevels.Length - 1;
 	/// <summary>Length of one physics tick in simulation seconds (constant across time warp).</summary>
 	public double PhysicsDt => 1.0 / _baseTicks;
 	public int BodyCount => _bodies.Count;
@@ -55,6 +70,7 @@ public partial class OrbitalSystem : Node
 	private bool _dirty = true;
 	private bool _rebuildQueued;
 	private int _warpIndex;
+	private int _warpCapIndex = -1;
 	private int _baseTicks = 60;
 	private int _baseMaxSteps = 8;
 	private double _baseTimeScale = 1.0;
@@ -243,6 +259,8 @@ public partial class OrbitalSystem : Node
 
 	public double GetBodySphereOfInfluence(int index) => ValidIndex(index) ? _ephemeris.Bodies[index].SphereOfInfluence : 0.0;
 
+	public double GetBodyGravityRange(int index) => ValidIndex(index) ? _ephemeris.Bodies[index].GravityRadius : 0.0;
+
 	public int GetBodyParent(int index) => ValidIndex(index) ? _ephemeris.Bodies[index].Parent : -1;
 
 	public Vector2 GetBodyPosition(int index, double time) =>
@@ -322,7 +340,10 @@ public partial class OrbitalSystem : Node
 	{
 		if (WarpLevels.Length == 0)
 			return;
-		index = Math.Clamp(index, 0, WarpLevels.Length - 1);
+		int max = WarpLevels.Length - 1;
+		if (_warpCapIndex >= 0)
+			max = Math.Min(max, _warpCapIndex);
+		index = Math.Clamp(index, 0, max);
 		bool changed = index != _warpIndex;
 		_warpIndex = index;
 		int warp = WarpLevels[index];
@@ -337,6 +358,19 @@ public partial class OrbitalSystem : Node
 	public void IncreaseTimeWarp() => SetTimeWarpIndex(_warpIndex + 1);
 
 	public void DecreaseTimeWarp() => SetTimeWarpIndex(_warpIndex - 1);
+
+	/// <summary>
+	/// Highest warp index at which <paramref name="simSeconds"/> of simulation time still lasts at least
+	/// <paramref name="realSeconds"/> of real time (0 if none).
+	/// </summary>
+	public int WarpIndexForLead(double simSeconds, double realSeconds)
+	{
+		int best = 0;
+		for (int i = 0; i < WarpLevels.Length; i++)
+			if (WarpLevels[i] * realSeconds <= simSeconds)
+				best = i;
+		return best;
+	}
 
 	#endregion
 
@@ -373,7 +407,7 @@ public partial class OrbitalSystem : Node
 	/// <summary>
 	/// Plans a transfer to body <paramref name="target"/> on a worker thread. The job's Completed signal delivers a plan
 	/// Dictionary (see <see cref="PlanToDictionary"/>). Options: capture (true), arrival_periapsis (auto),
-	/// allow_gravity_assist (true), assist_advantage (0.9: an assist must cost under 90% of the direct route),
+	/// allow_gravity_assist (true), capture_apoapsis (0 = circular capture orbit), assist_advantage (0.9: an assist must cost under 90% of the direct route),
 	/// min_lead_time (8 s), max_search_window (auto), refine (true), and the ship's
 	/// engine {thrust, mass, exhaust_velocity} so burns are simulated as finite burns.
 	/// </summary>
@@ -423,6 +457,7 @@ public partial class OrbitalSystem : Node
 				Time = e["time"].AsDouble(),
 				Periapsis = e["periapsis"].AsDouble(),
 				Capture = e["capture"].AsBool(),
+				CaptureApoapsis = e.TryGetValue("capture_apoapsis", out Variant ca) ? ca.AsDouble() : 0.0,
 				IsFinal = e["is_final"].AsBool(),
 				FlybyProgradeDeltaV = e.TryGetValue("flyby_prograde_delta_v", out Variant f) ? f.AsDouble() : 0.0,
 			});
@@ -446,6 +481,7 @@ public partial class OrbitalSystem : Node
 			encounters.Add(new Dictionary
 			{
 				{ "body", e.Body }, { "time", e.Time }, { "periapsis", e.Periapsis }, { "capture", e.Capture },
+				{ "capture_apoapsis", e.CaptureApoapsis },
 				{ "is_final", e.IsFinal }, { "flyby_prograde_delta_v", e.FlybyProgradeDeltaV },
 			});
 		}
@@ -556,6 +592,8 @@ public partial class OrbitalSystem : Node
 			Target = target,
 			Capture = options.TryGetValue("capture", out Variant capture) ? capture.AsBool() : true,
 			ArrivalPeriapsis = options.TryGetValue("arrival_periapsis", out Variant rp) ? rp.AsDouble() : 0.0,
+			CaptureApoapsis = options.TryGetValue("capture_apoapsis", out Variant ra) ? ra.AsDouble() : 0.0,
+			MaxCorrectionDeltaV = options.TryGetValue("max_correction_delta_v", out Variant mc) ? mc.AsDouble() : 0.0,
 			AllowGravityAssist = options.TryGetValue("allow_gravity_assist", out Variant ga) ? ga.AsBool() : true,
 			AssistAdvantage = options.TryGetValue("assist_advantage", out Variant adv) ? adv.AsDouble() : 0.9,
 			MinLeadTime = options.TryGetValue("min_lead_time", out Variant lead) ? lead.AsDouble() : 8.0,

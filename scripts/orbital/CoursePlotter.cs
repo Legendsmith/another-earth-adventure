@@ -20,6 +20,8 @@ public sealed class CourseEncounter
 	/// <summary>Target periapsis, signed by pass direction.</summary>
 	public double Periapsis;
 	public bool Capture;
+	/// <summary>Apoapsis radius of the capture orbit; 0 or below the periapsis = circular.</summary>
+	public double CaptureApoapsis;
 	public bool IsFinal;
 	/// <summary>Flyby burn along the relative velocity at periapsis (gravity assists only).</summary>
 	public double FlybyProgradeDeltaV;
@@ -81,6 +83,8 @@ public static class CoursePlotter
 			var encounter = new CourseEncounter
 			{
 				Body = e.Body, Time = e.Time, Periapsis = e.Periapsis, Capture = e.Capture, IsFinal = e.IsFinal,
+				// Intermediate stops (the parent of a moon target) always use a circular orbit to depart from.
+				CaptureApoapsis = e.IsFinal ? req.CaptureApoapsis : 0.0,
 			};
 			if (nextBurn < plan.Burns.Count && plan.Burns[nextBurn].Body == e.Body)
 			{
@@ -93,6 +97,10 @@ public static class CoursePlotter
 
 		// On the plotted course a correction is only placed once the ship is clear of the departure body.
 		double[] fractions = plan.Message == "already_in_sphere" ? null : new[] { 0.25, 0.4, 0.55, 0.7 };
+		// Already at the destination (e.g. parking after an intercept): the capture burn may come at once, but no sooner
+		// than the lead time; if the ship is past periapsis, it circularises where it is.
+		if (plan.Message == "already_in_sphere")
+			sim.SetEarliestBurn(req.Time + req.MinLeadTime);
 		FollowEncounters(eph, req, sim, encounters, fractions, plot);
 		if (plot.Message.Length == 0)
 			plot.Message = !plot.Valid ? "no_burns_needed" : plot.ReachesTarget ? plan.Message : "partial_course";
@@ -140,6 +148,15 @@ public static class CoursePlotter
 			double tca = Math.Max(pass.ClosestApproachTime, sim.LastBurnEnd + req.Dt);
 			Vector2D relPos = pass.ClosestApproachRelPosition;
 			Vector2D relVel = pass.ClosestApproachRelVelocity;
+			if (encounter.Capture && !pass.ClosestApproachIsMinimum
+				&& sim.NextPeriapsis(encounter.Body, out double tp, out Vector2D pPos, out Vector2D pVel))
+			{
+				// Already past periapsis but bound (e.g. parking after an intercept): capture at the next periapsis
+				// rather than wherever the ship is now, out near the edge of the sphere.
+				tca = tp;
+				relPos = pPos;
+				relVel = pVel;
+			}
 			encounter.Time = tca;
 			plot.ArrivalBody = encounter.Body;
 			plot.ArrivalPeriapsis = relPos.Length;
@@ -147,10 +164,15 @@ public static class CoursePlotter
 
 			if (encounter.Capture)
 			{
+				// Tangential speed for the capture orbit at this radius: circular, or the periapsis speed of an ellipse.
 				double spin = relPos.Cross(relVel) >= 0.0 ? 1.0 : -1.0;
-				Vector2D circular = relPos.Normalized().Perpendicular * spin *
-					Math.Sqrt(eph.Bodies[encounter.Body].Mu / relPos.Length);
-				sim.AddInertialBurn(tca, circular - relVel, "capture");
+				double r = relPos.Length;
+				double mu = eph.Bodies[encounter.Body].Mu;
+				double apoapsis = Math.Min(encounter.CaptureApoapsis, 0.95 * Math.Min(eph.Bodies[encounter.Body].SphereOfInfluence,
+					eph.Bodies[encounter.Body].GravityRadius));
+				double speed = apoapsis > r ? Math.Sqrt(mu * (2.0 / r - 2.0 / (r + apoapsis))) : Math.Sqrt(mu / r);
+				Vector2D target = relPos.Normalized().Perpendicular * spin * speed;
+				sim.AddInertialBurn(tca, target - relVel, "capture");
 				if (!encounter.IsFinal)
 					break; // Moon target: the next hop is plotted from orbit around this body.
 			}
@@ -236,6 +258,33 @@ public static class CoursePlotter
 				_mass /= Math.Exp(deltaV.Length / _req.Engine.ExhaustVelocity);
 		}
 
+		/// <summary>Next periapsis around <paramref name="body"/> after the last burn (within a few thousand seconds), relative to it.</summary>
+		public bool NextPeriapsis(int body, out double time, out Vector2D relPos, out Vector2D relVel)
+		{
+			time = 0.0;
+			relPos = relVel = Vector2D.Zero;
+			PredictionResult r = TrajectoryPredictor.Predict(_eph, _req.Position, _req.Velocity, _req.Time, new PredictionSettings
+			{
+				Dt = _req.Dt,
+				MaxSteps = (int)Math.Ceiling((LastBurnEnd + 4000.0 - _req.Time) / _req.Dt),
+				RecordSamples = false,
+				RecordApsides = true,
+				StopOnCollision = true,
+				Burns = new List<ImpulseBurn>(_burns),
+			});
+			foreach (PredictionEvent e in r.Events)
+			{
+				if (e.Type != PredictionEventType.Periapsis || e.Body != body || e.Time < LastBurnEnd)
+					continue;
+				_eph.GetState(body, e.Time, out Vector2D bodyPos, out Vector2D bodyVel);
+				time = e.Time;
+				relPos = e.Position - bodyPos;
+				relVel = e.Velocity - bodyVel;
+				return true;
+			}
+			return false;
+		}
+
 		/// <summary>Predicts the course so far through the encounter, tracking the first pass after the last burn.</summary>
 		public PredictionResult PredictEncounter(CourseEncounter encounter)
 		{
@@ -273,7 +322,7 @@ public static class CoursePlotter
 					continue;
 				RefineResult r = TransferPlanner.Refine(_eph, state.FinalPosition, state.FinalVelocity, state.FinalTime,
 					_req.Dt, state.FinalTime + 5.0, Vector2D.Zero, encounter.Body, encounter.Periapsis, encounter.Time,
-					false, horizon, 16, double.PositiveInfinity, Engine);
+					false, horizon, 16, _req.MaxCorrectionDeltaV > 0.0 ? _req.MaxCorrectionDeltaV : double.PositiveInfinity, Engine);
 				if (r.HasEncounter && (r.Converged || r.Miss < 0.5 * r.InitialMiss) && r.DeltaV.Length > 0.05)
 					AddInertialBurn(r.BurnTime, r.DeltaV, "correction");
 				return;
