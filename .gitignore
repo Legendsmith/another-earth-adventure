@@ -3,3 +3,6 @@
 /android/
 addons/godot-rapier2d/bin/~libgodot_rapier.windows.x86_64-pc-windows-msvc.dll
 .vscode/
+
+# Godot temp copies of loaded native libraries
+~*.dll
