@@ -50,11 +50,12 @@ func random_kind() -> PlanetType.Kind:
 
 
 ## Generates a new planet. Pass a kind to force the type, or leave it at -1 for a random one.
-func generate(kind:int = -1) -> PlanetData:
+## A radius of 0 or less picks a random size.
+func generate(kind:int = -1, radius:float = 0.0) -> PlanetData:
 	var data := PlanetData.new()
 	data.kind = random_kind() if kind < 0 else kind as PlanetType.Kind
-	data.radius = rng.randf_range(MIN_RADIUS, MAX_RADIUS)
-	var diameter:float = ceilf(data.radius * 2.0)
+	data.radius = radius if radius > 0.0 else rng.randf_range(MIN_RADIUS, MAX_RADIUS)
+	var diameter:float = minf(ceilf(data.radius * 2.0), texture_size)
 	data.region = Rect2(
 		rng.randf_range(0.0, texture_size - diameter),
 		rng.randf_range(0.0, texture_size - diameter),

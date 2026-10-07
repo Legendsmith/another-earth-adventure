@@ -17,6 +17,7 @@ var orbital_system: Node
 
 func _ready() -> void:
 	ship = get_parent() as Spaceship
+	ship.add_to_group(Constants.PLAYER_GROUP) # Planets look for the player's ship in their low orbit.
 	orbital_system = get_tree().get_first_node_in_group(Constants.ORBITAL_SYSTEM_GROUP)
 
 

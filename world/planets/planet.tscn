@@ -14,13 +14,14 @@ unique_name_in_owner = true
 
 [node name="TypeLabel" type="Label" parent="." unique_id=966240431]
 unique_name_in_owner = true
-offset_right = 64.0
-offset_bottom = 23.0
+offset_right = 160.0
+offset_bottom = 46.0
 horizontal_alignment = 1
 
 [node name="LowOrbit" type="Area2D" parent="." unique_id=275159049]
 unique_name_in_owner = true
 collision_layer = 0
+collision_mask = 4294967295
 input_pickable = false
 monitorable = false
 
