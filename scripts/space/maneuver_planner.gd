@@ -2,8 +2,9 @@ class_name ManeuverPlanner
 extends Node
 ## The player's maneuver nodes for the parent Spaceship, and their automatic execution.
 ##
-## A node is {time, prograde, radial}: delta-v in px/s along the ship's velocity and away from the body it is
-## orbiting, measured when the burn starts. That is the same frame the C# predictor uses for node burns, so the
+## A node is {time, prograde, radial, drive}: delta-v in px/s along the ship's velocity and away from the body it is
+## orbiting, measured when the burn starts, and the engines that fly it (Spaceship.Drive). A thrusters-only node
+## with no prograde component is a translation: the thrusters push sideways and the ship does not turn. That is the same frame the C# predictor uses for node burns, so the
 ## previewed path is the path that will be flown. Each burn is centred on its node time and executed by the
 ## ship's engine; a node is removed once its burn completes.
 
@@ -41,8 +42,9 @@ func _ready() -> void:
 
 #region Editing
 
-func add_node(time: float, prograde: float = 0.0, radial: float = 0.0) -> Dictionary:
-	var node := {"time": time, "prograde": prograde, "radial": radial}
+func add_node(time: float, prograde: float = 0.0, radial: float = 0.0,
+		drive: Spaceship.Drive = Spaceship.Drive.MAIN) -> Dictionary:
+	var node := {"time": time, "prograde": prograde, "radial": radial, "drive": drive}
 	nodes.append(node)
 	_sort()
 	nodes_changed.emit()
@@ -98,6 +100,15 @@ func is_executing(node: Dictionary) -> bool:
 	return is_same(node, _executing)
 
 
+func get_drive(node: Dictionary) -> Spaceship.Drive:
+	return node.get("drive", Spaceship.Drive.MAIN)
+
+
+## Thrusters-only, purely radial/anti-radial nodes are flown as translations, without turning the ship.
+func is_translation(node: Dictionary) -> bool:
+	return get_drive(node) == Spaceship.Drive.THRUSTERS and absf(node.prograde) < EMPTY_DELTA_V
+
+
 func get_delta_v(node: Dictionary) -> float:
 	return Vector2(node.prograde, node.radial).length()
 
@@ -111,9 +122,7 @@ func get_total_delta_v() -> float:
 
 ## Burn duration of a node, accounting for the fuel used by the nodes before it.
 func get_burn_duration(node: Dictionary) -> float:
-	var mass := _mass_before(node)
-	var dv := get_delta_v(node)
-	return mass * (1.0 - exp(-dv / ship.exhaust_velocity)) / (ship.max_thrust / ship.exhaust_velocity)
+	return ship.burn_duration_for(_mass_before(node), get_delta_v(node), get_drive(node))
 
 
 func get_burn_start(node: Dictionary) -> float:
@@ -126,26 +135,27 @@ func get_prediction_burns() -> Array:
 	for node in nodes:
 		if is_same(node, _executing) or is_empty_node(node):
 			continue # Being flown (already in the ship's real state), or changes nothing.
+		var drive := get_drive(node)
 		burns.append({
 			"time": node.time,
 			"prograde": node.prograde,
 			"radial": node.radial,
-			"thrust": ship.max_thrust,
+			"thrust": ship.get_drive_thrust(drive),
 			"mass": _mass_before(node),
-			"exhaust_velocity": ship.exhaust_velocity,
+			"exhaust_velocity": ship.get_drive_exhaust_velocity(drive),
 		})
 	return burns
 
 
 func _mass_before(node: Dictionary) -> float:
-	var mass := ship.dry_mass + ship.fuel
+	var mass := ship.get_dry_mass() + ship.fuel
 	for other in nodes:
 		if is_same(other, node):
 			break
 		if is_same(other, _executing):
 			continue
-		mass /= exp(get_delta_v(other) / ship.exhaust_velocity)
-	return maxf(mass, ship.dry_mass)
+		mass /= exp(get_delta_v(other) / ship.get_drive_exhaust_velocity(get_drive(other)))
+	return maxf(mass, ship.get_dry_mass())
 
 
 func _sort() -> void:
@@ -175,12 +185,13 @@ func _physics_process(_delta: float) -> void:
 		return
 
 	var delta_v := current_delta_v(node)
-	if now >= start - ship.get_turn_time(delta_v) - align_margin:
+	var translate := is_translation(node)
+	if not translate and now >= start - ship.get_turn_time(delta_v) - align_margin:
 		ship.hold_heading(delta_v)
 	if now >= start:
 		_executing = node
 		ship.release_heading()
-		ship.execute_burn(delta_v)
+		ship.execute_burn(delta_v, get_drive(node), translate)
 		maneuver_started.emit(node)
 
 
@@ -193,8 +204,9 @@ func _update_warp_cap() -> void:
 		for node in nodes:
 			if is_empty_node(node):
 				continue
-			var start := get_burn_start(node)
-			var turn_start := start - ship.get_turn_time(current_delta_v(node)) - align_margin
+			var turn_start := get_burn_start(node)
+			if not is_translation(node):
+				turn_start -= ship.get_turn_time(current_delta_v(node)) + align_margin
 			cap = orbital_system.WarpIndexForLead(turn_start - orbital_system.SimTime, warp_stop_lead)
 			break
 	if cap >= orbital_system.WarpLevels.size() - 1:

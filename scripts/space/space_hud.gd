@@ -7,8 +7,8 @@ extends CanvasLayer
 @export var renderer: TrajectoryRenderer
 @export var maneuvers: ManeuverPlanner
 
-const HELP := "Click path: add maneuver   Drag handles: plan burn   Drag node: move   Right-click/Del: remove\n" \
-	+ "Tab target  M nav mode  N plot course  , . time warp  Wheel zoom   Emergency: W thrust, A/D turn"
+const HELP := "Click path: add maneuver (hold: pick engines)   Drag handles: plan burn   Drag node: move   Right-click/Del: remove\n" \
+	+ "Tab target  M nav mode  B nav engines  N plot course  , . time warp  Wheel zoom   Emergency: W thrust, A/D turn"
 
 var _orbital_system: Node
 var _label: Label
@@ -33,7 +33,10 @@ func _process(_delta: float) -> void:
 	if get_tree().paused:
 		clock += "   PAUSED (planning - Esc or click empty space to resume)"
 	lines.append(clock)
-	lines.append("Fuel %.2f / %.2f   Δv left %.1f px/s" % [ship.fuel, ship.fuel_capacity, ship.get_delta_v_remaining()])
+	lines.append("Fuel %.2f / %.2f   Δv left %.1f px/s (thrusters %.1f)" % [ship.fuel, ship.fuel_capacity,
+		ship.get_delta_v_remaining(Spaceship.Drive.MAIN), ship.get_delta_v_remaining(Spaceship.Drive.THRUSTERS)])
+	lines.append("Engines: %s / %s" % [ship.main_engine.name if ship.main_engine else "none",
+		ship.thrusters.name if ship.thrusters else "none"])
 
 	var body: int = _orbital_system.FindDominantBody(ship.get_state_position())
 	if body >= 0:
@@ -55,13 +58,14 @@ func _process(_delta: float) -> void:
 	if maneuvers and not maneuvers.nodes.is_empty():
 		var node: Dictionary = maneuvers.nodes[0]
 		var status := "executing" if maneuvers.is_executing(node) else "in %s" % _format_time(maneuvers.get_burn_start(node) - _orbital_system.SimTime)
-		lines.append("Maneuver %s: Δv %.2f (total %.2f over %d)" % [status, maneuvers.get_delta_v(node),
+		var how: String = "translate" if maneuvers.is_translation(node) else Spaceship.DRIVE_NAMES[maneuvers.get_drive(node)]
+		lines.append("Maneuver %s (%s): Δv %.2f (total %.2f over %d)" % [status, how, maneuvers.get_delta_v(node),
 			maneuvers.get_total_delta_v(), maneuvers.nodes.size()])
 
 	if navigation_computer:
 		var parked := "   [parked]" if ship.is_parked() else ""
-		lines.append("Nav computer [%s]: %s%s" % [NavigationComputer.MODE_NAMES[navigation_computer.mode],
-			navigation_computer.status, parked])
+		lines.append("Nav computer [%s, %s]: %s%s" % [NavigationComputer.MODE_NAMES[navigation_computer.mode],
+			NavigationComputer.ENGINE_USE_NAMES[navigation_computer.engine_use], navigation_computer.status, parked])
 	lines.append(HELP)
 	_label.text = "\n".join(lines)
 

@@ -45,6 +45,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed(&"nav_mode_cycle"):
 		if navigation_computer:
 			navigation_computer.cycle_mode()
+	elif event.is_action_pressed(&"nav_engine_cycle"):
+		if navigation_computer:
+			navigation_computer.cycle_engine_use()
 	else:
 		return
 	get_viewport().set_input_as_handled()

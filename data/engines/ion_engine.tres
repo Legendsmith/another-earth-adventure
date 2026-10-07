@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EngineDefinition" format=3]
+
+[ext_resource type="Script" uid="uid://ddejdm73conwp" path="res://data/engine_definition.gd" id="1_engine"]
+
+[resource]
+script = ExtResource("1_engine")
+name = "Ion Engine"
+max_thrust = 4.0
+exhaust_velocity = 1800.0
+mass = 1.2
+turn_torque = 3.0
+flame_color = Color(0.4, 0.7, 1, 0.9)
+flame_size = 0.8
+maintenance_interval = 40000.0
+power_generation = -5.0
+active_sensor_signature = 1.0
+max_sensor_signature = 6.0
+warmup_time = 10.0

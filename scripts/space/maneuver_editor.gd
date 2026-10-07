@@ -2,7 +2,9 @@ class_name ManeuverEditor
 extends Node2D
 ## Mouse editing of the player's maneuver nodes on the predicted path.
 ##
-## - Click the orbital path to create a maneuver node there (and select it).
+## - Click the orbital path to create a maneuver node there (and select it). Click and hold (on the path or on a node)
+##   to pick the engines that fly it: Main drive, Thrusters or both; release over the choice. New nodes use the last
+##   choice. A thrusters-only node with only radial/anti-radial delta-v is a translation: the ship does not turn.
 ## - Drag a handle (Prograde, Retrograde, Radial, Anti-radial) to add delta-v in that direction. The further
 ##   the handle is pulled, the faster delta-v changes; hold Shift for fine control. Pushing back reduces it.
 ##   Several handles can be used one after another to combine directions.
@@ -35,6 +37,12 @@ const HANDLE_NAMES := ["Prograde", "Retrograde", "Radial", "Anti-radial"]
 @export var min_lead_time: float = 3.0
 ## Pause the simulation while a maneuver node is selected for editing.
 @export var pause_while_planning: bool = true
+## Real seconds a click must be held on a node to open the engine picker.
+@export var hold_time: float = 0.35
+## Screen distance from the node to the engine picker's options.
+@export var picker_distance: float = 55.0
+## Engines used by new nodes (the last one picked).
+@export var new_node_drive: Spaceship.Drive = Spaceship.Drive.MAIN
 
 @export_group("Colors")
 @export var prograde_color := Color(1.0, 0.85, 0.25)
@@ -48,6 +56,15 @@ var _orbital_system: Node
 var _font: Font
 var _drag_handle: int = Handle.NONE
 var _dragging_node := false
+# Engine picker: pending while the click is held still, open once held for hold_time.
+var _pick_pending := false
+var _pick_open := false
+var _pick_elapsed := 0.0
+var _pick_press_screen := Vector2.ZERO
+
+const PICK_MOVE_TOLERANCE := 6.0
+## Screen directions of the picker options, indexed by Spaceship.Drive.
+const PICK_DIRECTIONS := [Vector2(0.0, -1.0), Vector2(-0.866, 0.5), Vector2(0.866, 0.5)]
 
 
 func _ready() -> void:
@@ -79,6 +96,8 @@ func _select(node: Dictionary) -> void:
 	selected = node
 	_drag_handle = Handle.NONE
 	_dragging_node = false
+	_pick_pending = false
+	_pick_open = false
 	selection_changed.emit(node)
 	if is_planning() != was_planning:
 		if not is_planning():
@@ -150,8 +169,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			if button.pressed:
 				_on_left_press(world)
 			else:
-				_drag_handle = Handle.NONE
-				_dragging_node = false
+				_on_left_release()
 			get_viewport().set_input_as_handled()
 		elif button.button_index == MOUSE_BUTTON_RIGHT and button.pressed:
 			var node := _node_at(world)
@@ -191,12 +209,63 @@ func _on_left_press(world: Vector2) -> void:
 	if not node.is_empty():
 		_select(node)
 		_dragging_node = not planner.is_executing(node)
+		_start_pick()
 		return
 	var time := renderer.nearest_path_time(world, pick_distance * _pixel(), _orbital_system.SimTime + min_lead_time)
 	if time >= 0.0:
-		_select(planner.add_node(time))
+		_select(planner.add_node(time, 0.0, 0.0, new_node_drive))
+		_start_pick()
 		return
 	_select({})
+
+
+func _on_left_release() -> void:
+	if _pick_open:
+		var drive := _hovered_drive()
+		if drive >= 0 and drive != planner.get_drive(selected):
+			selected.drive = drive
+			new_node_drive = drive as Spaceship.Drive
+			_take_over(selected)
+			planner.node_edited(selected)
+	_pick_pending = false
+	_pick_open = false
+	_drag_handle = Handle.NONE
+	_dragging_node = false
+
+
+func _start_pick() -> void:
+	if planner.is_executing(selected):
+		return
+	_pick_pending = true
+	_pick_open = false
+	_pick_elapsed = 0.0
+	_pick_press_screen = get_viewport().get_mouse_position()
+
+
+## Picker option under the mouse (a Spaceship.Drive), or -1.
+func _hovered_drive() -> int:
+	var frame := _node_frame(selected)
+	if frame.is_empty():
+		return -1
+	var offset: Vector2 = (get_global_mouse_position() - frame.position) / _pixel()
+	if offset.length() < node_radius + 8.0:
+		return -1
+	var best := -1
+	var best_dot := -INF
+	for drive in PICK_DIRECTIONS.size():
+		if not ship_has_drive(drive):
+			continue
+		var d: float = offset.normalized().dot(PICK_DIRECTIONS[drive])
+		if d > best_dot:
+			best_dot = d
+			best = drive
+	return best
+
+
+func ship_has_drive(drive: int) -> bool:
+	if drive == Spaceship.Drive.BOTH:
+		return planner.ship.main_engine != null and planner.ship.thrusters != null
+	return planner.ship.has_drive(drive)
 
 
 func _process(delta: float) -> void:
@@ -205,6 +274,20 @@ func _process(delta: float) -> void:
 		return
 	var real_delta := delta / maxf(Engine.time_scale, 1e-6)
 	var world := get_global_mouse_position()
+
+	if _pick_pending:
+		# Held still: open the engine picker. Moved: it is a drag instead.
+		if get_viewport().get_mouse_position().distance_to(_pick_press_screen) > PICK_MOVE_TOLERANCE:
+			_pick_pending = false
+		else:
+			_pick_elapsed += real_delta
+			if _pick_elapsed >= hold_time:
+				_pick_pending = false
+				_pick_open = true
+				_dragging_node = false
+			return
+	if _pick_open:
+		return
 
 	if _drag_handle != Handle.NONE:
 		var frame := _node_frame(selected)
@@ -256,15 +339,38 @@ func _draw() -> void:
 		if is_same(node, selected):
 			draw_circle(p, node_radius * pixel, color)
 		draw_arc(p, node_radius * pixel, 0.0, TAU, 20, color, 2.0 * pixel)
+		var engines: String = "Thrusters (translate)" if planner.is_translation(node) 			else Spaceship.DRIVE_NAMES[planner.get_drive(node)]
 		var lines := PackedStringArray([
 			"Δv %.2f px/s" % planner.get_delta_v(node),
+			engines,
 			"T-%s   burn %.1fs" % [_format_time(node.time - now), planner.get_burn_duration(node)],
 		])
 		# Put the readout on a diagonal, between the handle axes, so it never sits under a handle.
 		var diagonal: Vector2 = (frame.prograde + frame.radial).normalized()
 		_draw_text(p + diagonal * (handle_distance * 0.8) * pixel, lines, color, pixel, diagonal.x < 0.0)
 		if is_same(node, selected) and not executing:
-			_draw_handles(node, frame, pixel)
+			if _pick_open:
+				_draw_picker(node, frame, pixel)
+			else:
+				_draw_handles(node, frame, pixel)
+
+
+func _draw_picker(node: Dictionary, frame: Dictionary, pixel: float) -> void:
+	var hovered := _hovered_drive()
+	var current := planner.get_drive(node)
+	for drive in PICK_DIRECTIONS.size():
+		var available := ship_has_drive(drive)
+		var at: Vector2 = frame.position + PICK_DIRECTIONS[drive] * picker_distance * pixel
+		var color := node_color if drive == current else Color(0.85, 0.85, 0.85)
+		if not available:
+			color = Color(0.5, 0.5, 0.5, 0.5)
+		draw_line(frame.position, at, Color(color, 0.4), 1.5 * pixel)
+		if drive == hovered:
+			draw_circle(at, handle_radius * 1.3 * pixel, Color(color, 0.35))
+		draw_arc(at, handle_radius * pixel, 0.0, TAU, 20, color, 2.0 * pixel)
+		var label: String = Spaceship.DRIVE_NAMES[drive]
+		var direction: Vector2 = PICK_DIRECTIONS[drive]
+		_draw_text(at + direction * (handle_radius + 6.0) * pixel, PackedStringArray([label]), color, pixel, direction.x < 0.0)
 
 
 func _draw_handles(node: Dictionary, frame: Dictionary, pixel: float) -> void:

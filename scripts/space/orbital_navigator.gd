@@ -506,7 +506,7 @@ func _on_correction(result: Dictionary, burn_time: float, encounter: Dictionary,
 
 
 func _engine() -> Dictionary:
-	return {"thrust": ship.max_thrust, "mass": ship.dry_mass + ship.fuel, "exhaust_velocity": ship.exhaust_velocity}
+	return ship.get_engine_model(Spaceship.Drive.MAIN)
 
 
 func _log(message: String) -> void:

@@ -16,22 +16,35 @@ extends Node
 ## - ORBIT: capture into an elliptical orbit. Only for bodies that themselves orbit something (not the star).
 ## - PARK: capture into a circular parking orbit; the ship then freezes into it (Spaceship.park). Also valid for the
 ##   body currently being orbited, to park after an intercept or from an elliptical orbit.
+##
+## Engines (`engine_use`): ANY flies the course on the main drive (thrusters only turn the ship); THRUSTERS_ONLY flies
+## every burn on the thrusters - slow, but quiet with cold gas thrusters. Purely radial thruster burns are translations.
 
 signal course_plotted(result: Dictionary)
 signal course_updated(result: Dictionary)
 signal course_completed(body_index: int)
 signal plot_failed(reason: String)
 signal mode_changed(mode: Mode)
+signal engine_use_changed(engine_use: EngineUse)
 
 enum Mode { INTERCEPT, ORBIT, PARK }
 
 const MODE_NAMES := ["Intercept", "Orbit", "Park"]
+
+enum EngineUse { ANY, THRUSTERS_ONLY }
+
+const ENGINE_USE_NAMES := ["Any engine", "Thrusters only"]
 
 @export var maneuvers: ManeuverPlanner
 @export var mode: Mode = Mode.PARK:
 	set(value):
 		mode = value
 		mode_changed.emit(value)
+## Which engines the course is flown with.
+@export var engine_use: EngineUse = EngineUse.ANY:
+	set(value):
+		engine_use = value
+		engine_use_changed.emit(value)
 ## Closest-approach (periapsis) radius for Intercept, in px from the body's centre (0 = automatic).
 @export var intercept_distance: float = 0.0
 ## Orbit mode: apoapsis = arrival periapsis × this ratio (limited to the body's sphere of influence).
@@ -97,6 +110,15 @@ func blocks_parking() -> bool:
 
 func cycle_mode() -> void:
 	mode = ((mode + 1) % MODE_NAMES.size()) as Mode
+
+
+func cycle_engine_use() -> void:
+	engine_use = ((engine_use + 1) % ENGINE_USE_NAMES.size()) as EngineUse
+
+
+## Drive the course's burns are flown with.
+func get_drive() -> Spaceship.Drive:
+	return Spaceship.Drive.THRUSTERS if engine_use == EngineUse.THRUSTERS_ONLY else Spaceship.Drive.MAIN
 
 
 ## Plots a course to `body` (a CelestialBody) in the current mode and replaces the current maneuver nodes with it.
@@ -185,18 +207,17 @@ func _arrival_periapsis(target: int) -> float:
 
 func _options(lead_time: float) -> Dictionary:
 	var periapsis := intercept_distance if mode == Mode.INTERCEPT else _arrival_periapsis(_target)
-	return {
+	var options := {
 		"capture": mode != Mode.INTERCEPT,
 		"capture_apoapsis": periapsis * orbit_apoapsis_ratio if mode == Mode.ORBIT else 0.0,
 		"allow_gravity_assist": allow_gravity_assist,
 		"assist_advantage": gravity_assist_advantage,
 		"arrival_periapsis": periapsis,
 		"min_lead_time": lead_time + planning_budget * orbital_system.TimeWarp,
-		"max_correction_delta_v": maxf(1.0, ship.get_delta_v_remaining() * max_correction_fraction),
-		"thrust": ship.max_thrust,
-		"mass": ship.dry_mass + ship.fuel,
-		"exhaust_velocity": ship.exhaust_velocity,
+		"max_correction_delta_v": maxf(1.0, ship.get_delta_v_remaining(get_drive()) * max_correction_fraction),
 	}
+	options.merge(ship.get_engine_model(get_drive()))
+	return options
 
 
 func _on_plotted(result: Dictionary, serial: int) -> void:
@@ -207,8 +228,8 @@ func _on_plotted(result: Dictionary, serial: int) -> void:
 	if not result.valid:
 		_fail(_describe_failure(result.message))
 		return
-	if result.total_delta_v > ship.get_delta_v_remaining():
-		_fail("needs %.1f px/s, only %.1f left" % [result.total_delta_v, ship.get_delta_v_remaining()])
+	if result.total_delta_v > ship.get_delta_v_remaining(get_drive()):
+		_fail("needs %.1f px/s, only %.1f left" % [result.total_delta_v, ship.get_delta_v_remaining(get_drive())])
 		return
 	if result.nodes[0].time - orbital_system.SimTime < 1.0:
 		# Plotting took longer than the lead time allowed for: try again with more lead time.
@@ -234,7 +255,7 @@ func _on_plotted(result: Dictionary, serial: int) -> void:
 func _add_course_nodes(nodes: Array) -> void:
 	_replacing = true
 	for plotted: Dictionary in nodes:
-		var node := maneuvers.add_node(plotted.time, plotted.prograde, plotted.radial)
+		var node := maneuvers.add_node(plotted.time, plotted.prograde, plotted.radial, get_drive())
 		node.course = true
 		node.kind = plotted.kind
 	_replacing = false
@@ -256,6 +277,8 @@ func _update_status(result: Dictionary) -> void:
 
 func _fail(reason: String) -> void:
 	is_plotting = false
+	if engine_use == EngineUse.THRUSTERS_ONLY:
+		reason += " on thrusters only (low thrust: long burns may not be possible here)"
 	status = "No course: %s" % reason
 	plot_failed.emit(reason)
 
