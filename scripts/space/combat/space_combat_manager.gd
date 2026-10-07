@@ -108,9 +108,11 @@ func get_detected_munitions(faction: StringName) -> Array[Munition]:
 	return found
 
 
+## The player's hull, even once destroyed (it stays in the scene).
 func get_player_hull() -> CombatHull:
-	for hull in get_hulls():
-		if hull.faction == player_faction:
+	for node in get_tree().get_nodes_in_group(CombatHull.GROUP):
+		var hull := node as CombatHull
+		if hull and hull.faction == player_faction:
 			return hull
 	return null
 
