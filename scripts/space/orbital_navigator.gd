@@ -388,7 +388,8 @@ func _is_on_route(dominant: int, body: int) -> bool:
 func _resolve_periapsis_burn(burn: Dictionary) -> void:
 	_busy = true
 	var serial := _serial
-	var options := {"max_time": 900.0, "watch_body": burn.body, "stop_after_orbits": 0.0, "sample_every": 30}
+	var options := {"max_time": 900.0, "watch_body": burn.body, "stop_after_orbits": 0.0, "sample_every": 30,
+		"ship_radius": ship.get_hull_radius()}
 	var job: RefCounted = orbital_system.PredictAsync(ship.get_state_position(), ship.get_state_velocity(), options)
 	job.connect(&"Completed", func(prediction: RefCounted) -> void: _on_periapsis_predicted(prediction, burn, serial))
 
@@ -506,7 +507,9 @@ func _on_correction(result: Dictionary, burn_time: float, encounter: Dictionary,
 
 
 func _engine() -> Dictionary:
-	return ship.get_engine_model(Spaceship.Drive.MAIN)
+	var engine := ship.get_engine_model(Spaceship.Drive.MAIN)
+	engine.ship_radius = ship.get_hull_radius()
+	return engine
 
 
 func _log(message: String) -> void:

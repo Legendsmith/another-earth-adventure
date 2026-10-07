@@ -90,6 +90,8 @@ public sealed class TransferRequest
 	public double MaxCorrectionDeltaV;
 	/// <summary>Ship engine, so the planner simulates finite burns (default: impulsive).</summary>
 	public EngineModel Engine;
+	/// <summary>Hull radius of the ship (see <see cref="PredictionSettings.ShipRadius"/>).</summary>
+	public double ShipRadius;
 }
 
 public sealed class RefineResult
@@ -265,6 +267,7 @@ public static class TransferPlanner
 			MaxSteps = coastSteps,
 			SampleEvery = Math.Max(1, coastSteps / (req.DepartureSamples * 32)),
 			RecordApsides = false,
+			ShipRadius = req.ShipRadius,
 		});
 
 		DepartureState GetDeparture(int sampleIndex)
@@ -535,7 +538,7 @@ public static class TransferPlanner
 			burnPos = coast.Positions[burnSample];
 			burnVel = coast.Velocities[burnSample];
 			var targeter = new Targeter(eph, burnPos, burnVel, burnStart, req.Dt, first.Body, first.Periapsis,
-				first.Time, false, horizon, req.Engine);
+				first.Time, false, horizon, req.Engine, req.ShipRadius);
 			RefineResult refined = targeter.Newton(departureBurn.Time, departureBurn.DeltaV, 6,
 				1.25 * departureBurn.DeltaV.Length + 2.0);
 			if (refined.HasEncounter)
@@ -852,10 +855,11 @@ public static class TransferPlanner
 	/// </summary>
 	public static RefineResult Refine(Ephemeris eph, Vector2D position, Vector2D velocity, double t0, double dt,
 		double burnTime, Vector2D deltaVGuess, int body, double periapsisTarget, double expectedTime, bool constrainTime,
-		double horizonEnd, int maxIterations = 16, double maxDeltaV = double.PositiveInfinity, EngineModel engine = default)
+		double horizonEnd, int maxIterations = 16, double maxDeltaV = double.PositiveInfinity, EngineModel engine = default,
+		double shipRadius = 0.0)
 	{
 		var targeter = new Targeter(eph, position, velocity, t0, dt, body, periapsisTarget, expectedTime, constrainTime,
-			horizonEnd, engine);
+			horizonEnd, engine, shipRadius);
 		return targeter.Newton(burnTime, deltaVGuess, maxIterations, maxDeltaV);
 	}
 
@@ -888,12 +892,15 @@ public static class TransferPlanner
 		private readonly EphemerisTable _table;
 		private readonly double _tolR, _scaleR, _tolT, _scaleT;
 		private readonly EngineModel _engine;
+		private readonly double _shipRadius;
 
 		public Targeter(Ephemeris eph, Vector2D position, Vector2D velocity, double t0, double dt, int body,
-			double periapsisTarget, double expectedTime, bool constrainTime, double horizonEnd, EngineModel engine)
+			double periapsisTarget, double expectedTime, bool constrainTime, double horizonEnd, EngineModel engine,
+			double shipRadius)
 		{
 			Ephemeris = eph;
 			_engine = engine;
+			_shipRadius = shipRadius;
 			_position = position;
 			_velocity = velocity;
 			_t0 = t0;
@@ -922,6 +929,7 @@ public static class TransferPlanner
 				RecordApsides = false,
 				WatchBody = _body,
 				WatchFrom = burnTime,
+				ShipRadius = _shipRadius,
 				Burns = new List<ImpulseBurn> { _engine.Make(burnTime, dv) },
 			};
 			PredictionResult r = TrajectoryPredictor.Predict(Ephemeris, _position, _velocity, _t0, settings, _table);

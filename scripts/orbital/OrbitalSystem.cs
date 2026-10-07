@@ -380,7 +380,7 @@ public partial class OrbitalSystem : Node
 	/// Synchronous trajectory prediction from a ship's current state (see <see cref="StateTime"/>).
 	/// Options: max_time (s, 600), sample_every (ticks, 10), stop_after_orbits (1.0), watch_body (-1),
 	/// watch_from/watch_until (s), burns (Array of {time, delta_v} or maneuver nodes {time, prograde, radial}, plus optional
-	/// thrust/mass/exhaust_velocity for finite burns).
+	/// thrust/mass/exhaust_velocity for finite burns), ship_radius (hull radius, 0).
 	/// </summary>
 	public TrajectoryPrediction Predict(Vector2 position, Vector2 velocity, Dictionary options)
 	{
@@ -408,8 +408,8 @@ public partial class OrbitalSystem : Node
 	/// Plans a transfer to body <paramref name="target"/> on a worker thread. The job's Completed signal delivers a plan
 	/// Dictionary (see <see cref="PlanToDictionary"/>). Options: capture (true), arrival_periapsis (auto),
 	/// allow_gravity_assist (true), capture_apoapsis (0 = circular capture orbit), assist_advantage (0.9: an assist must cost under 90% of the direct route),
-	/// min_lead_time (8 s), max_search_window (auto), refine (true), and the ship's
-	/// engine {thrust, mass, exhaust_velocity} so burns are simulated as finite burns.
+	/// min_lead_time (8 s), max_search_window (auto), refine (true), the ship's
+	/// engine {thrust, mass, exhaust_velocity} so burns are simulated as finite burns, and its ship_radius (hull radius).
 	/// </summary>
 	public OrbitalJob PlanTransferAsync(Vector2 position, Vector2 velocity, int target, Dictionary options)
 	{
@@ -516,8 +516,9 @@ public partial class OrbitalSystem : Node
 		double t0 = StateTime, dt = PhysicsDt;
 		Vector2D pos = position, vel = velocity, guess = deltaVGuess;
 		EngineModel engineModel = ParseEngine(engine);
+		double shipRadius = ParseShipRadius(engine);
 		return RunJob(() => TransferPlanner.Refine(eph, pos, vel, t0, dt, burnTime, guess, body, periapsis, expectedTime,
-				constrainTime, horizonEnd, 16, maxDeltaV > 0.0 ? maxDeltaV : double.PositiveInfinity, engineModel),
+				constrainTime, horizonEnd, 16, maxDeltaV > 0.0 ? maxDeltaV : double.PositiveInfinity, engineModel, shipRadius),
 			r => new Dictionary
 			{
 				{ "converged", r.Converged },
@@ -600,8 +601,13 @@ public partial class OrbitalSystem : Node
 			MaxSearchWindow = options.TryGetValue("max_search_window", out Variant window) ? window.AsDouble() : 0.0,
 			Refine = options.TryGetValue("refine", out Variant refine) ? refine.AsBool() : true,
 			Engine = ParseEngine(options),
+			ShipRadius = ParseShipRadius(options),
 		};
 	}
+
+	/// <summary>Reads the ship's hull radius (ship_radius, see <see cref="PredictionSettings.ShipRadius"/>).</summary>
+	private static double ParseShipRadius(Dictionary options) =>
+		options != null && options.TryGetValue("ship_radius", out Variant r) ? r.AsDouble() : 0.0;
 
 	/// <summary>Reads {thrust, mass, exhaust_velocity}; missing values give impulsive burns.</summary>
 	private static EngineModel ParseEngine(Dictionary options)
@@ -624,6 +630,7 @@ public partial class OrbitalSystem : Node
 			MaxSteps = Math.Max(1, (int)Math.Ceiling(maxTime / dt)),
 			SampleEvery = Math.Max(1, options.TryGetValue("sample_every", out Variant se) ? se.AsInt32() : 10),
 			StopAfterOrbits = options.TryGetValue("stop_after_orbits", out Variant so) ? so.AsDouble() : 1.0,
+			ShipRadius = ParseShipRadius(options),
 			WatchBody = options.TryGetValue("watch_body", out Variant wb) ? wb.AsInt32() : -1,
 			WatchFrom = options.TryGetValue("watch_from", out Variant wf) ? wf.AsDouble() : double.NegativeInfinity,
 			WatchUntil = options.TryGetValue("watch_until", out Variant wu) ? wu.AsDouble() : double.PositiveInfinity,

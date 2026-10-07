@@ -215,6 +215,7 @@ func _options(lead_time: float) -> Dictionary:
 		"arrival_periapsis": periapsis,
 		"min_lead_time": lead_time + planning_budget * orbital_system.TimeWarp,
 		"max_correction_delta_v": maxf(1.0, ship.get_delta_v_remaining(get_drive()) * max_correction_fraction),
+		"ship_radius": ship.get_hull_radius(),
 	}
 	options.merge(ship.get_engine_model(get_drive()))
 	return options

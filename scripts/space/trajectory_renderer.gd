@@ -77,6 +77,7 @@ func _physics_process(_delta: float) -> void:
 		"stop_after_orbits": stop_after_orbits,
 		"watch_body": target_index,
 		"sample_every": 6,
+		"ship_radius": ship.get_hull_radius(),
 	}
 	# Both predictions start from the same ship state, so they line up exactly before the first maneuver.
 	var start_position := ship.get_state_position()
