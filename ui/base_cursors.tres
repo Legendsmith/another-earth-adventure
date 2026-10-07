@@ -1,6 +1,6 @@
 [gd_resource type="Resource" script_class="ImagePack" format=3 uid="uid://c3ltxuww0js4j"]
 
-[ext_resource type="Script" uid="uid://dbk77bg7vg61a" path="res://scripts/image_pack.gd" id="1_8ftcr"]
+[ext_resource type="Script" uid="uid://c0qhy12pobrd6" path="res://data/image_pack.gd" id="1_8ftcr"]
 [ext_resource type="Image" uid="uid://bf68q3lbh55pp" path="res://ui/cursor/cursor_talk_16_2.png" id="1_g30dh"]
 [ext_resource type="Image" uid="uid://bm4biye5c4tr4" path="res://ui/cursor/cursor_default_16.png" id="2_jr75j"]
 [ext_resource type="Image" uid="uid://cbv7d7m870mhj" path="res://ui/cursor/cursor_aim_16.png" id="3_bj8c6"]
