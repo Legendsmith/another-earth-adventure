@@ -25,6 +25,7 @@ GUIDE="*uid://p2jwrgjcbexr"
 UnlockableContent="*uid://p3ilsmea4pp7"
 VerySimpleTwitch="*uid://b67spqib1p8ar"
 GameManager="*uid://jg6nhkpudsrj"
+Crew="*res://globals/crew/crew_roster.gd"
 
 [dialogic]
 
