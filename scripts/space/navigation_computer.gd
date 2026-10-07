@@ -196,6 +196,7 @@ func _options(lead_time: float) -> Dictionary:
 		"thrust": ship.max_thrust,
 		"mass": ship.dry_mass + ship.fuel,
 		"exhaust_velocity": ship.exhaust_velocity,
+		"ship_radius": ship.get_hull_radius(),
 	}
 
 

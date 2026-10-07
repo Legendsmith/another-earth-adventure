@@ -82,6 +82,12 @@ public sealed class PredictionSettings
 	/// <summary>Must equal the physics tick length for the prediction to match the engine.</summary>
 	public double Dt = 1.0 / 60.0;
 	public int MaxSteps = 36000;
+	/// <summary>
+	/// Radius of the ship's hull. Godot applies an area's gravity (and reports a collision) as soon as the hull
+	/// overlaps it, not when the ship's centre crosses, so gravity wells reach this much further and bodies are this
+	/// much larger. Leaving it at 0 desynchronises the prediction for about a second at every sphere boundary.
+	/// </summary>
+	public double ShipRadius;
 	/// <summary>Record one path sample every N ticks. Sphere changes are always sampled.</summary>
 	public int SampleEvery = 10;
 	/// <summary>Stop after the path has wrapped this many times around its current dominant body (0 = never).</summary>
@@ -188,6 +194,7 @@ public static class TrajectoryPredictor
 		var bodyPos = new Vector2D[n];
 		var bodyVel = new Vector2D[n];
 		double dt = settings.Dt;
+		double shipRadius = Math.Max(0.0, settings.ShipRadius);
 		// Tables are shared between predictions starting at different ticks of the same grid.
 		int tableOffset = table != null ? (int)Math.Round((startTime - table.StartTime) / dt) : 0;
 		bool useTable = table != null && table.Dt == dt && tableOffset >= 0
@@ -270,7 +277,7 @@ public static class TrajectoryPredictor
 				double dx = bodyPos[i].X - pos.X;
 				double dy = bodyPos[i].Y - pos.Y;
 				double r2 = dx * dx + dy * dy;
-				double influence = bodies[i].GravityRadius;
+				double influence = bodies[i].GravityRadius + shipRadius;
 				if (r2 > influence * influence || r2 <= 0.0)
 					continue;
 				double s = bodies[i].Mu / (r2 * Math.Sqrt(r2));
@@ -283,7 +290,7 @@ public static class TrajectoryPredictor
 
 			if (settings.StopOnCollision)
 			{
-				int hit = FindCollision(bodies, bodyPos, pos);
+				int hit = FindCollision(bodies, bodyPos, pos, shipRadius);
 				if (hit >= 0)
 				{
 					result.Events.Add(new PredictionEvent
@@ -403,11 +410,11 @@ public static class TrajectoryPredictor
 			ephemeris.ComputeStates(time, positions, velocities);
 	}
 
-	private static int FindCollision(BodyDef[] bodies, Vector2D[] bodyPos, Vector2D pos)
+	private static int FindCollision(BodyDef[] bodies, Vector2D[] bodyPos, Vector2D pos, double shipRadius)
 	{
 		for (int i = 0; i < bodies.Length; i++)
 		{
-			double r = bodies[i].Radius;
+			double r = bodies[i].Radius + shipRadius;
 			if ((pos - bodyPos[i]).LengthSquared < r * r)
 				return i;
 		}

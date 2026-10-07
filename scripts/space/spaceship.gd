@@ -275,6 +275,23 @@ func unpark() -> void:
 	unparked.emit()
 
 
+## Hull radius to hand to the orbital solvers ("ship_radius"): gravity wells act on the ship, and planets hit it, as
+## soon as the hull overlaps them rather than when its centre crosses, and the predictions must do the same.
+func get_hull_radius() -> float:
+	var radius := 0.0
+	for child in get_children():
+		var collision := child as CollisionShape2D
+		if collision == null or collision.disabled or collision.shape == null:
+			continue
+		var circle := collision.shape as CircleShape2D
+		if circle != null:
+			radius = maxf(radius, collision.position.length() + circle.radius)
+		else:
+			var rect := collision.shape.get_rect()
+			radius = maxf(radius, collision.position.length() + maxf(rect.position.length(), rect.end.length()))
+	return radius
+
+
 ## Position and velocity to hand to the orbital solvers: they belong to OrbitalSystem.StateTime.
 ## For a parked ship they are computed exactly at that time, whatever point of the physics tick this is called at
 ## (the node position is only updated during the ship's own physics tick, so it can lag one tick behind).

@@ -138,7 +138,8 @@ public static class CoursePlotter
 
 			PredictionResult pass = sim.PredictEncounter(encounter);
 			// Only the encounter pass itself matters: without its burn the ship may well hit the body on a later orbit.
-			bool impacts = pass.HasClosestApproach && pass.ClosestApproachDistance <= eph.Bodies[encounter.Body].Radius;
+			bool impacts = pass.HasClosestApproach
+				&& pass.ClosestApproachDistance <= eph.Bodies[encounter.Body].Radius + req.ShipRadius;
 			if (!pass.HasClosestApproach || impacts)
 			{
 				plot.Message = impacts ? "course_impacts" : "no_encounter";
@@ -222,6 +223,7 @@ public static class CoursePlotter
 				RecordSamples = false,
 				RecordApsides = false,
 				StopOnCollision = watchBody >= 0,
+				ShipRadius = _req.ShipRadius,
 				WatchBody = watchBody,
 				WatchFrom = watchFrom,
 				Burns = new List<ImpulseBurn>(_burns),
@@ -270,6 +272,7 @@ public static class CoursePlotter
 				RecordSamples = false,
 				RecordApsides = true,
 				StopOnCollision = true,
+				ShipRadius = _req.ShipRadius,
 				Burns = new List<ImpulseBurn>(_burns),
 			});
 			foreach (PredictionEvent e in r.Events)
@@ -305,7 +308,7 @@ public static class CoursePlotter
 				return;
 			BodyDef target = _eph.Bodies[encounter.Body];
 			double tolerance = Math.Max(0.1 * Math.Abs(encounter.Periapsis), 0.25 * target.Radius);
-			bool impacts = check.ClosestApproachDistance <= target.Radius;
+			bool impacts = check.ClosestApproachDistance <= target.Radius + _req.ShipRadius;
 			if (!impacts && Math.Abs(check.ClosestApproachSigned - encounter.Periapsis) <= tolerance)
 				return;
 
@@ -322,7 +325,8 @@ public static class CoursePlotter
 					continue;
 				RefineResult r = TransferPlanner.Refine(_eph, state.FinalPosition, state.FinalVelocity, state.FinalTime,
 					_req.Dt, state.FinalTime + 5.0, Vector2D.Zero, encounter.Body, encounter.Periapsis, encounter.Time,
-					false, horizon, 16, _req.MaxCorrectionDeltaV > 0.0 ? _req.MaxCorrectionDeltaV : double.PositiveInfinity, Engine);
+					false, horizon, 16, _req.MaxCorrectionDeltaV > 0.0 ? _req.MaxCorrectionDeltaV : double.PositiveInfinity, Engine,
+					_req.ShipRadius);
 				if (r.HasEncounter && (r.Converged || r.Miss < 0.5 * r.InitialMiss) && r.DeltaV.Length > 0.05)
 					AddInertialBurn(r.BurnTime, r.DeltaV, "correction");
 				return;
