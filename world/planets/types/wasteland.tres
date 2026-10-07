@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="PlanetType" format=3]
+
+[ext_resource type="Script" uid="uid://dgf1acpargmbo" path="res://world/planets/planet_type.gd" id="1_s25g5"]
+
+[sub_resource type="Gradient" id="Gradient_kr7eq"]
+offsets = PackedFloat32Array(0, 0.4, 0.7, 1)
+colors = PackedColorArray(0.2901961, 0.23137255, 0.16470589, 1, 0.5411765, 0.43137255, 0.29411766, 1, 0.72156864, 0.627451, 0.47843137, 1, 0.8509804, 0.7882353, 0.6392157, 1)
+
+[resource]
+script = ExtResource("1_s25g5")
+kind = 5
+display_name = "Wasteland"
+color_ramp = SubResource("Gradient_kr7eq")
+crew_weight = 2.0
+item_weight = 6.0
+resource_weight = 2.0
+item_pool = Array[StringName]([&"scrap_weapon", &"ship_part", &"data_core"])
+resource_pool = Array[StringName]([&"scrap_metal"])

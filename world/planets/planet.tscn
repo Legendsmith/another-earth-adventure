@@ -1,0 +1,28 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://tdbmt3k814n" path="res://world/planets/planet.gd" id="1_planet"]
+
+[node name="Planet" type="Node2D" unique_id=1141809975]
+script = ExtResource("1_planet")
+
+[node name="Body" type="Node2D" parent="." unique_id=2126210068]
+unique_name_in_owner = true
+clip_children = 1
+
+[node name="Surface" type="Sprite2D" parent="Body" unique_id=1551704658]
+unique_name_in_owner = true
+
+[node name="TypeLabel" type="Label" parent="." unique_id=966240431]
+unique_name_in_owner = true
+offset_right = 64.0
+offset_bottom = 23.0
+horizontal_alignment = 1
+
+[node name="LowOrbit" type="Area2D" parent="." unique_id=275159049]
+unique_name_in_owner = true
+collision_layer = 0
+input_pickable = false
+monitorable = false
+
+[node name="OrbitShape" type="CollisionShape2D" parent="LowOrbit" unique_id=387018019]
+unique_name_in_owner = true
