@@ -1,0 +1,17 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/space/spaceship.gd" id="1_ship"]
+[ext_resource type="Resource" path="res://data/engines/chemical_rocket.tres" id="2_main"]
+[ext_resource type="Resource" path="res://data/engines/chemical_thrusters.tres" id="3_thrusters"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_hull"]
+radius = 1.0
+
+[node name="Spaceship" type="RigidBody2D"]
+collision_layer = 2
+script = ExtResource("1_ship")
+main_engine = ExtResource("2_main")
+thrusters = ExtResource("3_thrusters")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+shape = SubResource("CircleShape2D_hull")

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EngineDefinition" format=3]
+
+[ext_resource type="Script" uid="uid://ddejdm73conwp" path="res://data/engine_definition.gd" id="1_engine"]
+
+[resource]
+script = ExtResource("1_engine")
+name = "Fusion Drive"
+max_thrust = 220.0
+exhaust_velocity = 700.0
+mass = 1.5
+turn_torque = 0.0
+flame_color = Color(0.85, 0.75, 1, 1)
+flame_size = 4.0
+maintenance_interval = 10000.0
+power_generation = 20.0
+active_sensor_signature = 20.0
+max_sensor_signature = 500.0
+warmup_time = 30.0
