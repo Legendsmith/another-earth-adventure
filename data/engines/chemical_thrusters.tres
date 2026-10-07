@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="EngineDefinition" format=3]
+
+[ext_resource type="Script" uid="uid://ddejdm73conwp" path="res://data/engine_definition.gd" id="1_engine"]
+
+[resource]
+script = ExtResource("1_engine")
+name = "Chemical Thrusters"
+max_thrust = 8.0
+exhaust_velocity = 180.0
+mass = 0.4
+turn_torque = 25.0
+flame_color = Color(1, 0.75, 0.35, 1)
+flame_size = 0.5
+maintenance_interval = 20000.0
+power_generation = 0.0
+active_sensor_signature = 1.0
+max_sensor_signature = 8.0
+warmup_time = 1.0
