@@ -54,8 +54,9 @@ folder_colors={
 "res://ai/": "blue",
 "res://audio/": "orange",
 "res://data/": "orange",
+"res://entities/": "teal",
 "res://globals/": "purple",
-"res://scripts/": "teal",
+"res://scripts/": "blue",
 "res://texture/": "orange",
 "res://ui/": "green",
 "res://world/": "yellow"

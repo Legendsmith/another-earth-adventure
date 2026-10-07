@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://b4ikwa4mxnbw7" path="res://scripts/orbital/OrbitalSystem.cs" id="1_system"]
 [ext_resource type="Script" uid="uid://b165ltoi2sw4y" path="res://scripts/orbital/CelestialBody.cs" id="2_body"]
-[ext_resource type="PackedScene" path="res://world/space/spaceship.tscn" id="3_ship"]
+[ext_resource type="PackedScene" path="res://entities/space/spaceship.tscn" id="3_ship"]
 [ext_resource type="Script" uid="uid://irduv7y5iycu" path="res://scripts/space/orbital_navigator.gd" id="4_nav"]
 [ext_resource type="Script" uid="uid://s6vunkolpad6" path="res://scripts/space/player_ship_controller.gd" id="5_player"]
 [ext_resource type="Script" uid="uid://divt07ot7ctim" path="res://scripts/space/trajectory_renderer.gd" id="6_render"]
