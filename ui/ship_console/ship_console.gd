@@ -16,7 +16,11 @@ enum Mode { NAVIGATION, SENSORS, COMMAND }
 
 var mode: Mode = Mode.NAVIGATION
 
+## Space kept clear below the panel.
+const BOTTOM_MARGIN := 16.0
+
 @onready var _panel: PanelContainer = %Panel
+@onready var _scroll: ScrollContainer = %ModeScroll
 @onready var _mode_buttons: Array[Button] = [%NavigationButton, %SensorsButton, %CommandButton]
 @onready var _mode_panels: Array[Control] = [%NavigationPanel, %SensorsPanel, %CommandPanel]
 
@@ -30,6 +34,10 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	# Show the whole mode panel, scrolling only when it would run past the bottom of the screen.
+	var content := _mode_panels[mode].get_combined_minimum_size().y
+	var room := get_viewport().get_visible_rect().size.y - BOTTOM_MARGIN - (_panel.get_global_rect().end.y - _scroll.size.y)
+	_scroll.custom_minimum_size.y = clampf(content, 0.0, maxf(room, 120.0))
 	# Shrink back to the content after a mode change or a shorter readout.
 	_panel.reset_size()
 

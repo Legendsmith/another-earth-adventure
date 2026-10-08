@@ -18,6 +18,8 @@ const GHOST_COLOR := Color(0.7, 0.75, 0.85, 0.55)
 const ACTIVE_RING_COLOR := Color(0.4, 0.9, 1.0, 0.18)
 
 var _network: SensorNetwork
+# Labels drawn this frame, so the next one can step clear of them.
+var _label_rects: Array[Rect2] = []
 
 
 func _ready() -> void:
@@ -34,6 +36,7 @@ func _draw() -> void:
 		if _network == null:
 			return
 	var s := maxf(1.0, 1.0 / get_canvas_transform().get_scale().x)
+	_label_rects.clear()
 	var now := _network.get_time()
 	var player := _network.get_player_suite()
 	if player and player.active:
@@ -106,6 +109,18 @@ func _live_position(track: SensorTrack) -> Vector2:
 func _label(at: Vector2, text: String, color: Color, s: float) -> void:
 	var font := ThemeDB.fallback_font
 	var size := roundi(FONT_SIZE * s)
+	# Contacts lost at the same spot would print on top of each other: stack their labels instead.
+	var line := size * 1.25
+	var rect := Rect2(at - Vector2(0.0, size), Vector2(font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x, line))
+	var moved := true
+	while moved:
+		moved = false
+		for other in _label_rects:
+			if other.intersects(rect):
+				rect.position.y = other.end.y
+				moved = true
+	_label_rects.append(rect)
+	at.y = rect.position.y + size
 	draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, maxi(roundi(3.0 * s), 1), Color(0, 0, 0, 0.7))
 	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, color)
 

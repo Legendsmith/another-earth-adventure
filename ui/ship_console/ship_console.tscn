@@ -72,104 +72,113 @@ toggle_mode = true
 button_group = SubResource("ButtonGroup_modes")
 text = "3  Command"
 
-[node name="NavigationPanel" type="VBoxContainer" parent="Panel/VBox"]
+[node name="ModeScroll" type="ScrollContainer" parent="Panel/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="Modes" type="VBoxContainer" parent="Panel/VBox/ModeScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="NavigationPanel" type="VBoxContainer" parent="Panel/VBox/ModeScroll/Modes"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 8
 script = ExtResource("2_nav")
 
-[node name="Readout" type="Label" parent="Panel/VBox/NavigationPanel"]
+[node name="Readout" type="Label" parent="Panel/VBox/ModeScroll/Modes/NavigationPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 autowrap_mode = 3
 text = "Navigation"
 
-[node name="NavButtons" type="GridContainer" parent="Panel/VBox/NavigationPanel"]
+[node name="NavButtons" type="GridContainer" parent="Panel/VBox/ModeScroll/Modes/NavigationPanel"]
 layout_mode = 2
 columns = 3
 
-[node name="NextTargetButton" type="Button" parent="Panel/VBox/NavigationPanel/NavButtons"]
+[node name="NextTargetButton" type="Button" parent="Panel/VBox/ModeScroll/Modes/NavigationPanel/NavButtons"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
 text = "Next target (Tab)"
 
-[node name="PlotCourseButton" type="Button" parent="Panel/VBox/NavigationPanel/NavButtons"]
+[node name="PlotCourseButton" type="Button" parent="Panel/VBox/ModeScroll/Modes/NavigationPanel/NavButtons"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
 text = "Plot course (N)"
 
-[node name="NavModeButton" type="Button" parent="Panel/VBox/NavigationPanel/NavButtons"]
+[node name="NavModeButton" type="Button" parent="Panel/VBox/ModeScroll/Modes/NavigationPanel/NavButtons"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
 text = "Nav mode (M)"
 
-[node name="NavEnginesButton" type="Button" parent="Panel/VBox/NavigationPanel/NavButtons"]
+[node name="NavEnginesButton" type="Button" parent="Panel/VBox/ModeScroll/Modes/NavigationPanel/NavButtons"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
 text = "Engines (B)"
 
-[node name="WarpDownButton" type="Button" parent="Panel/VBox/NavigationPanel/NavButtons"]
+[node name="WarpDownButton" type="Button" parent="Panel/VBox/ModeScroll/Modes/NavigationPanel/NavButtons"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
 text = "Warp - (,)"
 
-[node name="WarpUpButton" type="Button" parent="Panel/VBox/NavigationPanel/NavButtons"]
+[node name="WarpUpButton" type="Button" parent="Panel/VBox/ModeScroll/Modes/NavigationPanel/NavButtons"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
 text = "Warp + (.)"
 
-[node name="NavHelp" type="Label" parent="Panel/VBox/NavigationPanel"]
+[node name="NavHelp" type="Label" parent="Panel/VBox/ModeScroll/Modes/NavigationPanel"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.62, 0.7, 1)
 theme_override_font_sizes/font_size = 12
 autowrap_mode = 3
 text = "Click path: add maneuver (hold: pick engines). Drag handles: plan burn. Drag node: move. Right-click/Del: remove. Wheel: zoom. Emergency: W thrust, A/D turn."
 
-[node name="SensorsPanel" type="VBoxContainer" parent="Panel/VBox"]
+[node name="SensorsPanel" type="VBoxContainer" parent="Panel/VBox/ModeScroll/Modes"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 8
 script = ExtResource("3_sensors")
 
-[node name="ActiveRow" type="HBoxContainer" parent="Panel/VBox/SensorsPanel"]
+[node name="ActiveRow" type="HBoxContainer" parent="Panel/VBox/ModeScroll/Modes/SensorsPanel"]
 layout_mode = 2
 
-[node name="ActiveToggle" type="CheckButton" parent="Panel/VBox/SensorsPanel/ActiveRow"]
+[node name="ActiveToggle" type="CheckButton" parent="Panel/VBox/ModeScroll/Modes/SensorsPanel/ActiveRow"]
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
 text = "Active sensors (V)"
 
-[node name="ActiveStatus" type="Label" parent="Panel/VBox/SensorsPanel/ActiveRow"]
+[node name="ActiveStatus" type="Label" parent="Panel/VBox/ModeScroll/Modes/SensorsPanel/ActiveRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 horizontal_alignment = 2
 text = "Passive only"
 
-[node name="SensorStats" type="Label" parent="Panel/VBox/SensorsPanel"]
+[node name="SensorStats" type="Label" parent="Panel/VBox/ModeScroll/Modes/SensorsPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
 autowrap_mode = 3
 text = "Sensors"
 
-[node name="ContactTree" type="Tree" parent="Panel/VBox/SensorsPanel"]
+[node name="ContactTree" type="Tree" parent="Panel/VBox/ModeScroll/Modes/SensorsPanel"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 190)
+custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
 focus_mode = 0
 columns = 4
@@ -177,7 +186,7 @@ column_titles_visible = true
 hide_root = true
 select_mode = 1
 
-[node name="Details" type="RichTextLabel" parent="Panel/VBox/SensorsPanel"]
+[node name="Details" type="RichTextLabel" parent="Panel/VBox/ModeScroll/Modes/SensorsPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 bbcode_enabled = true
@@ -185,10 +194,10 @@ fit_content = true
 scroll_active = false
 text = "Select a contact for details."
 
-[node name="ContactActions" type="HBoxContainer" parent="Panel/VBox/SensorsPanel"]
+[node name="ContactActions" type="HBoxContainer" parent="Panel/VBox/ModeScroll/Modes/SensorsPanel"]
 layout_mode = 2
 
-[node name="TargetContactButton" type="Button" parent="Panel/VBox/SensorsPanel/ContactActions"]
+[node name="TargetContactButton" type="Button" parent="Panel/VBox/ModeScroll/Modes/SensorsPanel/ContactActions"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -196,7 +205,7 @@ focus_mode = 0
 disabled = true
 text = "Weapons target"
 
-[node name="ForgetButton" type="Button" parent="Panel/VBox/SensorsPanel/ContactActions"]
+[node name="ForgetButton" type="Button" parent="Panel/VBox/ModeScroll/Modes/SensorsPanel/ContactActions"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -204,32 +213,32 @@ focus_mode = 0
 disabled = true
 text = "Forget ghost"
 
-[node name="CommandPanel" type="VBoxContainer" parent="Panel/VBox"]
+[node name="CommandPanel" type="VBoxContainer" parent="Panel/VBox/ModeScroll/Modes"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 8
 script = ExtResource("4_command")
 
-[node name="PlanetHeader" type="Label" parent="Panel/VBox/CommandPanel"]
+[node name="PlanetHeader" type="Label" parent="Panel/VBox/ModeScroll/Modes/CommandPanel"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 17
 text = "Planet"
 
-[node name="PlanetInfo" type="Label" parent="Panel/VBox/CommandPanel"]
+[node name="PlanetInfo" type="Label" parent="Panel/VBox/ModeScroll/Modes/CommandPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 autowrap_mode = 3
 text = "Not in low orbit of a planet."
 
-[node name="CollectButton" type="Button" parent="Panel/VBox/CommandPanel"]
+[node name="CollectButton" type="Button" parent="Panel/VBox/ModeScroll/Modes/CommandPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
 disabled = true
 text = "Collect rewards (E)"
 
-[node name="RewardsLog" type="Label" parent="Panel/VBox/CommandPanel"]
+[node name="RewardsLog" type="Label" parent="Panel/VBox/ModeScroll/Modes/CommandPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.75, 0.85, 0.7, 1)
@@ -237,51 +246,51 @@ theme_override_font_sizes/font_size = 13
 autowrap_mode = 3
 text = "No rewards collected yet."
 
-[node name="CrewSeparator" type="HSeparator" parent="Panel/VBox/CommandPanel"]
+[node name="CrewSeparator" type="HSeparator" parent="Panel/VBox/ModeScroll/Modes/CommandPanel"]
 layout_mode = 2
 
-[node name="CrewHeaderRow" type="HBoxContainer" parent="Panel/VBox/CommandPanel"]
+[node name="CrewHeaderRow" type="HBoxContainer" parent="Panel/VBox/ModeScroll/Modes/CommandPanel"]
 layout_mode = 2
 
-[node name="CrewTitle" type="Label" parent="Panel/VBox/CommandPanel/CrewHeaderRow"]
+[node name="CrewTitle" type="Label" parent="Panel/VBox/ModeScroll/Modes/CommandPanel/CrewHeaderRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 17
 text = "Crew"
 
-[node name="ManifestButton" type="Button" parent="Panel/VBox/CommandPanel/CrewHeaderRow"]
+[node name="ManifestButton" type="Button" parent="Panel/VBox/ModeScroll/Modes/CommandPanel/CrewHeaderRow"]
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
 text = "Full manifest"
 
-[node name="CrewScroll" type="ScrollContainer" parent="Panel/VBox/CommandPanel"]
+[node name="CrewScroll" type="ScrollContainer" parent="Panel/VBox/ModeScroll/Modes/CommandPanel"]
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
 horizontal_scroll_mode = 0
 
-[node name="CrewList" type="VBoxContainer" parent="Panel/VBox/CommandPanel/CrewScroll"]
+[node name="CrewList" type="VBoxContainer" parent="Panel/VBox/ModeScroll/Modes/CommandPanel/CrewScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="ExpeditionSeparator" type="HSeparator" parent="Panel/VBox/CommandPanel"]
+[node name="ExpeditionSeparator" type="HSeparator" parent="Panel/VBox/ModeScroll/Modes/CommandPanel"]
 layout_mode = 2
 
-[node name="ExpeditionHeader" type="Label" parent="Panel/VBox/CommandPanel"]
+[node name="ExpeditionHeader" type="Label" parent="Panel/VBox/ModeScroll/Modes/CommandPanel"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 17
 text = "Expeditions"
 
-[node name="ExpeditionInfo" type="Label" parent="Panel/VBox/CommandPanel"]
+[node name="ExpeditionInfo" type="Label" parent="Panel/VBox/ModeScroll/Modes/CommandPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.62, 0.7, 1)
 autowrap_mode = 3
 text = "Assigning crew to planet expeditions is coming soon."
 
-[node name="AssignExpeditionButton" type="Button" parent="Panel/VBox/CommandPanel"]
+[node name="AssignExpeditionButton" type="Button" parent="Panel/VBox/ModeScroll/Modes/CommandPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
