@@ -14,6 +14,8 @@ var munition_name: String = "Munition"
 ## Hull that fired this munition (never hit by it).
 var launcher: CombatHull
 var target: CombatHull
+## Size seen by active sensors (see SensorSuite).
+var cross_section: float = 0.05
 ## Seconds before the munition is lost (out of fuel and drifting).
 var lifetime: float = 600.0
 
@@ -54,7 +56,7 @@ func _physics_process(delta: float) -> void:
 	queue_redraw()
 
 
-## Signature seen by sensors (see SpaceCombatManager).
+## Signature seen by passive sensors (see SensorSuite).
 func get_signature() -> float:
 	return 0.0
 

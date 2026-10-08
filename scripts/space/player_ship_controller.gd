@@ -2,7 +2,7 @@ class_name PlayerShipController
 extends Node
 ## Player flight: maneuver nodes are the primary way to navigate (see ManeuverEditor); direct thrust and turning
 ## are an emergency override that aborts any burn in progress. The navigation computer (N) plots a course to the
-## selected target as maneuver nodes. Also handles target selection and time warp.
+## selected target as maneuver nodes. Also handles target selection, time warp and the active sensors switch (V).
 
 signal target_changed(body_index: int)
 
@@ -17,6 +17,7 @@ var orbital_system: Node
 
 func _ready() -> void:
 	ship = get_parent() as Spaceship
+	ship.add_to_group(Constants.PLAYER_GROUP) # Planets look for the player's ship in their low orbit.
 	orbital_system = get_tree().get_first_node_in_group(Constants.ORBITAL_SYSTEM_GROUP)
 
 
@@ -48,6 +49,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed(&"nav_engine_cycle"):
 		if navigation_computer:
 			navigation_computer.cycle_engine_use()
+	elif event.is_action_pressed(&"sensors_toggle_active"):
+		toggle_active_sensors()
 	else:
 		return
 	get_viewport().set_input_as_handled()
@@ -72,3 +75,10 @@ func plot_course() -> void:
 		navigation_computer.status = "No course: select a target first (Tab)"
 		return
 	navigation_computer.plot_course(orbital_system.GetBody(target_index))
+
+
+## Switches the ship's active sensors on or off. Pinging holds contacts passive sensors miss, but lights the ship up.
+func toggle_active_sensors() -> void:
+	var suite := SensorSuite.find_on(ship)
+	if suite:
+		suite.active = not suite.active

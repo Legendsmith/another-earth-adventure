@@ -1,10 +1,9 @@
 class_name SpaceCombatManager
 extends Node
-## Sensors and threat warnings for every combat hull in the scene.
+## Contact selection and threat warnings for every combat hull in the scene.
 ##
-## Detection is passive: a sensor of strength S sees a contact of signature X within S * sqrt(X) px (inverse-square
-## falloff). A faction knows everything any of its hulls can see. Hostile hulls and munitions the player's side has not
-## detected are hidden, so cold torpedoes and railgun rounds stay invisible until they are close or burning.
+## What each faction can see comes from the SensorNetwork (each hull's SensorSuite): a faction can only target what
+## its sensors hold, so cold torpedoes and railgun rounds stay unseen until they are close or burning.
 ## Threats the player needs to react to are raised as warnings (and drop time warp).
 
 signal warning_raised(text: String, severity: Severity)
@@ -18,8 +17,6 @@ const WARNING_TIME := 8.0
 const MAX_WARNINGS := 6
 
 @export var player_faction: StringName = Constants.PLAYER_GROUP
-## Seconds of simulation time between sensor sweeps.
-@export var scan_interval: float = 0.25
 ## Drop to normal time when the player's side detects a new threat.
 @export var drop_warp_on_threat: bool = true
 
@@ -28,12 +25,10 @@ var selected_contact: CombatHull
 ## Active warnings: {text, severity, time_left}.
 var warnings: Array[Dictionary] = []
 
-# faction -> {object: true} of what that faction currently detects.
-var _detected: Dictionary = {}
+var _network: SensorNetwork
 var _known_hulls: Dictionary = {}
 var _railgun_warned: Dictionary = {}
 var _munition_warned: Dictionary = {}
-var _scan_timer := 0.0
 var _orbital_system: Node
 
 
@@ -47,13 +42,11 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	_orbital_system = get_tree().get_first_node_in_group(Constants.ORBITAL_SYSTEM_GROUP)
-
-
-func _physics_process(delta: float) -> void:
-	_scan_timer -= delta
-	if _scan_timer <= 0.0:
-		_scan_timer = scan_interval
-		_scan()
+	_network = SensorNetwork.find(get_tree())
+	if _network == null:
+		push_warning("SpaceCombatManager: no SensorNetwork in the scene, nothing can be detected")
+		return
+	_network.scanned.connect(_on_scanned)
 
 
 func _process(delta: float) -> void:
@@ -83,9 +76,11 @@ func get_munitions() -> Array[Munition]:
 
 
 func is_detected_by(faction: StringName, target: Object) -> bool:
-	if target is CombatHull and target.faction == faction:
-		return true
-	return _detected.get(faction, {}).has(target)
+	if _network == null or not is_instance_valid(target):
+		return false
+	if target is CombatHull:
+		return target.faction == faction or _network.is_detected(faction, target.get_sensor_suite())
+	return _network.is_detected(faction, target)
 
 
 ## Hostile hulls `faction` currently detects, nearest to `from` first.
@@ -134,60 +129,33 @@ func cycle_selected_contact() -> void:
 
 #region Detection
 
-func _scan() -> void:
+## After every sensor sweep: drop a selected contact that was lost and warn about new threats.
+func _on_scanned() -> void:
 	var hulls := get_hulls()
-	var munitions := get_munitions()
-	var factions: Dictionary = {}
 	for hull in hulls:
-		factions[hull.faction] = true
 		if not _known_hulls.has(hull):
 			_watch_hull(hull)
-	for faction: StringName in factions:
-		var seen: Dictionary = {}
-		var sensors := hulls.filter(func(h: CombatHull) -> bool: return h.faction == faction)
-		for hull in hulls:
-			if hull.faction != faction and _any_detects(sensors, hull.get_world_position(), hull.get_signature()):
-				seen[hull] = true
-		for munition in munitions:
-			if munition.faction == faction or _any_detects(sensors, munition.get_world_position(), munition.get_signature()):
-				seen[munition] = true
-		_detected[faction] = seen
 	if is_instance_valid(selected_contact) and (selected_contact.is_destroyed or not is_detected_by(player_faction, selected_contact)):
 		selected_contact = null
-	_update_player_view(hulls, munitions)
+	_update_player_view(hulls, get_munitions())
 
 
-func _any_detects(sensors: Array, at: Vector2, signature: float) -> bool:
-	for sensor: CombatHull in sensors:
-		var reach := sensor.detection_range_for(signature)
-		if sensor.get_world_position().distance_squared_to(at) <= reach * reach:
-			return true
-	return false
-
-
-## Hides what the player's side cannot see and raises warnings for newly detected threats.
+## Raises warnings for newly detected threats.
 func _update_player_view(hulls: Array[CombatHull], munitions: Array[Munition]) -> void:
 	var player := get_player_hull()
 	var origin := player.get_world_position() if player else Vector2.ZERO
-	var seen: Dictionary = _detected.get(player_faction, {})
 	for hull in hulls:
 		if not hull.is_hostile_to(player_faction):
 			continue
-		var visible_now := seen.has(hull)
-		hull.visible = visible_now
-		if hull.hide_host_when_undetected and hull.host:
-			hull.host.visible = visible_now
+		var visible_now := is_detected_by(player_faction, hull)
 		if visible_now and hull.has_railgun() and not _railgun_warned.has(hull):
 			_railgun_warned[hull] = true
 			raise_warning("RAILGUN DETECTED: %s at %d px. Its rounds are nearly invisible in flight: keep moving."
 				% [hull.display_name, roundi(hull.get_world_position().distance_to(origin))], Severity.DANGER)
 	for munition in munitions:
 		if not CombatHull.factions_hostile(munition.faction, player_faction):
-			munition.visible = true
 			continue
-		var visible_now := seen.has(munition)
-		munition.visible = visible_now
-		if visible_now and not _munition_warned.has(munition):
+		if is_detected_by(player_faction, munition) and not _munition_warned.has(munition):
 			_munition_warned[munition] = true
 			raise_warning("%s detected at %d px" % [munition.munition_name,
 				roundi(munition.get_world_position().distance_to(origin))], Severity.DANGER)
@@ -209,8 +177,7 @@ func report_discharge(source: CombatHull, at: Vector2, signature: float, target:
 	if not is_instance_valid(source):
 		return
 	source.add_emission(signature)
-	var player_sensors := get_hulls().filter(func(h: CombatHull) -> bool: return h.faction == player_faction)
-	if source.is_hostile_to(player_faction) and _any_detects(player_sensors, at, signature):
+	if source.is_hostile_to(player_faction) and _network and _network.passive_detects(player_faction, at, signature):
 		var line := "RAILGUN DISCHARGE from %s" % source.display_name
 		if target and target.faction == player_faction:
 			line += ": round inbound, impact in about %.1f s" % flight_time

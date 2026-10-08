@@ -98,8 +98,6 @@ func _add_derelict(index: int, at: Vector2) -> void:
 		_component("Torpedo magazine", ShipComponent.Kind.MAGAZINE, 1.0, 1),
 		_component("Wreck structure", ShipComponent.Kind.STRUCTURE, 4.0, 4)]
 	hull.hit_radius = 8.0
-	hull.base_signature = 0.2
-	hull.sensor_strength = derelict_sensor_strength
 	var launcher := TorpedoLauncher.new()
 	launcher.name = "TorpedoRack"
 	launcher.magazine = 2
@@ -112,6 +110,15 @@ func _add_derelict(index: int, at: Vector2) -> void:
 	ai.name = "CombatAI"
 	hull.add_child(ai)
 	wreck.add_child(hull)
+	var sensors := SensorSuite.new()
+	sensors.name = "SensorSuite"
+	sensors.display_name = hull.display_name
+	sensors.classification = "Automated weapons platform"
+	sensors.base_signature = 0.2
+	sensors.passive_strength = derelict_sensor_strength
+	sensors.active_strength = 0.0
+	sensors.cross_section = 0.6
+	wreck.add_child(sensors)
 
 
 static func _component(component_name: String, kind: ShipComponent.Kind, size: float, hit_to_kill: int) -> ShipComponent:

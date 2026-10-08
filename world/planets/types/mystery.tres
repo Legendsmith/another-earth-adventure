@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="PlanetType" format=3]
+
+[ext_resource type="Script" uid="uid://dgf1acpargmbo" path="res://world/planets/planet_type.gd" id="1_usdpg"]
+
+[sub_resource type="Gradient" id="Gradient_w0e42"]
+offsets = PackedFloat32Array(0, 0.3, 0.5, 0.7, 1)
+colors = PackedColorArray(0.043137256, 0.023529412, 0.09411765, 1, 0.23921569, 0.101960786, 0.43137255, 1, 0, 0.8980392, 0.78039217, 1, 0.47843137, 0.16862746, 0.81960785, 1, 0.9411765, 0.9411765, 1, 1)
+
+[resource]
+script = ExtResource("1_usdpg")
+kind = 7
+display_name = "Mystery"
+color_ramp = SubResource("Gradient_w0e42")
+spawn_weight = 0.25
+min_rolls = 4
+max_rolls = 10
+item_pool = Array[StringName]([&"alien_artifact", &"data_core", &"cryo_pod"])
+resource_pool = Array[StringName]([&"exotic_matter", &"rare_metals"])
