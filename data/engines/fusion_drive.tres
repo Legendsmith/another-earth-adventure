@@ -5,8 +5,8 @@
 [resource]
 script = ExtResource("1_engine")
 name = "Fusion Drive"
-max_thrust = 220.0
-exhaust_velocity = 700.0
+max_thrust = 320.0
+exhaust_velocity = 5000.0
 mass = 1.5
 turn_torque = 0.0
 flame_color = Color(0.85, 0.75, 1, 1)

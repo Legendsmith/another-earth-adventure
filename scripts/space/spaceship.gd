@@ -38,7 +38,7 @@ const TURN_PROFILE := 0.9
 @export_category("Attitude")
 ## Turn rate limit in radians per second. Turning is done by the thrusters (their turn_torque) and costs fuel:
 ## every turn spins the ship up and back down, so faster turns cost more.
-@export_range(0.1, 10.0, 0.01, "radians_as_degrees") var max_turn_rate: float = 0.8
+@export_range(0.1, 10.0, 0.01, "radians_as_degrees") var max_turn_rate: float = 1.6
 ## Radius of gyration of the hull in px: moment of inertia = mass * radius_of_gyration^2.
 @export var radius_of_gyration: float = 1.5
 ## Lever arm of the attitude thrusters in px: a torque T takes T / thruster_arm of thrust.

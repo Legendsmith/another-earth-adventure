@@ -9,6 +9,10 @@ extends WeaponMount
 
 @export_category("Torpedo")
 @export var thrust_accel: float = 30.0
+## How fast the torpedo can swing its nose and drive (rad/s).
+@export_range(0.01, 3.0, 0.01, "radians_as_degrees") var turn_rate: float = 0.25
+## Seconds the torpedo drifts with its drive unlit after launch while it turns to the intercept heading.
+@export var cold_launch_time: float = 1.5
 @export var burn_time: float = 40.0
 @export var cruise_speed: float = 70.0
 @export var engagement_range: float = 1200.0
@@ -53,6 +57,9 @@ func fire_at(target: CombatHull) -> bool:
 	torpedo.launcher = hull
 	torpedo.target = target
 	torpedo.thrust_accel = thrust_accel
+	torpedo.turn_rate = turn_rate
+	torpedo.cold_launch_time = cold_launch_time
+	torpedo.heading = direction
 	torpedo.burn_time = burn_time
 	torpedo.cruise_speed = cruise_speed
 	torpedo.engagement_range = engagement_range
