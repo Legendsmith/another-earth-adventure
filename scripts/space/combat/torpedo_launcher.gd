@@ -13,7 +13,6 @@ extends WeaponMount
 @export var cruise_speed: float = 70.0
 @export var engagement_range: float = 1200.0
 @export var damage: int = 16
-@export var spread: int = 3
 
 var ammo: int
 var _reload := 0.0
@@ -58,7 +57,6 @@ func fire_at(target: CombatHull) -> bool:
 	torpedo.cruise_speed = cruise_speed
 	torpedo.engagement_range = engagement_range
 	torpedo.damage = damage
-	torpedo.spread = spread
 	Munition.launch(torpedo, hull, origin + direction * (hull.hit_radius + 4.0),
 		hull.get_world_velocity() + direction * launch_speed)
 	ammo -= 1
