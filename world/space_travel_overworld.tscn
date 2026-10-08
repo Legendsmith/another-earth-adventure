@@ -34,6 +34,7 @@
 [ext_resource type="Resource" path="res://data/components/torpedo_tubes.tres" id="26_c7_torpedo_tubes"]
 [ext_resource type="Resource" path="res://data/components/torpedo_magazine.tres" id="26_c8_torpedo_magazine"]
 [ext_resource type="Resource" path="res://data/components/structure.tres" id="26_c9_structure"]
+[ext_resource type="Script" uid="uid://6hpawdmp6mdg" path="res://world/planets/planet_field.gd" id="15_planets"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_sun"]
 radius = 400.0
@@ -103,6 +104,12 @@ BodyColor = Color(0.45, 0.85, 0.5, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Sun/Verdant" unique_id=925553177]
 shape = SubResource("CircleShape2D_verdant")
+
+[node name="PlanetField" type="Node" parent="." unique_id=1873402215]
+script = ExtResource("15_planets")
+fixed_kinds = Dictionary[NodePath, int]({
+NodePath("../Sun/Verdant"): 4
+})
 
 [node name="OrbitLines" type="Node2D" parent="." unique_id=36507975]
 script = ExtResource("7_lines")

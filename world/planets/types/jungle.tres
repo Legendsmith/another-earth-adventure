@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="PlanetType" format=3]
+
+[ext_resource type="Script" uid="uid://dgf1acpargmbo" path="res://world/planets/planet_type.gd" id="1_36vjo"]
+
+[sub_resource type="Gradient" id="Gradient_mqyhe"]
+offsets = PackedFloat32Array(0, 0.3, 0.36, 0.6, 1)
+colors = PackedColorArray(0.07058824, 0.23529412, 0.41960785, 1, 0.16470589, 0.43529412, 0.61960787, 1, 0.24705882, 0.49019608, 0.16470589, 1, 0.12156863, 0.3529412, 0.10980392, 1, 0.050980393, 0.20784314, 0.0627451, 1)
+
+[resource]
+script = ExtResource("1_36vjo")
+kind = 4
+display_name = "Jungle"
+color_ramp = SubResource("Gradient_mqyhe")
+crew_weight = 4.0
+item_weight = 2.0
+resource_weight = 4.0
+item_pool = Array[StringName]([&"medicinal_herbs", &"seed_bank"])
+resource_pool = Array[StringName]([&"organics", &"biomass"])

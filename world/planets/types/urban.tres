@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="PlanetType" format=3]
+
+[ext_resource type="Script" uid="uid://dgf1acpargmbo" path="res://world/planets/planet_type.gd" id="1_m7wp7"]
+
+[sub_resource type="Gradient" id="Gradient_f18mq"]
+offsets = PackedFloat32Array(0, 0.45, 0.55, 0.75, 1)
+colors = PackedColorArray(0.105882354, 0.12156863, 0.16470589, 1, 0.22745098, 0.25490198, 0.3137255, 1, 0.41960785, 0.43529412, 0.47843137, 1, 0.7882353, 0.7058824, 0.34509805, 1, 0.9490196, 0.90588236, 0.627451, 1)
+
+[resource]
+script = ExtResource("1_m7wp7")
+display_name = "Urban"
+color_ramp = SubResource("Gradient_f18mq")
+crew_weight = 6.0
+item_weight = 3.0
+item_pool = Array[StringName]([&"medkit", &"data_core", &"ship_part"])
+resource_pool = Array[StringName]([&"alloys"])

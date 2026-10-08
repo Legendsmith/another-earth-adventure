@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="PlanetType" format=3]
+
+[ext_resource type="Script" uid="uid://dgf1acpargmbo" path="res://world/planets/planet_type.gd" id="1_3vb14"]
+
+[sub_resource type="Gradient" id="Gradient_7k4wu"]
+offsets = PackedFloat32Array(0, 0.4, 0.6, 1)
+colors = PackedColorArray(0.3529412, 0.49803922, 0.65882355, 1, 0.6627451, 0.79607844, 0.9098039, 1, 0.9019608, 0.9490196, 0.9843137, 1, 1, 1, 1, 1)
+
+[resource]
+script = ExtResource("1_3vb14")
+kind = 3
+display_name = "Frozen"
+color_ramp = SubResource("Gradient_7k4wu")
+crew_weight = 2.0
+item_weight = 4.0
+resource_weight = 4.0
+item_pool = Array[StringName]([&"cryo_pod", &"frozen_relic"])
+resource_pool = Array[StringName]([&"ice", &"deuterium"])
