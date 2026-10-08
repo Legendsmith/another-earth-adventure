@@ -1,0 +1,85 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://ui/crew_manifest/crew_manifest.gd" id="1_crew"]
+
+[node name="CrewManifest" type="PanelContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_crew")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="VBox" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Title" type="Label" parent="Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 24
+text = "Crew Manifest"
+
+[node name="ChannelRow" type="HBoxContainer" parent="Margin/VBox"]
+layout_mode = 2
+
+[node name="ChannelEdit" type="LineEdit" parent="Margin/VBox/ChannelRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Twitch channel"
+
+[node name="ConnectButton" type="Button" parent="Margin/VBox/ChannelRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Connect"
+
+[node name="StatusLabel" type="Label" parent="Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Not connected"
+
+[node name="Scroll" type="ScrollContainer" parent="Margin/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="Lists" type="VBoxContainer" parent="Margin/VBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="CrewHeader" type="Label" parent="Margin/VBox/Scroll/Lists"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Crew"
+
+[node name="CrewList" type="VBoxContainer" parent="Margin/VBox/Scroll/Lists"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="WaitingHeader" type="Label" parent="Margin/VBox/Scroll/Lists"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Waiting for a slot"
+
+[node name="WaitingList" type="VBoxContainer" parent="Margin/VBox/Scroll/Lists"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="ColdHeader" type="Label" parent="Margin/VBox/Scroll/Lists"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Cold storage"
+
+[node name="ColdList" type="VBoxContainer" parent="Margin/VBox/Scroll/Lists"]
+unique_name_in_owner = true
+layout_mode = 2
