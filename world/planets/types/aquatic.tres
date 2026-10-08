@@ -1,4 +1,4 @@
-[gd_resource type="Resource" script_class="PlanetType" format=3]
+[gd_resource type="Resource" script_class="PlanetType" format=3 uid="uid://bi1jenyi0gfy3"]
 
 [ext_resource type="Script" uid="uid://dgf1acpargmbo" path="res://world/planets/planet_type.gd" id="1_aqeqv"]
 

@@ -8,36 +8,36 @@
 [ext_resource type="Script" uid="uid://divt07ot7ctim" path="res://scripts/space/trajectory_renderer.gd" id="6_render"]
 [ext_resource type="Script" uid="uid://boiygsxlif6k4" path="res://scripts/space/orbit_lines.gd" id="7_lines"]
 [ext_resource type="Script" uid="uid://dkx8rcv7a3rr5" path="res://scripts/space/space_camera.gd" id="8_camera"]
-[ext_resource type="PackedScene" uid="uid://rq64g89wk12at" path="res://ui/ship_console/ship_console.tscn" id="9_console"]
+[ext_resource type="PackedScene" uid="uid://cbkm31lwb8j8r" path="res://ui/ship_console/ship_console.tscn" id="9_console"]
 [ext_resource type="Script" uid="uid://cp17a81w3w84m" path="res://scripts/space/maneuver_planner.gd" id="10_maneuvers"]
 [ext_resource type="Script" uid="uid://bw7sowcws345m" path="res://scripts/space/maneuver_editor.gd" id="11_editor"]
 [ext_resource type="Script" uid="uid://b5qc5pemwhy5t" path="res://scripts/space/navigation_computer.gd" id="12_navcomp"]
 [ext_resource type="Resource" path="res://data/engines/fusion_drive.tres" id="13_fusion"]
 [ext_resource type="Resource" path="res://data/engines/cold_gas_thrusters.tres" id="14_cold_gas"]
 [ext_resource type="Script" uid="uid://b1m8bchjbxn2j" path="res://scripts/space/combat/combat_hull.gd" id="15_hull"]
+[ext_resource type="Script" uid="uid://6hpawdmp6mdg" path="res://world/planets/planet_field.gd" id="15_planets"]
 [ext_resource type="Script" uid="uid://4l7rh470ahb5" path="res://scripts/space/combat/torpedo_launcher.gd" id="16_launcher"]
 [ext_resource type="Script" uid="uid://nvvg48482mps" path="res://scripts/space/combat/player_weapons.gd" id="17_player_weapons"]
 [ext_resource type="Script" uid="uid://ykrk8agmh17y" path="res://scripts/space/combat/space_combat_manager.gd" id="18_combat_manager"]
-[ext_resource type="Script" uid="uid://bmzbxfjk96mxu" path="res://scripts/space/combat/combat_hud.gd" id="19_combat_hud"]
-[ext_resource type="Script" uid="uid://byz7c171f28m9" path="res://scripts/space/combat/space_battlefield.gd" id="20_battlefield"]
+[ext_resource type="Script" uid="uid://bm0bxfjla6mxu" path="res://scripts/space/combat/combat_hud.gd" id="19_combat_hud"]
+[ext_resource type="Script" uid="uid://by07c171f28na" path="res://scripts/space/combat/space_battlefield.gd" id="20_battlefield"]
 [ext_resource type="Script" uid="uid://5yu4xlegvbdy" path="res://data/ship_component.gd" id="21_component"]
 [ext_resource type="Resource" path="res://data/armor/composite.tres" id="22_composite"]
 [ext_resource type="Resource" path="res://data/armor/steel_plate.tres" id="23_steel"]
-[ext_resource type="PackedScene" path="res://entities/space/combat/gunship.tscn" id="24_gunship"]
-[ext_resource type="PackedScene" path="res://entities/space/combat/asteroid_emplacement.tscn" id="25_emplacement"]
+[ext_resource type="PackedScene" uid="uid://pjji07tpc8rd" path="res://entities/space/combat/gunship.tscn" id="24_gunship"]
+[ext_resource type="PackedScene" uid="uid://bxx827wbea5hr" path="res://entities/space/combat/asteroid_emplacement.tscn" id="25_emplacement"]
 [ext_resource type="Resource" path="res://data/components/bridge.tres" id="26_c1_bridge"]
 [ext_resource type="Resource" path="res://data/components/crew_quarters.tres" id="26_c2_crew_quarters"]
 [ext_resource type="Resource" path="res://data/components/fuel_tank.tres" id="26_c3_fuel_tank"]
 [ext_resource type="Resource" path="res://data/components/main_engine.tres" id="26_c4_main_engine"]
-[ext_resource type="Resource" path="res://data/components/thrusters.tres" id="26_c5_thrusters"]
+[ext_resource type="Resource" uid="uid://tx3gcc8pkuo7" path="res://data/components/thrusters.tres" id="26_c5_thrusters"]
 [ext_resource type="Resource" path="res://data/components/sensors.tres" id="26_c6_sensors"]
 [ext_resource type="Resource" path="res://data/components/torpedo_tubes.tres" id="26_c7_torpedo_tubes"]
 [ext_resource type="Resource" path="res://data/components/torpedo_magazine.tres" id="26_c8_torpedo_magazine"]
 [ext_resource type="Resource" path="res://data/components/structure.tres" id="26_c9_structure"]
-[ext_resource type="Script" uid="uid://6hpawdmp6mdg" path="res://world/planets/planet_field.gd" id="15_planets"]
-[ext_resource type="Script" uid="uid://xjv7l0p9hpv1u" path="res://scripts/space/sensors/sensor_suite.gd" id="27_sensors"]
-[ext_resource type="Script" uid="uid://g2ipsy22uc3fr" path="res://scripts/space/sensors/sensor_network.gd" id="28_network"]
-[ext_resource type="Script" uid="uid://azlue586uclve" path="res://scripts/space/sensors/sensor_overlay.gd" id="29_overlay"]
+[ext_resource type="Script" uid="uid://dgy2n7q3inia" path="res://scripts/space/sensors/sensor_suite.gd" id="27_sensors"]
+[ext_resource type="Script" uid="uid://c63t7w5ta47n0" path="res://scripts/space/sensors/sensor_network.gd" id="28_network"]
+[ext_resource type="Script" uid="uid://0lue586uclve" path="res://scripts/space/sensors/sensor_overlay.gd" id="29_overlay"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_sun"]
 radius = 400.0
@@ -78,6 +78,12 @@ BodyColor = Color(0.4, 0.65, 1, 1)
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Sun/Ferra" unique_id=552878770]
 shape = SubResource("CircleShape2D_ferra")
 
+[node name="OldBattlefield" type="Node2D" parent="Sun/Ferra" unique_id=696758894]
+position = Vector2(750, 450)
+script = ExtResource("20_battlefield")
+display_name = "Ferra battlefield"
+derelict_armor = ExtResource("23_steel")
+
 [node name="Dusk" type="AnimatableBody2D" parent="Sun" unique_id=1329069847]
 position = Vector2(-7778.17, 7778.17)
 script = ExtResource("2_body")
@@ -97,6 +103,9 @@ BodyColor = Color(0.8, 0.8, 0.8, 1)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Sun/Dusk/Pale" unique_id=1912690603]
 shape = SubResource("CircleShape2D_pale")
+
+[node name="AsteroidEmplacement" parent="Sun/Dusk" unique_id=1700170262 instance=ExtResource("25_emplacement")]
+position = Vector2(-500, -450)
 
 [node name="Verdant" type="AnimatableBody2D" parent="Sun" unique_id=905225054]
 position = Vector2(9000, 15588.46)
@@ -142,20 +151,20 @@ armor = ExtResource("22_composite")
 armor_mass = 1.2
 components = Array[ExtResource("21_component")]([ExtResource("26_c1_bridge"), ExtResource("26_c2_crew_quarters"), ExtResource("26_c3_fuel_tank"), ExtResource("26_c4_main_engine"), ExtResource("26_c5_thrusters"), ExtResource("26_c6_sensors"), ExtResource("26_c7_torpedo_tubes"), ExtResource("26_c8_torpedo_magazine"), ExtResource("26_c9_structure")])
 
+[node name="TorpedoLauncher" type="Node2D" parent="PlayerShip/CombatHull" unique_id=916874021]
+script = ExtResource("16_launcher")
+magazine = 6
+reload_time = 8.0
+auto_fire = false
+component_name = "Torpedo Tubes"
+
+[node name="PlayerWeapons" type="Node" parent="PlayerShip/CombatHull" unique_id=1826338961]
+script = ExtResource("17_player_weapons")
+
 [node name="SensorSuite" type="Node" parent="PlayerShip" unique_id=516930293]
 script = ExtResource("27_sensors")
 display_name = "Your ship"
 classification = "Survey ship"
-
-[node name="TorpedoLauncher" type="Node2D" parent="PlayerShip/CombatHull" unique_id=916874021]
-script = ExtResource("16_launcher")
-auto_fire = false
-component_name = "Torpedo Tubes"
-magazine = 6
-reload_time = 8.0
-
-[node name="PlayerWeapons" type="Node" parent="PlayerShip/CombatHull" unique_id=1826338961]
-script = ExtResource("17_player_weapons")
 
 [node name="FreighterToVerdant" parent="." unique_id=589077253 instance=ExtResource("3_ship")]
 position = Vector2(6000, 320)
@@ -205,15 +214,6 @@ planner = NodePath("../PlayerShip/Maneuvers")
 zoom = Vector2(0.5, 0.5)
 script = ExtResource("8_camera")
 target = NodePath("../PlayerShip")
-
-[node name="OldBattlefield" type="Node2D" parent="Sun/Ferra" unique_id=696758894]
-position = Vector2(750, 450)
-script = ExtResource("20_battlefield")
-display_name = "Ferra battlefield"
-derelict_armor = ExtResource("23_steel")
-
-[node name="AsteroidEmplacement" parent="Sun/Dusk" unique_id=1700170262 instance=ExtResource("25_emplacement")]
-position = Vector2(-500, -450)
 
 [node name="Gunship" parent="." unique_id=1130152865 instance=ExtResource("24_gunship")]
 position = Vector2(-7778.17, 7378.17)
