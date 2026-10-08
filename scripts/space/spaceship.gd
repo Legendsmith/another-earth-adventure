@@ -72,6 +72,9 @@ var throttle: float = 0.0
 var steer: float = 0.0
 ## Engines used by the manual throttle.
 var manual_drive: Drive = Drive.MAIN
+## Engines knocked out by combat damage (CombatHull) produce no thrust.
+var main_engine_online := true
+var thrusters_online := true
 
 var orbital_system: Node
 
@@ -183,13 +186,16 @@ func _physics_process(delta: float) -> void:
 
 #region Engine
 
-## Mass without fuel: hull plus installed engines.
+## Mass without fuel: hull plus installed engines and combat armor.
 func get_dry_mass() -> float:
 	var total := dry_mass
 	if main_engine:
 		total += main_engine.mass
 	if thrusters:
 		total += thrusters.mass
+	for child in get_children():
+		if child is CombatHull:
+			total += child.armor_mass
 	return total
 
 
@@ -200,15 +206,17 @@ func _update_mass() -> void:
 
 ## Engines that fire for `drive` (falls back to whichever engine is installed).
 func get_drive_engines(drive: Drive) -> Array[EngineDefinition]:
+	var main: EngineDefinition = main_engine if main_engine_online else null
+	var secondary: EngineDefinition = thrusters if thrusters_online else null
 	var engines: Array[EngineDefinition] = []
 	match drive:
 		Drive.MAIN:
-			engines.append(main_engine if main_engine else thrusters)
+			engines.append(main if main else secondary)
 		Drive.THRUSTERS:
-			engines.append(thrusters if thrusters else main_engine)
+			engines.append(secondary if secondary else main)
 		Drive.BOTH:
-			engines.append(main_engine)
-			engines.append(thrusters)
+			engines.append(main)
+			engines.append(secondary)
 	return engines.filter(func(e: EngineDefinition) -> bool: return e != null)
 
 
@@ -264,7 +272,7 @@ func burn_duration_for(start_mass: float, delta_v: float, drive: Drive) -> float
 
 ## Thruster torque available for turning.
 func get_turn_torque() -> float:
-	return thrusters.turn_torque if thrusters else 0.0
+	return thrusters.turn_torque if thrusters and thrusters_online else 0.0
 
 
 ## Angular acceleration the thrusters can give the ship (rad/s^2).
@@ -289,13 +297,13 @@ func get_turn_time(direction: Vector2) -> float:
 
 ## Starts an automatic burn: turns to the remaining delta-v vector and thrusts until it is used up.
 ## A `translate` burn pushes along the delta-v vector without turning (thrusters only).
-func execute_burn(delta_v: Vector2, drive: Drive = Drive.MAIN, translate: bool = false) -> void:
+func execute_burn(delta_v: Vector2, drive: Drive = Drive.MAIN, translate_burn: bool = false) -> void:
 	unpark()
 	_burning = true
 	_burn_remaining = delta_v
 	_burn_achieved = Vector2.ZERO
 	_burn_drive = drive
-	_burn_translate = translate
+	_burn_translate = translate_burn
 	burn_started.emit(delta_v)
 
 
@@ -369,6 +377,24 @@ func _consume_fuel(force: float, exhaust_velocity: float, delta: float) -> float
 	if _burning:
 		_finish_burn()
 	return force
+
+
+## Engine emissions for combat sensors: every online engine idles at its active signature and rises toward its
+## maximum signature with the thrust it is giving.
+func get_sensor_signature() -> float:
+	var signature := 0.0
+	var firing: Array = get_drive_engines(_current_drive) if _current_thrust > 0.0 else []
+	var output := _current_thrust / maxf(get_drive_thrust(_current_drive), 1e-6)
+	for engine: EngineDefinition in [main_engine if main_engine_online else null, thrusters if thrusters_online else null]:
+		if engine == null:
+			continue
+		signature += engine.active_sensor_signature
+		if engine in firing:
+			signature += (engine.max_sensor_signature - engine.active_sensor_signature) * clampf(output, 0.0, 1.0)
+	if _current_torque != 0.0 and thrusters and thrusters_online and not (thrusters in firing):
+		signature += (thrusters.max_sensor_signature - thrusters.active_sensor_signature) \
+			* clampf(absf(_current_torque) / maxf(get_turn_torque(), 1e-6), 0.0, 1.0)
+	return signature
 
 #endregion
 
