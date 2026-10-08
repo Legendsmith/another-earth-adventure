@@ -207,6 +207,8 @@ func _is_close_passive(at: Vector2, signature: float) -> bool:
 
 
 static func _faction_of(target: Object) -> StringName:
+	if not is_instance_valid(target):
+		return &""
 	if target is SensorSuite:
 		return (target as SensorSuite).get_faction()
 	if target is Munition:

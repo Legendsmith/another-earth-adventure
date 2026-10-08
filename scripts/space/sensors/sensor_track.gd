@@ -45,7 +45,8 @@ func has_target() -> bool:
 
 ## The tracked suite's CombatHull, if it has one.
 func get_hull() -> CombatHull:
-	if target is SensorSuite and is_instance_valid(target):
+	# Check validity first: `is` on a freed object (a ghost whose contact was destroyed) is an error.
+	if is_instance_valid(target) and target is SensorSuite:
 		return (target as SensorSuite).get_hull()
 	return null
 
