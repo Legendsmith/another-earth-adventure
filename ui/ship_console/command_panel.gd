@@ -105,7 +105,7 @@ static func _planet_name(planet: Planet) -> String:
 func _rebuild_crew() -> void:
 	for child in _crew_list.get_children():
 		child.queue_free()
-	var crew := Crew.get_crew()
+	var crew: Array[CrewMember] = Crew.get_crew()
 	_crew_title.text = "Crew %d/%d   (%d waiting)" % [crew.size(), Crew.slots.size(), Crew.get_waiting().size()]
 	if crew.is_empty():
 		var empty := Label.new()

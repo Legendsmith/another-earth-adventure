@@ -30,10 +30,10 @@ script = ExtResource("1_console")
 
 [node name="Panel" type="PanelContainer" parent="."]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(460, 0)
+custom_minimum_size = Vector2(380, 0)
 offset_left = 16.0
 offset_top = 16.0
-offset_right = 476.0
+offset_right = 396.0
 offset_bottom = 56.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
 
