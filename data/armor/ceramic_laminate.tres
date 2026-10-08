@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="ArmorDefinition" format=3]
+
+[ext_resource type="Script" uid="uid://bvjl4ifhjtkx" path="res://data/armor_definition.gd" id="1_armor"]
+
+[resource]
+script = ExtResource("1_armor")
+name = "Ceramic Laminate"
+box_mass = 0.025
+color = Color(0.85, 0.82, 0.7, 1)

@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="ShipComponent" format=3]
+
+[ext_resource type="Script" uid="uid://5yu4xlegvbdy" path="res://data/ship_component.gd" id="1_component"]
+
+[resource]
+script = ExtResource("1_component")
+name = "Main Engine"
+kind = 1
+size = 3.0
+hit_to_kill = 2

@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="ArmorDefinition" format=3]
+
+[ext_resource type="Script" uid="uid://bvjl4ifhjtkx" path="res://data/armor_definition.gd" id="1_armor"]
+
+[resource]
+script = ExtResource("1_armor")
+name = "Asteroid Rock"
+box_mass = 0.25
+color = Color(0.5, 0.45, 0.4, 1)
