@@ -297,13 +297,13 @@ func get_turn_time(direction: Vector2) -> float:
 
 ## Starts an automatic burn: turns to the remaining delta-v vector and thrusts until it is used up.
 ## A `translate` burn pushes along the delta-v vector without turning (thrusters only).
-func execute_burn(delta_v: Vector2, drive: Drive = Drive.MAIN, translate: bool = false) -> void:
+func execute_burn(delta_v: Vector2, drive: Drive = Drive.MAIN, translate_burn: bool = false) -> void:
 	unpark()
 	_burning = true
 	_burn_remaining = delta_v
 	_burn_achieved = Vector2.ZERO
 	_burn_drive = drive
-	_burn_translate = translate
+	_burn_translate = translate_burn
 	burn_started.emit(delta_v)
 
 
