@@ -7,7 +7,7 @@ extends Munition
 ## Seconds after launch at which the canister bursts.
 var burst_time: float = 1.0
 var fragment_count: int = 24
-## Damage of each fragment (kinetic: all of it into one armor column).
+## Damage of each fragment (kinetic: a wedge-shaped crater).
 var fragment_damage: int = 2
 ## Sideways speed range of the fragments (px/s): with the burst distance it sets the width of the pattern.
 var spread_speed: float = 300.0
@@ -52,7 +52,7 @@ func _physics_process(delta: float) -> void:
 			var relative := hull.get_world_position() - _positions[i]
 			var relative_velocity := hull.get_world_velocity() - _velocities[i]
 			if closest_approach(relative, relative_velocity, delta) <= hull.hit_radius:
-				hull.take_hit(fragment_damage, 0)
+				hull.take_hit(fragment_damage, ArmorGrid.DamageProfile.KINETIC)
 				_alive[i] = false
 				break
 		_positions[i] += _velocities[i] * delta

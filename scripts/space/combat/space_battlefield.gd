@@ -51,7 +51,7 @@ func _physics_process(delta: float) -> void:
 		var speed := (hull.get_world_velocity() - _velocity).length()
 		var strikes := debris_density * speed * hull.hit_radius * 2.0 * delta
 		if _rng.randf() < strikes:
-			hull.take_hit(1 + floori(speed / damage_speed), 0)
+			hull.take_hit(1 + floori(speed / damage_speed), ArmorGrid.DamageProfile.KINETIC)
 
 
 ## Field velocity (the body it is attached to): ships matching it are safe from debris.

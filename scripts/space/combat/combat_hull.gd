@@ -203,13 +203,13 @@ func has_railgun() -> bool:
 
 #region Damage
 
-## A hit of `damage` points on a random armor column. `spread` 0 = kinetic (deep and narrow), larger = blast (wide and
-## shallow). Returns the points that penetrated the armor.
-func take_hit(damage: int, spread: int = 0) -> int:
+## A hit of `damage` points on a random armor column, cratering it in the shape of `profile`. Returns the points
+## that penetrated the armor.
+func take_hit(damage: int, profile: ArmorGrid.DamageProfile = ArmorGrid.DamageProfile.KINETIC) -> int:
 	if is_destroyed or damage <= 0:
 		return 0
 	_flash = 0.3
-	var penetrating := grid.apply_hit(damage, spread, rng)
+	var penetrating := grid.apply_hit(damage, profile, rng)
 	hit_taken.emit(damage, penetrating)
 	if penetrating > 0:
 		apply_internal_damage(penetrating)

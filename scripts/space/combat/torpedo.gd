@@ -27,9 +27,8 @@ var engagement_range: float = 1200.0
 ## Cold-gas correction acceleration while coasting (px/s^2) and its delta-v budget (px/s).
 var correction_accel: float = 2.0
 var correction_delta_v: float = 40.0
-## Warhead: damage points and crater spread on the armor grid.
+## Warhead damage points: an explosive, wide and shallow crater on the armor grid.
 var damage: int = 16
-var spread: int = 3
 ## Detonation distance beyond the target's hit radius (px).
 var fuse_radius: float = 4.0
 var signature_cold: float = 0.05
@@ -124,7 +123,7 @@ func get_signature() -> float:
 
 func _detonate() -> void:
 	if has_valid_target():
-		target.take_hit(damage, spread)
+		target.take_hit(damage, ArmorGrid.DamageProfile.EXPLOSIVE)
 	spawn_explosion(14.0)
 	queue_free()
 
