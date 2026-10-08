@@ -10,7 +10,7 @@ extends RefCounted
 enum DamageProfile {
 	## Penetrators: a wedge as deep as it is wide (16 damage = 1,2,3,4,3,2,1).
 	KINETIC,
-	## Warheads: a wide, shallow crater two boxes deep (16 damage = 2,2,2,2,2,2,2,2).
+	## Warheads: a wide, shallow crater two boxes deep (16 damage = 1,2,2,2,2,2,2,2,1).
 	EXPLOSIVE,
 }
 
@@ -49,17 +49,28 @@ func apply_hit(damage: int, profile: DamageProfile, rng: RandomNumberGenerator, 
 
 
 ## Points per column of a `damage`-point crater, left to right, centred on the struck column.
+@warning_ignore("integer_division")
 static func crater(damage: int, profile: DamageProfile) -> PackedInt32Array:
 	var shape := PackedInt32Array()
 	if damage <= 0:
 		return shape
 	match profile:
 		DamageProfile.EXPLOSIVE:
-			var width := ceili(float(damage) / EXPLOSIVE_DEPTH)
-			shape.resize(width)
-			shape.fill(EXPLOSIVE_DEPTH)
-			# An odd remainder makes one edge column a box shallower.
-			shape[width - 1] = damage - EXPLOSIVE_DEPTH * (width - 1)
+			# Columns EXPLOSIVE_DEPTH deep, kept an odd width so the crater is centred: when an odd count of full
+			# columns does not fit, the edges taper to one box. An odd damage point deepens the centre.
+			var full := damage / EXPLOSIVE_DEPTH
+			if full == 0:
+				shape.append(damage)
+				return shape
+			if full % 2 == 1:
+				shape.resize(full)
+				shape.fill(EXPLOSIVE_DEPTH)
+			else:
+				shape.resize(full + 1)
+				shape.fill(EXPLOSIVE_DEPTH)
+				shape[0] = EXPLOSIVE_DEPTH / 2
+				shape[full] = EXPLOSIVE_DEPTH / 2
+			shape[shape.size() / 2] += damage % EXPLOSIVE_DEPTH
 		_:
 			# Wedge of height h holds h * h points: 1, 2 .. h .. 2, 1.
 			var height := ceili(sqrt(float(damage)))
