@@ -5,6 +5,8 @@ extends Node2D
 
 signal rewards_collected(planet:Planet, rewards:PlanetRewards)
 
+const GROUP:StringName = &"planets"
+
 const COLLECT_HINT:String = "E: Collect"
 const COLLECTED_HINT:String = "Collected"
 
@@ -32,6 +34,7 @@ func setup(planet_data:PlanetData, generator:PlanetGenerator, orbit_radius:float
 
 
 func _ready() -> void:
+	add_to_group(GROUP)
 	surface.texture = surface_texture
 	body.draw.connect(_draw_mask)
 	body.queue_redraw()

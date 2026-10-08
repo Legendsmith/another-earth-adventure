@@ -4,7 +4,7 @@ extends CanvasLayer
 ## railgun threats and warnings.
 
 const WIDTH := 430.0
-const HELP := "T next contact   F torpedo   R railgun"
+const HELP := "T next contact   F torpedo   R railgun   V active sensors"
 const SEVERITY_COLORS := ["#cfe8ff", "#ffd27a", "#ff6b5e"]
 
 var _box: VBoxContainer
@@ -89,8 +89,20 @@ func _target_line(manager: SpaceCombatManager, hull: CombatHull, origin: Vector2
 		return "Target: none (%d hostile contact%s)" % [count, "" if count == 1 else "s"]
 	var relative := target.get_world_position() - origin
 	var closing := -relative.dot(target.get_world_velocity() - hull.get_world_velocity()) / maxf(relative.length(), 1e-6)
-	return "Target: [b]%s[/b]  %d px  closing %.0f px/s  armor %d%%" % [target.display_name, roundi(relative.length()),
-		closing, roundi(target.grid.get_integrity() * 100.0)]
+	var line := "Target: [b]%s[/b]  %d px  closing %.0f px/s" % [_contact_name(target), roundi(relative.length()), closing]
+	var network := SensorNetwork.find(get_tree())
+	if network and network.get_lock(manager.player_faction, target.get_sensor_suite()) == SensorTrack.Lock.ACTIVE:
+		line += "  armor %d%%" % roundi(target.grid.get_integrity() * 100.0)
+	return line
+
+
+## The contact's sensor designation, plus its name once identified.
+func _contact_name(target: CombatHull) -> String:
+	var network := SensorNetwork.find(get_tree())
+	var track: SensorTrack = network.get_track_for(target.get_sensor_suite()) if network else null
+	if track == null:
+		return target.display_name
+	return "%s %s" % [track.designation, track.get_display_name()]
 
 
 func _threat_lines(manager: SpaceCombatManager, origin: Vector2) -> PackedStringArray:

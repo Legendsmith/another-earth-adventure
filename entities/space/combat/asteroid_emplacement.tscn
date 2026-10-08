@@ -13,6 +13,7 @@
 [ext_resource type="Resource" path="res://data/components/torpedo_tubes.tres" id="c4_torpedo_tubes"]
 [ext_resource type="Resource" path="res://data/components/torpedo_magazine.tres" id="c5_torpedo_magazine"]
 [ext_resource type="Resource" path="res://data/components/sensors.tres" id="c6_sensors"]
+[ext_resource type="Script" uid="uid://xjv7l0p9hpv1u" path="res://scripts/space/sensors/sensor_suite.gd" id="8_sensors"]
 
 [node name="AsteroidEmplacement" type="Node2D"]
 script = ExtResource("1_rock")
@@ -27,8 +28,6 @@ armor_mass = 40.0
 armor_columns = 20
 components = Array[ExtResource("6_component")]([ExtResource("c1_rock_core"), ExtResource("c2_reactor"), ExtResource("c3_railgun"), ExtResource("c4_torpedo_tubes"), ExtResource("c5_torpedo_magazine"), ExtResource("c6_sensors")])
 hit_radius = 30.0
-base_signature = 0.3
-sensor_strength = 700.0
 
 [node name="Railgun" type="Node2D" parent="CombatHull"]
 script = ExtResource("3_railgun")
@@ -42,3 +41,12 @@ reload_time = 25.0
 
 [node name="CombatAI" type="Node" parent="CombatHull"]
 script = ExtResource("5_ai")
+
+[node name="SensorSuite" type="Node" parent="."]
+script = ExtResource("8_sensors")
+display_name = "Asteroid emplacement"
+classification = "Weapons emplacement"
+passive_strength = 700.0
+base_signature = 0.3
+active_strength = 1800.0
+cross_section = 3.0

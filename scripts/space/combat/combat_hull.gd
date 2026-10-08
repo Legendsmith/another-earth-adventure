@@ -1,7 +1,8 @@
 class_name CombatHull
 extends Node2D
-## Makes its parent (a Spaceship, an asteroid emplacement or any Node2D) a combatant: armor, internal components,
-## sensors and a sensor signature. Weapon mounts are children of the hull.
+## Makes its parent (a Spaceship, an asteroid emplacement or any Node2D) a combatant: armor and internal components.
+## Weapon mounts are children of the hull. Sensors and the sensor signature live in a SensorSuite on the same parent;
+## the hull gives it its faction, adds weapon flashes to its signature and degrades it as sensor components are lost.
 ##
 ## Damage follows Aurora 4X: hits strike a random column of the ArmorGrid and dig down through its layers; damage
 ## that gets through hits random internal components (weighted by size) and wears down the hull's structure.
@@ -40,13 +41,9 @@ const EMISSION_DECAY := 4.0
 ## Internal damage the hull can take before it breaks up. 0 = the total size of its components, rounded up.
 @export var structure: int = 0
 
-@export_category("Sensors")
+@export_category("Profile")
 ## Radius (px) within which munitions and fragments hit the hull.
 @export var hit_radius: float = 6.0
-## Signature of the hull itself (reactor heat, lights, comms). Engines and weapon fire add to it.
-@export var base_signature: float = 1.0
-## Passive sensor strength: a contact of signature S is detected within sensor_strength * sqrt(S) px.
-@export var sensor_strength: float = 400.0
 
 var grid: ArmorGrid
 var host: Node2D
@@ -119,21 +116,20 @@ static func factions_hostile(a: StringName, b: StringName) -> bool:
 	return a != &"" and b != &"" and a != b
 
 
-## Sensor signature: hull emissions, engines (idle or burning) and recent weapon fire.
+## The SensorSuite on the same host (null if it has none: then it can neither see nor be seen).
+func get_sensor_suite() -> SensorSuite:
+	return SensorSuite.find_on(host)
+
+
+## Sensor signature of the whole host (see SensorSuite.get_signature).
 func get_signature() -> float:
-	var signature := base_signature + _emission
-	if host and host.has_method(&"get_sensor_signature"):
-		signature += host.get_sensor_signature()
-	return signature
+	var suite := get_sensor_suite()
+	return suite.get_signature() if suite else _emission
 
 
-## Effective sensor strength after sensor damage (a hull with every sensor destroyed keeps 20%).
-func get_sensor_strength() -> float:
-	return sensor_strength * maxf(get_operational_fraction(ShipComponent.Kind.SENSORS), 0.2)
-
-
-func detection_range_for(signature: float) -> float:
-	return get_sensor_strength() * sqrt(maxf(signature, 0.0))
+## Signature bloom from recent weapon fire.
+func get_emission() -> float:
+	return _emission
 
 
 ## Electrical power available to weapons: operational reactors plus any power-generating engines.
