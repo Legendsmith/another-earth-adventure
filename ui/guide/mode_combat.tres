@@ -9,11 +9,15 @@
 [ext_resource type="Resource" uid="uid://dwlduemd3rdiy" path="res://ui/guide/combat_select.tres" id="7_3sg6b"]
 [ext_resource type="Script" uid="uid://vgjlx6p007lp" path="res://addons/guide/inputs/guide_input_mouse_button.gd" id="8_6ycqc"]
 [ext_resource type="Resource" uid="uid://cg6dexyywtj4m" path="res://ui/guide/combat_fire.tres" id="9_3kttf"]
+[ext_resource type="Script" uid="uid://b52rqq28tuqpg" path="res://addons/guide/triggers/guide_trigger_pressed.gd" id="9_3sg6b"]
 [ext_resource type="Resource" uid="uid://c7uyl75acbile" path="res://ui/guide/combat_select_weapon_1.tres" id="10_koh3b"]
 [ext_resource type="Resource" uid="uid://d25lwti1mrka0" path="res://ui/guide/combat_select_weapon_2.tres" id="11_nli6o"]
 [ext_resource type="Resource" uid="uid://cakgnyickafmu" path="res://ui/guide/combat_select_weapon_3.tres" id="12_0v7xv"]
 [ext_resource type="Script" uid="uid://dsa1dnifd6w32" path="res://addons/guide/guide_mapping_context.gd" id="13_0c7ya"]
 [ext_resource type="Resource" uid="uid://dlxm61ok7yip4" path="res://ui/guide/combat_move_to.tres" id="13_372gl"]
+[ext_resource type="Resource" uid="uid://xovwf7hqhv3w" path="res://ui/guide/combat_shift.tres" id="16_6ycqc"]
+[ext_resource type="Resource" uid="uid://bvoamnh6mmuk" path="res://ui/guide/combat_move_turn.tres" id="17_3kttf"]
+[ext_resource type="Script" uid="uid://brsxcrai2te83" path="res://addons/guide/triggers/guide_trigger_chorded_action.gd" id="18_koh3b"]
 [ext_resource type="Resource" uid="uid://bunilkqj8nlit" path="res://ui/guide/direct_control.tres" id="20_direct"]
 
 [sub_resource type="Resource" id="Resource_oqik3"]
@@ -29,6 +33,23 @@ script = ExtResource("1_gos76")
 action = ExtResource("2_372gl")
 input_mappings = Array[ExtResource("3_nxywj")]([SubResource("Resource_tdixi")])
 
+[sub_resource type="Resource" id="Resource_nli6o"]
+script = ExtResource("8_6ycqc")
+button = 2
+
+[sub_resource type="Resource" id="Resource_0v7xv"]
+script = ExtResource("9_3sg6b")
+
+[sub_resource type="Resource" id="Resource_0c7ya"]
+script = ExtResource("3_nxywj")
+input = SubResource("Resource_nli6o")
+triggers = Array[ExtResource("6_c7ekm")]([SubResource("Resource_0v7xv")])
+
+[sub_resource type="Resource" id="Resource_ryatb"]
+script = ExtResource("1_gos76")
+action = ExtResource("13_372gl")
+input_mappings = Array[ExtResource("3_nxywj")]([SubResource("Resource_0c7ya")])
+
 [sub_resource type="Resource" id="Resource_lqjbh"]
 script = ExtResource("8_6ycqc")
 
@@ -40,19 +61,6 @@ input = SubResource("Resource_lqjbh")
 script = ExtResource("1_gos76")
 action = ExtResource("7_3sg6b")
 input_mappings = Array[ExtResource("3_nxywj")]([SubResource("Resource_7bhml")])
-
-[sub_resource type="Resource" id="Resource_nxywj"]
-script = ExtResource("8_6ycqc")
-button = 2
-
-[sub_resource type="Resource" id="Resource_ea2hu"]
-script = ExtResource("3_nxywj")
-input = SubResource("Resource_nxywj")
-
-[sub_resource type="Resource" id="Resource_7cr8k"]
-script = ExtResource("1_gos76")
-action = ExtResource("13_372gl")
-input_mappings = Array[ExtResource("3_nxywj")]([SubResource("Resource_ea2hu")])
 
 [sub_resource type="Resource" id="Resource_6hfq3"]
 script = ExtResource("4_ea2hu")
@@ -120,8 +128,42 @@ script = ExtResource("1_gos76")
 action = ExtResource("20_direct")
 input_mappings = Array[ExtResource("3_nxywj")]([SubResource("Resource_dctrl_input")])
 
+[sub_resource type="Resource" id="Resource_giyio"]
+script = ExtResource("4_ea2hu")
+key = 4194325
+
+[sub_resource type="Resource" id="Resource_gejbw"]
+script = ExtResource("3_nxywj")
+input = SubResource("Resource_giyio")
+
+[sub_resource type="Resource" id="Resource_5t56r"]
+script = ExtResource("1_gos76")
+action = ExtResource("16_6ycqc")
+input_mappings = Array[ExtResource("3_nxywj")]([SubResource("Resource_gejbw")])
+
+[sub_resource type="Resource" id="Resource_nxywj"]
+script = ExtResource("8_6ycqc")
+button = 2
+
+[sub_resource type="Resource" id="Resource_2hygv"]
+script = ExtResource("18_koh3b")
+action = ExtResource("16_6ycqc")
+
+[sub_resource type="Resource" id="Resource_p24jg"]
+script = ExtResource("9_3sg6b")
+
+[sub_resource type="Resource" id="Resource_ea2hu"]
+script = ExtResource("3_nxywj")
+input = SubResource("Resource_nxywj")
+triggers = Array[ExtResource("6_c7ekm")]([SubResource("Resource_2hygv"), SubResource("Resource_p24jg")])
+
+[sub_resource type="Resource" id="Resource_7cr8k"]
+script = ExtResource("1_gos76")
+action = ExtResource("17_3kttf")
+input_mappings = Array[ExtResource("3_nxywj")]([SubResource("Resource_ea2hu")])
+
 [resource]
 script = ExtResource("13_0c7ya")
 display_name = "Combat Mode"
-mappings = Array[ExtResource("1_gos76")]([SubResource("Resource_pt107"), SubResource("Resource_16ymx"), SubResource("Resource_7cr8k"), SubResource("Resource_epbox"), SubResource("Resource_vbpwf"), SubResource("Resource_ecd57"), SubResource("Resource_dilbi"), SubResource("Resource_dctrl_action")])
+mappings = Array[ExtResource("1_gos76")]([SubResource("Resource_pt107"), SubResource("Resource_ryatb"), SubResource("Resource_16ymx"), SubResource("Resource_epbox"), SubResource("Resource_vbpwf"), SubResource("Resource_ecd57"), SubResource("Resource_dilbi"), SubResource("Resource_dctrl_action"), SubResource("Resource_5t56r"), SubResource("Resource_7cr8k")])
 metadata/_custom_type_script = "uid://dsa1dnifd6w32"
