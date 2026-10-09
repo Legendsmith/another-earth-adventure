@@ -7,147 +7,6 @@
 [ext_resource type="Script" uid="uid://dwfh3coemnrvb" path="res://ui/ship_console/navigation_panel.gd" id="5_q6ngc"]
 [ext_resource type="PackedScene" path="res://ui/crew_manifest/crew_manifest.tscn" id="8_fcca2"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_h2mfe"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(0.1, 0.1, 0.1, 0.3)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-corner_detail = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qo8ty"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(1, 1, 1, 0.75)
-draw_center = false
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-corner_detail = 5
-expand_margin_left = 2.0
-expand_margin_top = 2.0
-expand_margin_right = 2.0
-expand_margin_bottom = 2.0
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_x34p4"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(0.225, 0.225, 0.225, 0.6)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(1, 1, 1, 1)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-corner_detail = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1ilp2"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(0.1, 0.1, 0.1, 0.6)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-corner_detail = 5
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_lk4sm"]
-content_margin_left = 4.0
-content_margin_top = 4.0
-content_margin_right = 4.0
-content_margin_bottom = 4.0
-bg_color = Color(0, 0, 0, 0.6)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(1, 1, 1, 1)
-corner_radius_top_left = 3
-corner_radius_top_right = 3
-corner_radius_bottom_right = 3
-corner_radius_bottom_left = 3
-corner_detail = 5
-
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_5mdms"]
-
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_26vpt"]
-
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_h2mfe"]
-
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_qo8ty"]
-
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_x34p4"]
-
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_1ilp2"]
-
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_lk4sm"]
-
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_5ucd3"]
-
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_o55ln"]
-
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_vg6r2"]
-
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_q6ngc"]
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_26vpt"]
-content_margin_left = 8.0
-content_margin_top = 4.0
-content_margin_right = 8.0
-content_margin_bottom = 4.0
-bg_color = Color(0.04, 0.07, 0.11, 0.86)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.35, 0.6, 0.8, 0.5)
-
-[sub_resource type="Theme" id="Theme_5mdms"]
-Button/styles/disabled = SubResource("StyleBoxFlat_h2mfe")
-Button/styles/focus = SubResource("StyleBoxFlat_qo8ty")
-Button/styles/hover = SubResource("StyleBoxFlat_x34p4")
-Button/styles/normal = SubResource("StyleBoxFlat_1ilp2")
-Button/styles/pressed = SubResource("StyleBoxFlat_lk4sm")
-ClearButton/base_type = &"Button"
-ClearButton/styles/disabled = SubResource("StyleBoxEmpty_5mdms")
-ClearButton/styles/disabled_mirrored = SubResource("StyleBoxEmpty_26vpt")
-ClearButton/styles/focus = SubResource("StyleBoxEmpty_h2mfe")
-ClearButton/styles/hover = SubResource("StyleBoxEmpty_qo8ty")
-ClearButton/styles/hover_mirrored = SubResource("StyleBoxEmpty_x34p4")
-ClearButton/styles/hover_pressed = SubResource("StyleBoxEmpty_1ilp2")
-ClearButton/styles/hover_pressed_mirrored = SubResource("StyleBoxEmpty_lk4sm")
-ClearButton/styles/normal = SubResource("StyleBoxEmpty_5ucd3")
-ClearButton/styles/normal_mirrored = SubResource("StyleBoxEmpty_o55ln")
-ClearButton/styles/pressed = SubResource("StyleBoxEmpty_vg6r2")
-ClearButton/styles/pressed_mirrored = SubResource("StyleBoxEmpty_q6ngc")
-PanelContainer/styles/panel = SubResource("StyleBoxFlat_26vpt")
-
 [sub_resource type="ButtonGroup" id="ButtonGroup_26vpt"]
 
 [sub_resource type="StyleBoxLine" id="StyleBoxLine_5mdms"]
@@ -163,36 +22,28 @@ grow_begin = -1.0
 grow_end = -1.0
 vertical = true
 
-[node name="ShipHud" type="Control" unique_id=1126064967]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme = SubResource("Theme_5mdms")
+[node name="ShipHud" type="CanvasLayer" unique_id=414802575]
 
-[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=260250108]
-layout_mode = 1
+[node name="MainLayout" type="VBoxContainer" parent="." unique_id=260250108]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="MainContainer" type="SplitContainer" parent="VBoxContainer" unique_id=1327116789]
+[node name="SplitContainer" type="SplitContainer" parent="MainLayout" unique_id=1327116789]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 split_offsets = PackedInt32Array(0, 0)
 
-[node name="HudTabContainer" type="TabContainer" parent="VBoxContainer/MainContainer" unique_id=1504202597]
+[node name="HudTabContainer" type="TabContainer" parent="MainLayout/SplitContainer" unique_id=1504202597]
 unique_name_in_owner = true
 layout_mode = 2
 deselect_enabled = true
 script = ExtResource("1_5ucd3")
 
-[node name="NavigationPanel" type="VBoxContainer" parent="VBoxContainer/MainContainer/HudTabContainer" unique_id=102509228]
+[node name="NavigationPanel" type="VBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer" unique_id=102509228]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -200,66 +51,66 @@ theme_override_constants/separation = 8
 script = ExtResource("5_q6ngc")
 metadata/_tab_index = 0
 
-[node name="Readout" type="Label" parent="VBoxContainer/MainContainer/HudTabContainer/NavigationPanel" unique_id=1640834470]
+[node name="Readout" type="Label" parent="MainLayout/SplitContainer/HudTabContainer/NavigationPanel" unique_id=1640834470]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Navigation"
 autowrap_mode = 3
 
-[node name="NavButtons" type="GridContainer" parent="VBoxContainer/MainContainer/HudTabContainer/NavigationPanel" unique_id=1105635398]
+[node name="NavButtons" type="GridContainer" parent="MainLayout/SplitContainer/HudTabContainer/NavigationPanel" unique_id=1105635398]
 layout_mode = 2
 columns = 3
 
-[node name="NextTargetButton" type="Button" parent="VBoxContainer/MainContainer/HudTabContainer/NavigationPanel/NavButtons" unique_id=1294044161]
+[node name="NextTargetButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/NavigationPanel/NavButtons" unique_id=1294044161]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
 text = "Next target (Tab)"
 
-[node name="PlotCourseButton" type="Button" parent="VBoxContainer/MainContainer/HudTabContainer/NavigationPanel/NavButtons" unique_id=1895896107]
+[node name="PlotCourseButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/NavigationPanel/NavButtons" unique_id=1895896107]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
 text = "Plot course (N)"
 
-[node name="NavModeButton" type="Button" parent="VBoxContainer/MainContainer/HudTabContainer/NavigationPanel/NavButtons" unique_id=1697057282]
+[node name="NavModeButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/NavigationPanel/NavButtons" unique_id=1697057282]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
 text = "Nav mode (M)"
 
-[node name="NavEnginesButton" type="Button" parent="VBoxContainer/MainContainer/HudTabContainer/NavigationPanel/NavButtons" unique_id=413580853]
+[node name="NavEnginesButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/NavigationPanel/NavButtons" unique_id=413580853]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
 text = "Engines (B)"
 
-[node name="WarpDownButton" type="Button" parent="VBoxContainer/MainContainer/HudTabContainer/NavigationPanel/NavButtons" unique_id=1952225221]
+[node name="WarpDownButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/NavigationPanel/NavButtons" unique_id=1952225221]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
 text = "Warp - (,)"
 
-[node name="WarpUpButton" type="Button" parent="VBoxContainer/MainContainer/HudTabContainer/NavigationPanel/NavButtons" unique_id=156691336]
+[node name="WarpUpButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/NavigationPanel/NavButtons" unique_id=156691336]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
 text = "Warp + (.)"
 
-[node name="NavHelp" type="Label" parent="VBoxContainer/MainContainer/HudTabContainer/NavigationPanel" unique_id=1896851335]
+[node name="NavHelp" type="Label" parent="MainLayout/SplitContainer/HudTabContainer/NavigationPanel" unique_id=1896851335]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.62, 0.7, 1)
 theme_override_font_sizes/font_size = 12
 text = "Click path: add maneuver (hold: pick engines). Drag handles: plan burn. Drag node: move. Right-click/Del: remove. Wheel: zoom. Emergency: W thrust, A/D turn."
 autowrap_mode = 3
 
-[node name="SensorsPanel" type="VBoxContainer" parent="VBoxContainer/MainContainer/HudTabContainer" unique_id=1735036908]
+[node name="SensorsPanel" type="VBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer" unique_id=1735036908]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -267,30 +118,30 @@ theme_override_constants/separation = 8
 script = ExtResource("4_q6ngc")
 metadata/_tab_index = 1
 
-[node name="ActiveRow" type="HBoxContainer" parent="VBoxContainer/MainContainer/HudTabContainer/SensorsPanel" unique_id=287727741]
+[node name="ActiveRow" type="HBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer/SensorsPanel" unique_id=287727741]
 layout_mode = 2
 
-[node name="ActiveToggle" type="CheckButton" parent="VBoxContainer/MainContainer/HudTabContainer/SensorsPanel/ActiveRow" unique_id=1914267808]
+[node name="ActiveToggle" type="CheckButton" parent="MainLayout/SplitContainer/HudTabContainer/SensorsPanel/ActiveRow" unique_id=1914267808]
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
 text = "Active sensors (V)"
 
-[node name="ActiveStatus" type="Label" parent="VBoxContainer/MainContainer/HudTabContainer/SensorsPanel/ActiveRow" unique_id=1248545412]
+[node name="ActiveStatus" type="Label" parent="MainLayout/SplitContainer/HudTabContainer/SensorsPanel/ActiveRow" unique_id=1248545412]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Passive only"
 horizontal_alignment = 2
 
-[node name="SensorStats" type="Label" parent="VBoxContainer/MainContainer/HudTabContainer/SensorsPanel" unique_id=1412483295]
+[node name="SensorStats" type="Label" parent="MainLayout/SplitContainer/HudTabContainer/SensorsPanel" unique_id=1412483295]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 13
 text = "Sensors"
 autowrap_mode = 3
 
-[node name="ContactTree" type="Tree" parent="VBoxContainer/MainContainer/HudTabContainer/SensorsPanel" unique_id=1602613146]
+[node name="ContactTree" type="Tree" parent="MainLayout/SplitContainer/HudTabContainer/SensorsPanel" unique_id=1602613146]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
@@ -300,7 +151,7 @@ column_titles_visible = true
 hide_root = true
 select_mode = 1
 
-[node name="Details" type="RichTextLabel" parent="VBoxContainer/MainContainer/HudTabContainer/SensorsPanel" unique_id=1196027760]
+[node name="Details" type="RichTextLabel" parent="MainLayout/SplitContainer/HudTabContainer/SensorsPanel" unique_id=1196027760]
 unique_name_in_owner = true
 layout_mode = 2
 bbcode_enabled = true
@@ -308,10 +159,10 @@ text = "Select a contact for details."
 fit_content = true
 scroll_active = false
 
-[node name="ContactActions" type="HBoxContainer" parent="VBoxContainer/MainContainer/HudTabContainer/SensorsPanel" unique_id=1427971068]
+[node name="ContactActions" type="HBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer/SensorsPanel" unique_id=1427971068]
 layout_mode = 2
 
-[node name="TargetContactButton" type="Button" parent="VBoxContainer/MainContainer/HudTabContainer/SensorsPanel/ContactActions" unique_id=791022077]
+[node name="TargetContactButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/SensorsPanel/ContactActions" unique_id=791022077]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -319,7 +170,7 @@ focus_mode = 0
 disabled = true
 text = "Weapons target"
 
-[node name="ForgetButton" type="Button" parent="VBoxContainer/MainContainer/HudTabContainer/SensorsPanel/ContactActions" unique_id=459646704]
+[node name="ForgetButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/SensorsPanel/ContactActions" unique_id=459646704]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -327,7 +178,7 @@ focus_mode = 0
 disabled = true
 text = "Forget ghost"
 
-[node name="RetainButton" type="Button" parent="VBoxContainer/MainContainer/HudTabContainer/SensorsPanel/ContactActions" unique_id=1054948577]
+[node name="RetainButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/SensorsPanel/ContactActions" unique_id=1054948577]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -337,7 +188,7 @@ disabled = true
 toggle_mode = true
 text = "Retain ghost"
 
-[node name="CommandPanel" type="VBoxContainer" parent="VBoxContainer/MainContainer/HudTabContainer" unique_id=174187153]
+[node name="CommandPanel" type="VBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer" unique_id=174187153]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -345,25 +196,25 @@ theme_override_constants/separation = 8
 script = ExtResource("5_fcca2")
 metadata/_tab_index = 2
 
-[node name="PlanetHeader" type="Label" parent="VBoxContainer/MainContainer/HudTabContainer/CommandPanel" unique_id=547077811]
+[node name="PlanetHeader" type="Label" parent="MainLayout/SplitContainer/HudTabContainer/CommandPanel" unique_id=547077811]
 layout_mode = 2
 theme_override_font_sizes/font_size = 17
 text = "Planet"
 
-[node name="PlanetInfo" type="Label" parent="VBoxContainer/MainContainer/HudTabContainer/CommandPanel" unique_id=1161179426]
+[node name="PlanetInfo" type="Label" parent="MainLayout/SplitContainer/HudTabContainer/CommandPanel" unique_id=1161179426]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Not in low orbit of a planet."
 autowrap_mode = 3
 
-[node name="CollectButton" type="Button" parent="VBoxContainer/MainContainer/HudTabContainer/CommandPanel" unique_id=1617214418]
+[node name="CollectButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/CommandPanel" unique_id=1617214418]
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
 disabled = true
 text = "Collect rewards (E)"
 
-[node name="RewardsLog" type="Label" parent="VBoxContainer/MainContainer/HudTabContainer/CommandPanel" unique_id=1807910754]
+[node name="RewardsLog" type="Label" parent="MainLayout/SplitContainer/HudTabContainer/CommandPanel" unique_id=1807910754]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.75, 0.85, 0.7, 1)
@@ -371,85 +222,85 @@ theme_override_font_sizes/font_size = 13
 text = "No rewards collected yet."
 autowrap_mode = 3
 
-[node name="CrewSeparator" type="HSeparator" parent="VBoxContainer/MainContainer/HudTabContainer/CommandPanel" unique_id=714049837]
+[node name="CrewSeparator" type="HSeparator" parent="MainLayout/SplitContainer/HudTabContainer/CommandPanel" unique_id=714049837]
 layout_mode = 2
 
-[node name="CrewHeaderRow" type="HBoxContainer" parent="VBoxContainer/MainContainer/HudTabContainer/CommandPanel" unique_id=881000194]
+[node name="CrewHeaderRow" type="HBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer/CommandPanel" unique_id=881000194]
 layout_mode = 2
 
-[node name="CrewTitle" type="Label" parent="VBoxContainer/MainContainer/HudTabContainer/CommandPanel/CrewHeaderRow" unique_id=643242551]
+[node name="CrewTitle" type="Label" parent="MainLayout/SplitContainer/HudTabContainer/CommandPanel/CrewHeaderRow" unique_id=643242551]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 17
 text = "Crew"
 
-[node name="ManifestButton" type="Button" parent="VBoxContainer/MainContainer/HudTabContainer/CommandPanel/CrewHeaderRow" unique_id=969238230]
+[node name="ManifestButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/CommandPanel/CrewHeaderRow" unique_id=969238230]
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
 text = "Full manifest"
 
-[node name="CrewScroll" type="ScrollContainer" parent="VBoxContainer/MainContainer/HudTabContainer/CommandPanel" unique_id=2027010796]
+[node name="CrewScroll" type="ScrollContainer" parent="MainLayout/SplitContainer/HudTabContainer/CommandPanel" unique_id=2027010796]
 custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
 horizontal_scroll_mode = 0
 
-[node name="CrewList" type="VBoxContainer" parent="VBoxContainer/MainContainer/HudTabContainer/CommandPanel/CrewScroll" unique_id=2040219170]
+[node name="CrewList" type="VBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer/CommandPanel/CrewScroll" unique_id=2040219170]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="ExpeditionSeparator" type="HSeparator" parent="VBoxContainer/MainContainer/HudTabContainer/CommandPanel" unique_id=1403859530]
+[node name="ExpeditionSeparator" type="HSeparator" parent="MainLayout/SplitContainer/HudTabContainer/CommandPanel" unique_id=1403859530]
 layout_mode = 2
 
-[node name="ExpeditionHeader" type="Label" parent="VBoxContainer/MainContainer/HudTabContainer/CommandPanel" unique_id=1581162356]
+[node name="ExpeditionHeader" type="Label" parent="MainLayout/SplitContainer/HudTabContainer/CommandPanel" unique_id=1581162356]
 layout_mode = 2
 theme_override_font_sizes/font_size = 17
 text = "Expeditions"
 
-[node name="ExpeditionInfo" type="Label" parent="VBoxContainer/MainContainer/HudTabContainer/CommandPanel" unique_id=40762561]
+[node name="ExpeditionInfo" type="Label" parent="MainLayout/SplitContainer/HudTabContainer/CommandPanel" unique_id=40762561]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.62, 0.7, 1)
 text = "Assigning crew to planet expeditions is coming soon."
 autowrap_mode = 3
 
-[node name="AssignExpeditionButton" type="Button" parent="VBoxContainer/MainContainer/HudTabContainer/CommandPanel" unique_id=2005868355]
+[node name="AssignExpeditionButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/CommandPanel" unique_id=2005868355]
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
 disabled = true
 text = "Assign crew to expedition"
 
-[node name="CrewManifest" parent="VBoxContainer/MainContainer/HudTabContainer" unique_id=1263268516 instance=ExtResource("8_fcca2")]
+[node name="CrewManifest" parent="MainLayout/SplitContainer/HudTabContainer" unique_id=1263268516 instance=ExtResource("8_fcca2")]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 metadata/_tab_index = 3
 
-[node name="SpaceViewContainer" type="SubViewportContainer" parent="VBoxContainer/MainContainer" unique_id=250917181]
+[node name="SpaceViewContainer" type="SubViewportContainer" parent="MainLayout/SplitContainer" unique_id=250917181]
 layout_mode = 2
 stretch = true
 mouse_target = true
 
-[node name="SubViewport" type="SubViewport" parent="VBoxContainer/MainContainer/SpaceViewContainer" unique_id=147584559]
+[node name="SubViewport" type="SubViewport" parent="MainLayout/SplitContainer/SpaceViewContainer" unique_id=147584559]
 handle_input_locally = false
-size = Vector2i(1721, 1037)
+size = Vector2i(1721, 1045)
 render_target_update_mode = 4
 
-[node name="PanelContainer" type="PanelContainer" parent="VBoxContainer" unique_id=802306571]
+[node name="PanelContainer" type="PanelContainer" parent="MainLayout" unique_id=802306571]
 layout_mode = 2
 
-[node name="HudBar" type="HBoxContainer" parent="VBoxContainer/PanelContainer" unique_id=1767028328]
+[node name="HudBar" type="HBoxContainer" parent="MainLayout/PanelContainer" unique_id=1767028328]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="LeftBar" type="BoxContainer" parent="VBoxContainer/PanelContainer/HudBar" unique_id=1436523331]
+[node name="LeftBar" type="BoxContainer" parent="MainLayout/PanelContainer/HudBar" unique_id=1436523331]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="CommandViewButton" type="Button" parent="VBoxContainer/PanelContainer/HudBar/LeftBar" unique_id=2091249866]
+[node name="CommandViewButton" type="Button" parent="MainLayout/PanelContainer/HudBar/LeftBar" unique_id=2091249866]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 2
@@ -458,21 +309,21 @@ toggle_mode = true
 button_group = SubResource("ButtonGroup_26vpt")
 text = "Command & Control"
 
-[node name="SilentRunningToggleButton" type="CheckButton" parent="VBoxContainer/PanelContainer/HudBar/LeftBar" unique_id=1459683284]
+[node name="SilentRunningToggleButton" type="CheckButton" parent="MainLayout/PanelContainer/HudBar/LeftBar" unique_id=1459683284]
 layout_mode = 2
 tooltip_text = "Disable Engines and all Active Sensors"
 text = "Silent Running"
 
-[node name="VSeparator" type="VSeparator" parent="VBoxContainer/PanelContainer/HudBar" unique_id=2040173738]
+[node name="VSeparator" type="VSeparator" parent="MainLayout/PanelContainer/HudBar" unique_id=2040173738]
 layout_mode = 2
 size_flags_horizontal = 4
 theme_override_styles/separator = SubResource("StyleBoxLine_5mdms")
 
-[node name="ModeBar" type="HBoxContainer" parent="VBoxContainer/PanelContainer/HudBar" unique_id=2019875838]
+[node name="ModeBar" type="HBoxContainer" parent="MainLayout/PanelContainer/HudBar" unique_id=2019875838]
 layout_mode = 2
 size_flags_horizontal = 4
 
-[node name="NavigationModeButton" type="Button" parent="VBoxContainer/PanelContainer/HudBar/ModeBar" unique_id=682848741]
+[node name="NavigationModeButton" type="Button" parent="MainLayout/PanelContainer/HudBar/ModeBar" unique_id=682848741]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 6
@@ -482,7 +333,7 @@ button_pressed = true
 button_group = SubResource("ButtonGroup_26vpt")
 text = "1  Navigation"
 
-[node name="SensorsModeButton" type="Button" parent="VBoxContainer/PanelContainer/HudBar/ModeBar" unique_id=351522257]
+[node name="SensorsModeButton" type="Button" parent="MainLayout/PanelContainer/HudBar/ModeBar" unique_id=351522257]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 6
@@ -491,7 +342,7 @@ toggle_mode = true
 button_group = SubResource("ButtonGroup_26vpt")
 text = "2  Sensors"
 
-[node name="CombatModeButtoin" type="Button" parent="VBoxContainer/PanelContainer/HudBar/ModeBar" unique_id=539102931]
+[node name="CombatModeButtoin" type="Button" parent="MainLayout/PanelContainer/HudBar/ModeBar" unique_id=539102931]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 6
@@ -500,24 +351,24 @@ toggle_mode = true
 button_group = SubResource("ButtonGroup_26vpt")
 text = "3  Combat"
 
-[node name="VSeparator2" type="VSeparator" parent="VBoxContainer/PanelContainer/HudBar" unique_id=1240349740]
+[node name="VSeparator2" type="VSeparator" parent="MainLayout/PanelContainer/HudBar" unique_id=1240349740]
 layout_mode = 2
 theme_override_styles/separator = SubResource("StyleBoxLine_5mdms")
 
-[node name="RightBar" type="BoxContainer" parent="VBoxContainer/PanelContainer/HudBar" unique_id=1435560329]
+[node name="RightBar" type="BoxContainer" parent="MainLayout/PanelContainer/HudBar" unique_id=1435560329]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="HBoxContainer" type="HBoxContainer" parent="VBoxContainer/PanelContainer/HudBar/RightBar" unique_id=1384186134]
+[node name="HBoxContainer" type="HBoxContainer" parent="MainLayout/PanelContainer/HudBar/RightBar" unique_id=1384186134]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="VelocityLabel" type="Label" parent="VBoxContainer/PanelContainer/HudBar/RightBar/HBoxContainer" unique_id=1193679271]
+[node name="VelocityLabel" type="Label" parent="MainLayout/PanelContainer/HudBar/RightBar/HBoxContainer" unique_id=1193679271]
 layout_mode = 2
 size_flags_horizontal = 4
 text = "Velocity:"
 
-[node name="VelocityDisplay" type="LineEdit" parent="VBoxContainer/PanelContainer/HudBar/RightBar/HBoxContainer" unique_id=1348256058]
+[node name="VelocityDisplay" type="LineEdit" parent="MainLayout/PanelContainer/HudBar/RightBar/HBoxContainer" unique_id=1348256058]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 4
@@ -535,30 +386,30 @@ deselect_on_focus_loss_enabled = false
 drag_and_drop_selection_enabled = false
 flat = true
 
-[node name="VelocityUnitLabel" type="Label" parent="VBoxContainer/PanelContainer/HudBar/RightBar/HBoxContainer" unique_id=1962288105]
+[node name="VelocityUnitLabel" type="Label" parent="MainLayout/PanelContainer/HudBar/RightBar/HBoxContainer" unique_id=1962288105]
 unique_name_in_owner = true
 layout_mode = 2
 text = "m/s"
 
-[node name="VSeparator" type="VSeparator" parent="VBoxContainer/PanelContainer/HudBar/RightBar/HBoxContainer" unique_id=202637535]
+[node name="VSeparator" type="VSeparator" parent="MainLayout/PanelContainer/HudBar/RightBar/HBoxContainer" unique_id=202637535]
 layout_mode = 2
 theme_override_styles/separator = SubResource("StyleBoxLine_26vpt")
 
-[node name="FuelLabel" type="Label" parent="VBoxContainer/PanelContainer/HudBar/RightBar/HBoxContainer" unique_id=1500942541]
+[node name="FuelLabel" type="Label" parent="MainLayout/PanelContainer/HudBar/RightBar/HBoxContainer" unique_id=1500942541]
 layout_mode = 2
 size_flags_horizontal = 8
 text = "Fuel"
 horizontal_alignment = 2
 vertical_alignment = 1
 
-[node name="FuelBar" type="ProgressBar" parent="VBoxContainer/PanelContainer/HudBar/RightBar/HBoxContainer" unique_id=45758763]
+[node name="FuelBar" type="ProgressBar" parent="MainLayout/PanelContainer/HudBar/RightBar/HBoxContainer" unique_id=45758763]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 1
 show_percentage = false
 script = ExtResource("1_h2mfe")
 
-[node name="FuelReadoutContainer" type="HBoxContainer" parent="VBoxContainer/PanelContainer/HudBar/RightBar/HBoxContainer/FuelBar" unique_id=27015750]
+[node name="FuelReadoutContainer" type="HBoxContainer" parent="MainLayout/PanelContainer/HudBar/RightBar/HBoxContainer/FuelBar" unique_id=27015750]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -567,7 +418,7 @@ grow_horizontal = 2
 grow_vertical = 2
 alignment = 2
 
-[node name="FuelTotalDisplay" type="LineEdit" parent="VBoxContainer/PanelContainer/HudBar/RightBar/HBoxContainer/FuelBar/FuelReadoutContainer" unique_id=914878727]
+[node name="FuelTotalDisplay" type="LineEdit" parent="MainLayout/PanelContainer/HudBar/RightBar/HBoxContainer/FuelBar/FuelReadoutContainer" unique_id=914878727]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 8
@@ -587,17 +438,17 @@ deselect_on_focus_loss_enabled = false
 drag_and_drop_selection_enabled = false
 flat = true
 
-[node name="FuelUnitLabel" type="Label" parent="VBoxContainer/PanelContainer/HudBar/RightBar/HBoxContainer/FuelBar/FuelReadoutContainer" unique_id=1494299273]
+[node name="FuelUnitLabel" type="Label" parent="MainLayout/PanelContainer/HudBar/RightBar/HBoxContainer/FuelBar/FuelReadoutContainer" unique_id=1494299273]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 8
 text = "m/s ∆v"
 
-[node name="FuelReadoutPusher" type="Control" parent="VBoxContainer/PanelContainer/HudBar/RightBar/HBoxContainer/FuelBar/FuelReadoutContainer" unique_id=1984881486]
+[node name="FuelReadoutPusher" type="Control" parent="MainLayout/PanelContainer/HudBar/RightBar/HBoxContainer/FuelBar/FuelReadoutContainer" unique_id=1984881486]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="FuelBarButton" type="Button" parent="VBoxContainer/PanelContainer/HudBar/RightBar/HBoxContainer/FuelBar" unique_id=722306453]
+[node name="FuelBarButton" type="Button" parent="MainLayout/PanelContainer/HudBar/RightBar/HBoxContainer/FuelBar" unique_id=722306453]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -607,4 +458,4 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_type_variation = &"ClearButton"
 
-[connection signal="tab_changed" from="VBoxContainer/MainContainer/HudTabContainer" to="VBoxContainer/MainContainer/HudTabContainer" method="_on_tab_changed"]
+[connection signal="tab_changed" from="MainLayout/SplitContainer/HudTabContainer" to="MainLayout/SplitContainer/HudTabContainer" method="_on_tab_changed"]

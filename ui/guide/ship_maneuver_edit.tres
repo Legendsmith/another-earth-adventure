@@ -39,16 +39,16 @@ input = SubResource("Resource_t51n6")
 script = ExtResource("4_x8svm")
 key = 65
 
-[sub_resource type="Resource" id="Resource_rkxfa"]
-script = ExtResource("6_3v3if")
-
 [sub_resource type="Resource" id="Resource_pwhq3"]
 script = ExtResource("7_7rj7l")
+
+[sub_resource type="Resource" id="Resource_rkxfa"]
+script = ExtResource("6_3v3if")
 
 [sub_resource type="Resource" id="Resource_6qgwf"]
 script = ExtResource("3_a13x4")
 input = SubResource("Resource_2f2xj")
-modifiers = Array[ExtResource("5_fbfe7")]([SubResource("Resource_rkxfa"), SubResource("Resource_pwhq3")])
+modifiers = Array[ExtResource("5_fbfe7")]([SubResource("Resource_pwhq3"), SubResource("Resource_rkxfa")])
 
 [sub_resource type="Resource" id="Resource_2t3ts"]
 script = ExtResource("4_x8svm")
@@ -100,12 +100,20 @@ button = 2
 script = ExtResource("3_a13x4")
 input = SubResource("Resource_koqj8")
 
+[sub_resource type="Resource" id="Resource_fbfe7"]
+script = ExtResource("4_x8svm")
+key = 4194308
+
+[sub_resource type="Resource" id="Resource_3v3if"]
+script = ExtResource("3_a13x4")
+input = SubResource("Resource_fbfe7")
+
 [sub_resource type="Resource" id="Resource_u8lq7"]
 script = ExtResource("1_8ap6u")
 action = ExtResource("11_7rj7l")
-input_mappings = Array[ExtResource("3_a13x4")]([SubResource("Resource_d88ak")])
+input_mappings = Array[ExtResource("3_a13x4")]([SubResource("Resource_d88ak"), SubResource("Resource_3v3if")])
 
 [resource]
 script = ExtResource("2_o6ou5")
-display_name = "Ship Direct Control"
+display_name = "Ship Maneuver Edit"
 mappings = Array[ExtResource("1_8ap6u")]([SubResource("Resource_l3x4d"), SubResource("Resource_u0xy6"), SubResource("Resource_s6xfv"), SubResource("Resource_u8lq7")])

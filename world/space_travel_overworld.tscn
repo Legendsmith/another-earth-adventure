@@ -8,7 +8,6 @@
 [ext_resource type="Script" uid="uid://divt07ot7ctim" path="res://scripts/space/trajectory_renderer.gd" id="6_render"]
 [ext_resource type="Script" uid="uid://boiygsxlif6k4" path="res://scripts/space/orbit_lines.gd" id="7_lines"]
 [ext_resource type="Script" uid="uid://dkx8rcv7a3rr5" path="res://scripts/space/space_camera.gd" id="8_camera"]
-[ext_resource type="PackedScene" uid="uid://cbkm31lwb8j8r" path="res://ui/ship_console/ship_console.tscn" id="9_console"]
 [ext_resource type="Script" uid="uid://cp17a81w3w84m" path="res://scripts/space/maneuver_planner.gd" id="10_maneuvers"]
 [ext_resource type="Script" uid="uid://bw7sowcws345m" path="res://scripts/space/maneuver_editor.gd" id="11_editor"]
 [ext_resource type="Script" uid="uid://b5qc5pemwhy5t" path="res://scripts/space/navigation_computer.gd" id="12_navcomp"]
@@ -38,6 +37,7 @@
 [ext_resource type="Script" uid="uid://dgy2n7q3inia" path="res://scripts/space/sensors/sensor_suite.gd" id="27_sensors"]
 [ext_resource type="Script" uid="uid://c63t7w5ta47n0" path="res://scripts/space/sensors/sensor_network.gd" id="28_network"]
 [ext_resource type="Script" uid="uid://0lue586uclve" path="res://scripts/space/sensors/sensor_overlay.gd" id="29_overlay"]
+[ext_resource type="PackedScene" uid="uid://d2iyh546mhb4c" path="res://ui/ship_console/ship_hud.tscn" id="38_cd05t"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_sun"]
 radius = 400.0
@@ -230,9 +230,4 @@ script = ExtResource("18_combat_manager")
 [node name="CombatHud" type="CanvasLayer" parent="." unique_id=1874615010]
 script = ExtResource("19_combat_hud")
 
-[node name="ShipConsole" parent="." unique_id=1395574140 node_paths=PackedStringArray("ship", "controller", "navigation_computer", "renderer", "maneuvers") instance=ExtResource("9_console")]
-ship = NodePath("../PlayerShip")
-controller = NodePath("../PlayerShip/Controller")
-navigation_computer = NodePath("../PlayerShip/NavigationComputer")
-renderer = NodePath("../TrajectoryRenderer")
-maneuvers = NodePath("../PlayerShip/Maneuvers")
+[node name="ShipHud" parent="." unique_id=414802575 instance=ExtResource("38_cd05t")]
