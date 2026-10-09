@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="GUIDETouchRenderStyle" load_steps=11 format=3 uid="uid://c6em225fn0luc"]
+[gd_resource type="Resource" script_class="GUIDETouchRenderStyle" format=3 uid="uid://c6em225fn0luc"]
 
-[ext_resource type="Script" path="res://addons/guide/ui/renderers/touch/guide_touch_render_style.gd" id="1_dclrw"]
+[ext_resource type="Script" uid="uid://c22c07tt7y1x3" path="res://addons/guide/ui/renderers/touch/guide_touch_render_style.gd" id="1_dclrw"]
 [ext_resource type="Texture2D" uid="uid://dwb1h8sfsccyy" path="res://addons/guide/ui/renderers/textures/arrow_all_directions.svg" id="1_quugf"]
 [ext_resource type="Texture2D" uid="uid://cjw5m42gufghr" path="res://addons/guide/ui/renderers/touch/styles/touch_4_fingers.png" id="2_mf862"]
 [ext_resource type="Texture2D" uid="uid://bmgxqbypegjxh" path="res://addons/guide/ui/renderers/textures/arrow_horizontal.svg" id="3_biagq"]
