@@ -3,7 +3,8 @@ class_name AsteroidEmplacement
 extends Node2D
 ## Space hazard: an asteroid hollowed out into a weapons emplacement. The rock itself is in plain sight, but the
 ## emplacement inside (its CombatHull child) runs cold and is only picked up by sensors at short range, or when its
-## railgun fires. Place it as a child of a planet or moon so it moves with that body.
+## torpedoes launch. Place it as a child of a planet or moon so it moves with that body, or of an OrbitAnchor so it
+## orbits.
 
 @export var rock_radius: float = 40.0:
 	set(value):

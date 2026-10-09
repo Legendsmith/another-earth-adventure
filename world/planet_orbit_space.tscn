@@ -1,0 +1,270 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" uid="uid://b4ikwa4mxnbw7" path="res://scripts/orbital/OrbitalSystem.cs" id="1_system"]
+[ext_resource type="Script" uid="uid://b165ltoi2sw4y" path="res://scripts/orbital/CelestialBody.cs" id="2_body"]
+[ext_resource type="PackedScene" path="res://entities/space/spaceship.tscn" id="3_ship"]
+[ext_resource type="Script" uid="uid://s6vunkolpad6" path="res://scripts/space/player_ship_controller.gd" id="5_player"]
+[ext_resource type="Script" uid="uid://divt07ot7ctim" path="res://scripts/space/trajectory_renderer.gd" id="6_render"]
+[ext_resource type="Script" uid="uid://boiygsxlif6k4" path="res://scripts/space/orbit_lines.gd" id="7_lines"]
+[ext_resource type="Script" uid="uid://dkx8rcv7a3rr5" path="res://scripts/space/space_camera.gd" id="8_camera"]
+[ext_resource type="Script" uid="uid://cp17a81w3w84m" path="res://scripts/space/maneuver_planner.gd" id="10_maneuvers"]
+[ext_resource type="Script" uid="uid://bw7sowcws345m" path="res://scripts/space/maneuver_editor.gd" id="11_editor"]
+[ext_resource type="Script" uid="uid://b5qc5pemwhy5t" path="res://scripts/space/navigation_computer.gd" id="12_navcomp"]
+[ext_resource type="Resource" path="res://data/engines/fusion_drive.tres" id="13_fusion"]
+[ext_resource type="Resource" path="res://data/engines/chemical_thrusters.tres" id="14_thrusters"]
+[ext_resource type="Script" uid="uid://b1m8bchjbxn2j" path="res://scripts/space/combat/combat_hull.gd" id="15_hull"]
+[ext_resource type="Script" uid="uid://6hpawdmp6mdg" path="res://world/planets/planet_field.gd" id="15_planets"]
+[ext_resource type="Script" uid="uid://4l7rh470ahb5" path="res://scripts/space/combat/torpedo_launcher.gd" id="16_launcher"]
+[ext_resource type="Script" uid="uid://nvvg48482mps" path="res://scripts/space/combat/player_weapons.gd" id="17_player_weapons"]
+[ext_resource type="Script" uid="uid://ykrk8agmh17y" path="res://scripts/space/combat/space_combat_manager.gd" id="18_combat_manager"]
+[ext_resource type="Script" uid="uid://b4gxd4l7y3sr4" path="res://scripts/space/combat/combat_overlay.gd" id="19_combat_overlay"]
+[ext_resource type="Script" uid="uid://by07c171f28na" path="res://scripts/space/combat/space_battlefield.gd" id="20_battlefield"]
+[ext_resource type="Script" uid="uid://5yu4xlegvbdy" path="res://data/ship_component.gd" id="21_component"]
+[ext_resource type="Resource" path="res://data/armor/composite.tres" id="22_composite"]
+[ext_resource type="Resource" path="res://data/armor/steel_plate.tres" id="23_steel"]
+[ext_resource type="PackedScene" uid="uid://pjji07tpc8rd" path="res://entities/space/combat/gunship.tscn" id="24_gunship"]
+[ext_resource type="PackedScene" uid="uid://bxx827wbea5hr" path="res://entities/space/combat/asteroid_emplacement.tscn" id="25_emplacement"]
+[ext_resource type="Resource" path="res://data/components/bridge.tres" id="26_c1_bridge"]
+[ext_resource type="Resource" path="res://data/components/crew_quarters.tres" id="26_c2_crew_quarters"]
+[ext_resource type="Resource" path="res://data/components/fuel_tank.tres" id="26_c3_fuel_tank"]
+[ext_resource type="Resource" path="res://data/components/main_engine.tres" id="26_c4_main_engine"]
+[ext_resource type="Resource" uid="uid://tx3gcc8pkuo7" path="res://data/components/thrusters.tres" id="26_c5_thrusters"]
+[ext_resource type="Resource" path="res://data/components/sensors.tres" id="26_c6_sensors"]
+[ext_resource type="Resource" path="res://data/components/torpedo_tubes.tres" id="26_c7_torpedo_tubes"]
+[ext_resource type="Resource" path="res://data/components/torpedo_magazine.tres" id="26_c8_torpedo_magazine"]
+[ext_resource type="Resource" path="res://data/components/structure.tres" id="26_c9_structure"]
+[ext_resource type="Script" uid="uid://xjv7l0p9hpv1u" path="res://scripts/space/sensors/sensor_suite.gd" id="27_sensors"]
+[ext_resource type="Script" uid="uid://c63t7w5ta47n0" path="res://scripts/space/sensors/sensor_network.gd" id="28_network"]
+[ext_resource type="Script" uid="uid://0lue586uclve" path="res://scripts/space/sensors/sensor_overlay.gd" id="29_overlay"]
+[ext_resource type="Script" path="res://scripts/space/orbit_anchor.gd" id="30_anchor"]
+[ext_resource type="Script" path="res://scripts/space/orbit_guides.gd" id="31_guides"]
+[ext_resource type="PackedScene" path="res://entities/space/combat/orbital_gun_platform.tscn" id="32_platform"]
+[ext_resource type="PackedScene" path="res://entities/space/combat/drone.tscn" id="33_drone"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_planet"]
+radius = 30000.0
+
+[node name="PlanetOrbitSpace" type="Node2D"]
+
+[node name="OrbitalSystem" type="Node" parent="."]
+script = ExtResource("1_system")
+WarpLevels = PackedInt32Array(1, 2, 4, 8, 16, 32, 64)
+
+[node name="Ferra" type="AnimatableBody2D" parent="."]
+script = ExtResource("2_body")
+Mu = 12000000000.0
+Radius = 30000.0
+BodyColor = Color(0.25, 0.45, 0.75, 1)
+DrawInfluence = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Ferra"]
+shape = SubResource("CircleShape2D_planet")
+
+[node name="OrbitGuides" type="Node2D" parent="Ferra"]
+script = ExtResource("31_guides")
+low_orbit_radius = 36000.0
+rotation_period = 1800.0
+
+[node name="LowOrbitDebris" type="Node2D" parent="Ferra"]
+position = Vector2(16750.0, 29011.9)
+script = ExtResource("30_anchor")
+retrograde = false
+
+[node name="Field" type="Node2D" parent="Ferra/LowOrbitDebris"]
+script = ExtResource("20_battlefield")
+display_name = "Low orbit debris"
+radius = 2000.0
+debris_density = 0.0006
+derelict_launchers = 1
+derelict_sensor_strength = 1500.0
+derelict_armor = ExtResource("23_steel")
+field_seed = 11
+
+[node name="RetrogradeDebris" type="Node2D" parent="Ferra"]
+position = Vector2(-36178.2, -13167.8)
+script = ExtResource("30_anchor")
+retrograde = true
+
+[node name="Field" type="Node2D" parent="Ferra/RetrogradeDebris"]
+script = ExtResource("20_battlefield")
+display_name = "Collision debris (retrograde)"
+radius = 2500.0
+debris_density = 0.0003
+derelict_launchers = 0
+derelict_sensor_strength = 1500.0
+derelict_armor = ExtResource("23_steel")
+field_seed = 23
+
+[node name="OldBattlefield" type="Node2D" parent="Ferra"]
+position = Vector2(26000.0, -45033.3)
+script = ExtResource("30_anchor")
+retrograde = false
+
+[node name="Field" type="Node2D" parent="Ferra/OldBattlefield"]
+script = ExtResource("20_battlefield")
+display_name = "Old battlefield"
+radius = 3000.0
+debris_density = 0.0008
+derelict_launchers = 2
+derelict_sensor_strength = 1500.0
+derelict_armor = ExtResource("23_steel")
+field_seed = 1337
+
+[node name="ShatteredTanker" type="Node2D" parent="Ferra"]
+position = Vector2(-58219.4, 48851.9)
+script = ExtResource("30_anchor")
+retrograde = true
+
+[node name="Field" type="Node2D" parent="Ferra/ShatteredTanker"]
+script = ExtResource("20_battlefield")
+display_name = "Shattered tanker (retrograde)"
+radius = 2500.0
+debris_density = 0.0004
+derelict_launchers = 0
+derelict_sensor_strength = 1500.0
+derelict_armor = ExtResource("23_steel")
+field_seed = 77
+
+[node name="CapturedAsteroid" type="Node2D" parent="Ferra"]
+position = Vector2(61080.0, 22231.3)
+script = ExtResource("30_anchor")
+
+[node name="AsteroidEmplacement" parent="Ferra/CapturedAsteroid" instance=ExtResource("25_emplacement")]
+rock_radius = 70.0
+
+[node name="SensorSuite" parent="Ferra/CapturedAsteroid/AsteroidEmplacement"]
+passive_strength = 3000.0
+active_strength = 8000.0
+
+[node name="PlanetField" type="Node" parent="."]
+script = ExtResource("15_planets")
+low_orbit_factor = 1.2
+fixed_kinds = Dictionary[NodePath, int]({
+NodePath("../Ferra"): 1
+})
+
+[node name="OrbitLines" type="Node2D" parent="."]
+script = ExtResource("7_lines")
+
+[node name="PlayerShip" parent="." instance=ExtResource("3_ship")]
+position = Vector2(0, -125000)
+fuel_capacity = 44.0
+fuel = 44.0
+main_engine = ExtResource("13_fusion")
+thrusters = ExtResource("14_thrusters")
+
+[node name="NavigationComputer" type="Node" parent="PlayerShip" node_paths=PackedStringArray("maneuvers")]
+script = ExtResource("12_navcomp")
+maneuvers = NodePath("../Maneuvers")
+
+[node name="Maneuvers" type="Node" parent="PlayerShip"]
+script = ExtResource("10_maneuvers")
+
+[node name="Controller" type="Node" parent="PlayerShip" node_paths=PackedStringArray("navigation_computer", "renderer", "maneuvers")]
+script = ExtResource("5_player")
+navigation_computer = NodePath("../NavigationComputer")
+renderer = NodePath("../../TrajectoryRenderer")
+maneuvers = NodePath("../Maneuvers")
+
+[node name="CombatHull" type="Node2D" parent="PlayerShip"]
+script = ExtResource("15_hull")
+display_name = "Your ship"
+faction = &"player"
+free_on_destroyed = false
+armor = ExtResource("22_composite")
+armor_mass = 1.2
+components = Array[ExtResource("21_component")]([ExtResource("26_c1_bridge"), ExtResource("26_c2_crew_quarters"), ExtResource("26_c3_fuel_tank"), ExtResource("26_c4_main_engine"), ExtResource("26_c5_thrusters"), ExtResource("26_c6_sensors"), ExtResource("26_c7_torpedo_tubes"), ExtResource("26_c8_torpedo_magazine"), ExtResource("26_c9_structure")])
+
+[node name="TorpedoLauncher" type="Node2D" parent="PlayerShip/CombatHull"]
+script = ExtResource("16_launcher")
+magazine = 6
+reload_time = 8.0
+auto_fire = false
+component_name = "Torpedo Tubes"
+
+[node name="PlayerWeapons" type="Node" parent="PlayerShip/CombatHull"]
+script = ExtResource("17_player_weapons")
+
+[node name="SensorSuite" type="Node" parent="PlayerShip"]
+script = ExtResource("27_sensors")
+display_name = "Your ship"
+classification = "Survey ship"
+passive_strength = 4000.0
+active_strength = 20000.0
+
+[node name="GunPlatform1" parent="." instance=ExtResource("32_platform")]
+position = Vector2(35000.0, 0.0)
+
+[node name="GunPlatform2" parent="." instance=ExtResource("32_platform")]
+position = Vector2(0.0, 35000.0)
+
+[node name="GunPlatform3" parent="." instance=ExtResource("32_platform")]
+position = Vector2(-35000.0, 0.0)
+
+[node name="GunPlatform4" parent="." instance=ExtResource("32_platform")]
+position = Vector2(-0.0, -35000.0)
+
+[node name="Drone1" parent="." instance=ExtResource("33_drone")]
+position = Vector2(38971.1, 22500.0)
+
+[node name="Drone2" parent="." instance=ExtResource("33_drone")]
+position = Vector2(-38971.1, -22500.0)
+orbit_retrograde = true
+
+[node name="Drone3" parent="." instance=ExtResource("33_drone")]
+position = Vector2(-29000.0, 50229.5)
+
+[node name="Drone4" parent="." instance=ExtResource("33_drone")]
+position = Vector2(-23941.4, -65778.5)
+orbit_retrograde = true
+
+[node name="Drone5" parent="." instance=ExtResource("33_drone")]
+position = Vector2(76210.2, -44000.0)
+
+[node name="Drone6" parent="." instance=ExtResource("33_drone")]
+position = Vector2(-97988.4, 17278.0)
+
+[node name="Gunship1" parent="." instance=ExtResource("24_gunship")]
+position = Vector2(-60000.0, 0.0)
+
+[node name="SensorSuite" parent="Gunship1"]
+passive_strength = 3000.0
+active_strength = 10000.0
+
+[node name="Gunship2" parent="." instance=ExtResource("24_gunship")]
+position = Vector2(67175.1, 67175.1)
+orbit_retrograde = true
+
+[node name="SensorSuite" parent="Gunship2"]
+passive_strength = 3000.0
+active_strength = 10000.0
+
+[node name="TrajectoryRenderer" type="Node2D" parent="." node_paths=PackedStringArray("ship", "maneuvers")]
+script = ExtResource("6_render")
+ship = NodePath("../PlayerShip")
+maneuvers = NodePath("../PlayerShip/Maneuvers")
+prediction_time = 3000.0
+
+[node name="ManeuverEditor" type="Node2D" parent="." node_paths=PackedStringArray("renderer", "planner")]
+script = ExtResource("11_editor")
+renderer = NodePath("../TrajectoryRenderer")
+planner = NodePath("../PlayerShip/Maneuvers")
+drag_rate = 40.0
+
+[node name="Camera2D" type="Camera2D" parent="." node_paths=PackedStringArray("target")]
+zoom = Vector2(0.005, 0.005)
+script = ExtResource("8_camera")
+target = NodePath("../PlayerShip")
+min_zoom = 0.002
+
+[node name="SensorNetwork" type="Node" parent="."]
+script = ExtResource("28_network")
+
+[node name="SensorOverlay" type="Node2D" parent="."]
+script = ExtResource("29_overlay")
+
+[node name="SpaceCombatManager" type="Node" parent="."]
+script = ExtResource("18_combat_manager")
+
+[node name="CombatOverlay" type="Node2D" parent="."]
+script = ExtResource("19_combat_overlay")

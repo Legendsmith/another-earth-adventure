@@ -4,7 +4,7 @@ extends Node2D
 ## Space hazard: the debris field of an old battle. Combat hulls crossing it are struck by debris at a rate that grows
 ## with their speed relative to the field, so the safe way through is slowly. Some wrecks still carry automated
 ## torpedo racks (the derelict faction, hostile to everyone) that wake when a ship comes within their weak sensors.
-## Place it as a child of a planet or moon so the field moves with that body.
+## Place it as a child of a planet or moon so the field moves with that body, or of an OrbitAnchor so it orbits.
 
 @export var display_name: String = "Old battlefield"
 @export var radius: float = 250.0

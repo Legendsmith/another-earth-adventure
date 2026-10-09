@@ -107,9 +107,13 @@ func get_zoom_scale() -> float:
 	return maxf(1.0, 1.0 / get_canvas_transform().get_scale().x)
 
 
-## Spawns a munition into the world (the current scene, so it does not move with the launcher's parent).
+## Spawns a munition into the world (the root of the launcher's scene, so it does not move with the launcher's parent).
+## The space scene may sit in a SubViewport of the HUD, so the root is the launcher's topmost ancestor inside its own
+## viewport, which shares the launcher's physics space.
 static func launch(munition: Munition, from: Node, at: Vector2, velocity: Vector2) -> void:
-	var world: Node = from.get_tree().current_scene if from.get_tree().current_scene else from.get_parent()
+	var world: Node = from
+	while world.get_parent() and not world.get_parent() is Viewport:
+		world = world.get_parent()
 	munition.position = at
 	munition.linear_velocity = velocity
 	world.add_child(munition)

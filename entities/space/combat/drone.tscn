@@ -1,0 +1,55 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://entities/space/spaceship.tscn" id="1_ship"]
+[ext_resource type="Resource" path="res://data/engines/cold_gas_thrusters.tres" id="2_thrusters"]
+[ext_resource type="Script" uid="uid://b1m8bchjbxn2j" path="res://scripts/space/combat/combat_hull.gd" id="3_hull"]
+[ext_resource type="Script" uid="uid://4l7rh470ahb5" path="res://scripts/space/combat/torpedo_launcher.gd" id="4_launcher"]
+[ext_resource type="Script" uid="uid://b4quxlo3fymv1" path="res://scripts/space/combat/combat_ai.gd" id="5_ai"]
+[ext_resource type="Script" uid="uid://5yu4xlegvbdy" path="res://data/ship_component.gd" id="6_component"]
+[ext_resource type="Resource" path="res://data/armor/ceramic_laminate.tres" id="7_armor"]
+[ext_resource type="Script" uid="uid://xjv7l0p9hpv1u" path="res://scripts/space/sensors/sensor_suite.gd" id="8_sensors"]
+[ext_resource type="Resource" path="res://data/components/sensors.tres" id="c1_sensors"]
+[ext_resource type="Resource" path="res://data/components/torpedo_tubes.tres" id="c2_torpedo_tubes"]
+[ext_resource type="Resource" path="res://data/components/torpedo_magazine.tres" id="c3_torpedo_magazine"]
+
+[node name="Drone" instance=ExtResource("1_ship")]
+dry_mass = 1.5
+fuel_capacity = 1.0
+fuel = 1.0
+main_engine = null
+thrusters = ExtResource("2_thrusters")
+hull_color = Color(1, 0.6, 0.35, 1)
+hull_size = 5.0
+
+[node name="CombatHull" type="Node2D" parent="."]
+script = ExtResource("3_hull")
+display_name = "Drone"
+armor = ExtResource("7_armor")
+armor_mass = 0.3
+armor_columns = 6
+components = Array[ExtResource("6_component")]([ExtResource("c1_sensors"), ExtResource("c2_torpedo_tubes"), ExtResource("c3_torpedo_magazine")])
+structure = 4
+hit_radius = 4.0
+
+[node name="TorpedoLauncher" type="Node2D" parent="CombatHull"]
+script = ExtResource("4_launcher")
+component_name = "Torpedo Tubes"
+magazine = 2
+reload_time = 15.0
+max_range = 5000.0
+thrust_accel = 40.0
+burn_time = 25.0
+engagement_range = 1000.0
+damage = 8
+
+[node name="CombatAI" type="Node" parent="CombatHull"]
+script = ExtResource("5_ai")
+
+[node name="SensorSuite" type="Node" parent="."]
+script = ExtResource("8_sensors")
+display_name = "Drone"
+classification = "Drone"
+passive_strength = 1500.0
+base_signature = 0.5
+active_strength = 4000.0
+cross_section = 0.4
