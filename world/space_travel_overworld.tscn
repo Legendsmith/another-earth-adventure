@@ -18,7 +18,7 @@
 [ext_resource type="Script" uid="uid://4l7rh470ahb5" path="res://scripts/space/combat/torpedo_launcher.gd" id="16_launcher"]
 [ext_resource type="Script" uid="uid://nvvg48482mps" path="res://scripts/space/combat/player_weapons.gd" id="17_player_weapons"]
 [ext_resource type="Script" uid="uid://ykrk8agmh17y" path="res://scripts/space/combat/space_combat_manager.gd" id="18_combat_manager"]
-[ext_resource type="Script" path="res://scripts/space/combat/combat_overlay.gd" id="19_combat_overlay"]
+[ext_resource type="Script" uid="uid://b4gxd4l7y3sr4" path="res://scripts/space/combat/combat_overlay.gd" id="19_combat_overlay"]
 [ext_resource type="Script" uid="uid://by07c171f28na" path="res://scripts/space/combat/space_battlefield.gd" id="20_battlefield"]
 [ext_resource type="Script" uid="uid://5yu4xlegvbdy" path="res://data/ship_component.gd" id="21_component"]
 [ext_resource type="Resource" path="res://data/armor/composite.tres" id="22_composite"]

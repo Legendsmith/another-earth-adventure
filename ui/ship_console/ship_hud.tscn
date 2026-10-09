@@ -1,14 +1,15 @@
 [gd_scene format=3 uid="uid://d2iyh546mhb4c"]
 
+[ext_resource type="Script" uid="uid://uxa5j7hx7kyo" path="res://ui/ship_console/ship_hud.gd" id="0_hud"]
 [ext_resource type="Script" uid="uid://bidgo1pu6b3c" path="res://ui/ship_console/hud_tab_container.gd" id="1_5ucd3"]
 [ext_resource type="Script" uid="uid://brqna2lyu2duu" path="res://ui/ship_console/fuel_bar.gd" id="1_h2mfe"]
+[ext_resource type="Theme" uid="uid://b46yb74emjn7s" path="res://ui/space_ui_theme.theme" id="1_o55ln"]
 [ext_resource type="Script" uid="uid://kc3yymuw7oy1" path="res://ui/ship_console/sensors_panel.gd" id="4_q6ngc"]
 [ext_resource type="Script" uid="uid://dhveeun76ki3f" path="res://ui/ship_console/command_panel.gd" id="5_fcca2"]
 [ext_resource type="Script" uid="uid://dwfh3coemnrvb" path="res://ui/ship_console/navigation_panel.gd" id="5_q6ngc"]
 [ext_resource type="PackedScene" path="res://ui/crew_manifest/crew_manifest.tscn" id="8_fcca2"]
-[ext_resource type="Script" path="res://ui/ship_console/ship_hud.gd" id="0_hud"]
-[ext_resource type="Script" path="res://ui/ship_console/combat_panel.gd" id="9_combat"]
-[ext_resource type="Script" path="res://ui/ship_console/armor_display.gd" id="10_armor"]
+[ext_resource type="Script" uid="uid://4gvhsgwysacp" path="res://ui/ship_console/combat_panel.gd" id="9_combat"]
+[ext_resource type="Script" uid="uid://c560cwdkgjp14" path="res://ui/ship_console/armor_display.gd" id="10_armor"]
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_26vpt"]
 
@@ -35,6 +36,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme = ExtResource("1_o55ln")
 
 [node name="SplitContainer" type="SplitContainer" parent="MainLayout" unique_id=1327116789]
 unique_name_in_owner = true
@@ -193,7 +195,7 @@ disabled = true
 toggle_mode = true
 text = "Retain ghost"
 
-[node name="CombatPanel" type="VBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer"]
+[node name="CombatPanel" type="VBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer" unique_id=1026552854]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
@@ -201,53 +203,53 @@ theme_override_constants/separation = 8
 script = ExtResource("9_combat")
 metadata/_tab_index = 2
 
-[node name="ArmorDisplay" type="Control" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel"]
+[node name="ArmorDisplay" type="Control" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel" unique_id=1047712317]
 unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 script = ExtResource("10_armor")
 
-[node name="HullReadout" type="RichTextLabel" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel"]
+[node name="HullReadout" type="RichTextLabel" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel" unique_id=1452038546]
 unique_name_in_owner = true
 layout_mode = 2
 bbcode_enabled = true
 fit_content = true
 scroll_active = false
 
-[node name="WeaponsHeader" type="Label" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel"]
+[node name="WeaponsHeader" type="Label" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel" unique_id=818694926]
 layout_mode = 2
 theme_override_font_sizes/font_size = 17
 text = "Weapons"
 
-[node name="WeaponList" type="VBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel"]
+[node name="WeaponList" type="VBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel" unique_id=134495210]
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="CombatButtons" type="HBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel"]
+[node name="CombatButtons" type="HBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel" unique_id=73723876]
 layout_mode = 2
 
-[node name="NextContactButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel/CombatButtons"]
+[node name="NextContactButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel/CombatButtons" unique_id=1281342200]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
 text = "Next contact (Tab)"
 
-[node name="FireButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel/CombatButtons"]
+[node name="FireButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel/CombatButtons" unique_id=645834069]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
 text = "Fire (Space)"
 
-[node name="TargetReadout" type="RichTextLabel" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel"]
+[node name="TargetReadout" type="RichTextLabel" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel" unique_id=680017815]
 unique_name_in_owner = true
 layout_mode = 2
 bbcode_enabled = true
 fit_content = true
 scroll_active = false
 
-[node name="CombatHelp" type="Label" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel"]
+[node name="CombatHelp" type="Label" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel" unique_id=535895248]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.62, 0.7, 1)
 theme_override_font_sizes/font_size = 12
@@ -345,18 +347,10 @@ visible = false
 layout_mode = 2
 metadata/_tab_index = 4
 
-[node name="SpaceViewContainer" type="SubViewportContainer" parent="MainLayout/SplitContainer" unique_id=250917181]
+[node name="SpaceView" type="Control" parent="MainLayout/SplitContainer" unique_id=550425125]
 unique_name_in_owner = true
 layout_mode = 2
-mouse_filter = 2
-stretch = true
-mouse_target = true
-
-[node name="SubViewport" type="SubViewport" parent="MainLayout/SplitContainer/SpaceViewContainer" unique_id=147584559]
-transparent_bg = true
-handle_input_locally = false
-size = Vector2i(1721, 1045)
-render_target_update_mode = 4
+mouse_filter = 1
 
 [node name="PanelContainer" type="PanelContainer" parent="MainLayout" unique_id=802306571]
 layout_mode = 2
