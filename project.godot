@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Another Earth AdVenture"
-run/main_scene="uid://cg7jx7idvycnf"
+run/main_scene="uid://d2iyh546mhb4c"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 

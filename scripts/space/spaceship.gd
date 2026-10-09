@@ -23,8 +23,8 @@ const TURN_PROFILE := 0.9
 @export_category("Engine")
 ## Hull mass without fuel or engines.
 @export var dry_mass: float = 8.0
-@export var fuel_capacity: float = 5.0
-@export var fuel: float = 5.0
+@export var fuel_capacity: float = 50.0
+@export var fuel: float = 50.0
 
 ## Definition for the main engine
 @export var main_engine:EngineDefinition

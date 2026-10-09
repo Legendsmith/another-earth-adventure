@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" path="res://ui/crew_manifest/crew_manifest.tscn" id="8_fcca2"]
 [ext_resource type="Script" uid="uid://4gvhsgwysacp" path="res://ui/ship_console/combat_panel.gd" id="9_combat"]
 [ext_resource type="Script" uid="uid://c560cwdkgjp14" path="res://ui/ship_console/armor_display.gd" id="10_armor"]
+[ext_resource type="PackedScene" uid="uid://cg7jx7idvycnf" path="res://world/space_travel_overworld.tscn" id="10_ocjjs"]
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_26vpt"]
 
@@ -26,9 +27,16 @@ grow_begin = -1.0
 grow_end = -1.0
 vertical = true
 
-[node name="ShipHud" type="CanvasLayer" unique_id=414802575]
+[node name="ShipHud" type="CanvasLayer" unique_id=414802575 node_paths=PackedStringArray("ship", "controller", "navigation_computer", "renderer", "maneuvers", "maneuver_editor", "camera")]
 process_mode = 3
 script = ExtResource("0_hud")
+ship = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/SpaceTravelOverworld/PlayerShip")
+controller = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/SpaceTravelOverworld/PlayerShip/Controller")
+navigation_computer = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/SpaceTravelOverworld/PlayerShip/NavigationComputer")
+renderer = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/SpaceTravelOverworld/TrajectoryRenderer")
+maneuvers = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/SpaceTravelOverworld/PlayerShip/Maneuvers")
+maneuver_editor = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/SpaceTravelOverworld/ManeuverEditor")
+camera = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/SpaceTravelOverworld/Camera2D")
 
 [node name="MainLayout" type="VBoxContainer" parent="." unique_id=260250108]
 anchors_preset = 15
@@ -347,10 +355,15 @@ visible = false
 layout_mode = 2
 metadata/_tab_index = 4
 
-[node name="SpaceView" type="Control" parent="MainLayout/SplitContainer" unique_id=550425125]
+[node name="SpaceView" type="SubViewportContainer" parent="MainLayout/SplitContainer" unique_id=1174115246]
 unique_name_in_owner = true
 layout_mode = 2
-mouse_filter = 1
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="MainLayout/SplitContainer/SpaceView" unique_id=807039494]
+size = Vector2i(1721, 1023)
+
+[node name="SpaceTravelOverworld" parent="MainLayout/SplitContainer/SpaceView/SubViewport" unique_id=512653754 instance=ExtResource("10_ocjjs")]
 
 [node name="PanelContainer" type="PanelContainer" parent="MainLayout" unique_id=802306571]
 layout_mode = 2
@@ -523,3 +536,5 @@ grow_vertical = 2
 theme_type_variation = &"ClearButton"
 
 [connection signal="tab_changed" from="MainLayout/SplitContainer/HudTabContainer" to="MainLayout/SplitContainer/HudTabContainer" method="_on_tab_changed"]
+
+[editable path="MainLayout/SplitContainer/SpaceView/SubViewport/SpaceTravelOverworld"]

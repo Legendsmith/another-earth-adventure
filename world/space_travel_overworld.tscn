@@ -37,7 +37,6 @@
 [ext_resource type="Script" uid="uid://dgy2n7q3inia" path="res://scripts/space/sensors/sensor_suite.gd" id="27_sensors"]
 [ext_resource type="Script" uid="uid://c63t7w5ta47n0" path="res://scripts/space/sensors/sensor_network.gd" id="28_network"]
 [ext_resource type="Script" uid="uid://0lue586uclve" path="res://scripts/space/sensors/sensor_overlay.gd" id="29_overlay"]
-[ext_resource type="PackedScene" uid="uid://d2iyh546mhb4c" path="res://ui/ship_console/ship_hud.tscn" id="38_cd05t"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_sun"]
 radius = 400.0
@@ -229,12 +228,3 @@ script = ExtResource("18_combat_manager")
 
 [node name="CombatOverlay" type="Node2D" parent="." unique_id=1874615010]
 script = ExtResource("19_combat_overlay")
-
-[node name="ShipHud" parent="." unique_id=414802575 node_paths=PackedStringArray("ship", "controller", "navigation_computer", "renderer", "maneuvers", "maneuver_editor", "camera") instance=ExtResource("38_cd05t")]
-ship = NodePath("../PlayerShip")
-controller = NodePath("../PlayerShip/Controller")
-navigation_computer = NodePath("../PlayerShip/NavigationComputer")
-renderer = NodePath("../TrajectoryRenderer")
-maneuvers = NodePath("../PlayerShip/Maneuvers")
-maneuver_editor = NodePath("../ManeuverEditor")
-camera = NodePath("../Camera2D")

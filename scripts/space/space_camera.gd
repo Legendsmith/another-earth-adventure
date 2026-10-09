@@ -8,9 +8,6 @@ extends Camera2D
 @export var zoom_step: float = 1.15
 @export var zoom_smoothing: float = 12.0
 
-## Screen offset of the view the target is kept in, from the centre of the screen (the console covers part of it).
-var view_offset := Vector2.ZERO
-
 var _target_zoom: float
 
 
@@ -21,7 +18,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	if is_instance_valid(target):
-		global_position = target.global_position - view_offset / zoom
+		global_position = target.global_position
 	var z := lerpf(zoom.x, _target_zoom, 1.0 - exp(-zoom_smoothing * delta / maxf(Engine.time_scale, 1.0)))
 	zoom = Vector2(z, z)
 

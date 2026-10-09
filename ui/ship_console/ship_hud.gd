@@ -102,9 +102,6 @@ func _process(_delta: float) -> void:
 		for action in _await_release.duplicate():
 			if not action.is_triggered():
 				_await_release.erase(action)
-	if camera:
-		# Centre the camera on the space view, not on the whole screen behind the console.
-		camera.view_offset = _space_view.get_global_rect().get_center() - get_viewport().get_visible_rect().get_center()
 	_update_bar()
 
 
