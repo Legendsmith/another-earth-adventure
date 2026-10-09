@@ -1,0 +1,86 @@
+[gd_resource type="Resource" script_class="GUIDEMappingContext" format=3 uid="uid://ikeuy7elkwvt"]
+
+[ext_resource type="Script" uid="uid://cpplm41b5bt6m" path="res://addons/guide/guide_action_mapping.gd" id="1_uiicj"]
+[ext_resource type="Script" uid="uid://dsa1dnifd6w32" path="res://addons/guide/guide_mapping_context.gd" id="2_pc6hc"]
+[ext_resource type="Script" uid="uid://mtx1unc2aqn7" path="res://addons/guide/guide_input_mapping.gd" id="2_thgmu"]
+[ext_resource type="Script" uid="uid://cw71o87tvdx3q" path="res://addons/guide/inputs/guide_input_key.gd" id="3_p3imu"]
+[ext_resource type="Script" uid="uid://bl8rjl4oaldje" path="res://addons/guide/modifiers/guide_modifier.gd" id="4_gtlte"]
+[ext_resource type="Script" uid="uid://x74mnwgr08a7" path="res://addons/guide/triggers/guide_trigger.gd" id="5_00brj"]
+[ext_resource type="Script" uid="uid://vgjlx6p007lp" path="res://addons/guide/inputs/guide_input_mouse_button.gd" id="6_sjs64"]
+
+[sub_resource type="Resource" id="Resource_oqik3"]
+script = ExtResource("3_p3imu")
+key = 4194306
+
+[sub_resource type="Resource" id="Resource_tdixi"]
+script = ExtResource("2_thgmu")
+input = SubResource("Resource_oqik3")
+
+[sub_resource type="Resource" id="Resource_pt107"]
+script = ExtResource("1_uiicj")
+input_mappings = Array[ExtResource("2_thgmu")]([SubResource("Resource_tdixi")])
+
+[sub_resource type="Resource" id="Resource_lqjbh"]
+script = ExtResource("6_sjs64")
+
+[sub_resource type="Resource" id="Resource_7bhml"]
+script = ExtResource("2_thgmu")
+input = SubResource("Resource_lqjbh")
+
+[sub_resource type="Resource" id="Resource_16ymx"]
+script = ExtResource("1_uiicj")
+input_mappings = Array[ExtResource("2_thgmu")]([SubResource("Resource_7bhml")])
+
+[sub_resource type="Resource" id="Resource_no1fw"]
+script = ExtResource("3_p3imu")
+key = 70
+
+[sub_resource type="Resource" id="Resource_27m7r"]
+script = ExtResource("2_thgmu")
+input = SubResource("Resource_no1fw")
+
+[sub_resource type="Resource" id="Resource_nk036"]
+script = ExtResource("1_uiicj")
+input_mappings = Array[ExtResource("2_thgmu")]([SubResource("Resource_27m7r")])
+
+[sub_resource type="Resource" id="Resource_h8mhl"]
+script = ExtResource("3_p3imu")
+key = 49
+
+[sub_resource type="Resource" id="Resource_ydbk8"]
+script = ExtResource("2_thgmu")
+input = SubResource("Resource_h8mhl")
+
+[sub_resource type="Resource" id="Resource_hiim4"]
+script = ExtResource("1_uiicj")
+input_mappings = Array[ExtResource("2_thgmu")]([SubResource("Resource_ydbk8")])
+
+[sub_resource type="Resource" id="Resource_xpcqb"]
+script = ExtResource("3_p3imu")
+key = 50
+
+[sub_resource type="Resource" id="Resource_s6s4g"]
+script = ExtResource("2_thgmu")
+input = SubResource("Resource_xpcqb")
+
+[sub_resource type="Resource" id="Resource_jiowc"]
+script = ExtResource("1_uiicj")
+input_mappings = Array[ExtResource("2_thgmu")]([SubResource("Resource_s6s4g")])
+
+[sub_resource type="Resource" id="Resource_axdn0"]
+script = ExtResource("3_p3imu")
+key = 51
+
+[sub_resource type="Resource" id="Resource_2xmgb"]
+script = ExtResource("2_thgmu")
+input = SubResource("Resource_axdn0")
+
+[sub_resource type="Resource" id="Resource_3m363"]
+script = ExtResource("1_uiicj")
+input_mappings = Array[ExtResource("2_thgmu")]([SubResource("Resource_2xmgb")])
+
+[resource]
+script = ExtResource("2_pc6hc")
+display_name = "HUD Controls"
+mappings = Array[ExtResource("1_uiicj")]([SubResource("Resource_pt107"), SubResource("Resource_16ymx"), SubResource("Resource_nk036"), SubResource("Resource_hiim4"), SubResource("Resource_jiowc"), SubResource("Resource_3m363")])
+metadata/_custom_type_script = "uid://dsa1dnifd6w32"

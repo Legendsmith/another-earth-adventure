@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="GUIDEAction" format=3 uid="uid://b4aerydv8xpx7"]
+
+[ext_resource type="Script" uid="uid://cluhc11vixkf1" path="res://addons/guide/guide_action.gd" id="1_13cgs"]
+
+[resource]
+script = ExtResource("1_13cgs")
+name = &"nav_cycle_engine"
+metadata/_custom_type_script = "uid://cluhc11vixkf1"
