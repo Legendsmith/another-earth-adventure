@@ -37,13 +37,9 @@ input_mappings = Array[ExtResource("3_nxywj")]([SubResource("Resource_tdixi")])
 script = ExtResource("8_6ycqc")
 button = 2
 
-[sub_resource type="Resource" id="Resource_0v7xv"]
-script = ExtResource("9_3sg6b")
-
 [sub_resource type="Resource" id="Resource_0c7ya"]
 script = ExtResource("3_nxywj")
 input = SubResource("Resource_nli6o")
-triggers = Array[ExtResource("6_c7ekm")]([SubResource("Resource_0v7xv")])
 
 [sub_resource type="Resource" id="Resource_ryatb"]
 script = ExtResource("1_gos76")

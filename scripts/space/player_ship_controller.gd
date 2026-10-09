@@ -2,7 +2,7 @@ class_name PlayerShipController
 extends Node
 ## Player flight: maneuver nodes are the primary way to navigate (see ManeuverEditor); direct control (the ShipHud
 ## turns it on) flies the ship by hand (W thrust, A/D turn, Shift+A/D strafe on the thrusters) and aborts any burn in
-## progress. In combat mode, right-click translates toward the mouse on the thrusters without turning and
+## progress. In combat mode, holding right-click translates toward the mouse on the thrusters without turning and
 ## Shift+right-click turns the ship to face it. The navigation computer plots a course to the selected target as
 ## maneuver nodes. Also handles target selection, time warp and the active sensors switch.
 
@@ -12,6 +12,7 @@ const MANEUVER_EDIT_CONTEXT: GUIDEMappingContext = preload("res://ui/guide/ship_
 const NEXT_DESTINATION_ACTION: GUIDEAction = preload("res://ui/guide/nav_next_destination.tres")
 const CYCLE_ENGINE_ACTION: GUIDEAction = preload("res://ui/guide/nav_cycle_engine.tres")
 const TOGGLE_ACTIVE_SENSORS_ACTION: GUIDEAction = preload("res://ui/guide/sensors_toggle_active.tres")
+const COMBAT_CONTEXT: GUIDEMappingContext = preload("res://ui/guide/mode_combat.tres")
 const MOVE_TO_ACTION: GUIDEAction = preload("res://ui/guide/combat_move_to.tres")
 const MOVE_TURN_ACTION: GUIDEAction = preload("res://ui/guide/combat_move_turn.tres")
 const COMBAT_SHIFT_ACTION: GUIDEAction = preload("res://ui/guide/combat_shift.tres")
@@ -26,9 +27,6 @@ const TURN_DONE_RATE := 0.02
 @export var move_action: GUIDEAction = preload("res://ui/guide/ship_move.tres")
 @export var rotate_action: GUIDEAction = preload("res://ui/guide/ship_rotate.tres")
 @export var timewarp_action: GUIDEAction = preload("res://ui/guide/ship_timewarp.tres")
-## Combat move: delta-v (px/s) per screen pixel from the ship to the click, and the most one click asks for.
-@export var move_delta_v_per_pixel: float = 0.02
-@export var max_move_delta_v: float = 10.0
 
 var ship: Spaceship
 var target_index: int = -1
@@ -47,7 +45,6 @@ func _ready() -> void:
 	NEXT_DESTINATION_ACTION.just_triggered.connect(cycle_target)
 	CYCLE_ENGINE_ACTION.just_triggered.connect(_on_cycle_engine)
 	TOGGLE_ACTIVE_SENSORS_ACTION.just_triggered.connect(toggle_active_sensors)
-	MOVE_TO_ACTION.just_triggered.connect(_on_move_to)
 	MOVE_TURN_ACTION.just_triggered.connect(_on_move_turn)
 
 
@@ -62,7 +59,12 @@ func _physics_process(_delta: float) -> void:
 		thrust = clampf(-move.y, 0.0, 1.0)
 		strafe = clampf(move.x, -1.0, 1.0)
 		turn = clampf(rotate_action.value_axis_1d, -1.0, 1.0)
-	if thrust > 0.0 or turn != 0.0 or strafe != 0.0:
+	# Right of the nose: the nose rotated a quarter turn clockwise (y is down).
+	var push := Vector2.RIGHT.rotated(ship.global_rotation + PI / 2.0) * strafe
+	var combat_move := _combat_move_direction()
+	if combat_move != Vector2.ZERO:
+		push = combat_move
+	if thrust > 0.0 or turn != 0.0 or push != Vector2.ZERO:
 		# Manual control overrides everything automatic.
 		if maneuvers:
 			maneuvers.abort_current()
@@ -70,8 +72,7 @@ func _physics_process(_delta: float) -> void:
 			orbital_system.SetTimeWarpIndex(0)
 	ship.throttle = thrust
 	ship.steer = turn
-	# Right of the nose: the nose rotated a quarter turn clockwise (y is down).
-	ship.manual_translation = Vector2.RIGHT.rotated(ship.global_rotation + PI / 2.0) * strafe
+	ship.manual_translation = push
 	if turn != 0.0:
 		_end_heading_turn()
 	elif _combat_heading != Vector2.ZERO:
@@ -82,17 +83,13 @@ func _physics_process(_delta: float) -> void:
 			_end_heading_turn()
 
 
-## Combat move: a thruster burn toward the mouse without turning, sized by how far away the click was on screen.
-func _on_move_to() -> void:
-	if COMBAT_SHIFT_ACTION.is_triggered():
-		return # Shift+right-click turns instead.
+## Combat move: while right-click is held the thrusters push toward the mouse, without turning.
+func _combat_move_direction() -> Vector2:
+	# Shift+right-click is the turn instead. Checking the context too ignores a state left over from a mode change.
+	if direct_control or not GUIDE.is_mapping_context_enabled(COMBAT_CONTEXT) or not MOVE_TO_ACTION.is_triggered() 			or COMBAT_SHIFT_ACTION.is_triggered():
+		return Vector2.ZERO
 	var offset := ship.get_global_mouse_position() - ship.global_position
-	var screen_distance := offset.length() * ship.get_canvas_transform().get_scale().x
-	if screen_distance < 1.0:
-		return
-	var delta_v := minf(screen_distance * move_delta_v_per_pixel, max_move_delta_v)
-	_take_manual_control()
-	ship.execute_burn(offset.normalized() * delta_v, Spaceship.Drive.THRUSTERS, true)
+	return offset.normalized() if offset.length_squared() > 1e-6 else Vector2.ZERO
 
 
 ## Combat turn: points the nose at the mouse and holds it there until the ship has settled.
@@ -100,7 +97,7 @@ func _on_move_turn() -> void:
 	var offset := ship.get_global_mouse_position() - ship.global_position
 	if offset == Vector2.ZERO:
 		return
-	# A combat move's translation burn keeps going: it does not care where the nose points.
+	# A held right-click push carries on while turning: it does not care where the nose points.
 	if maneuvers:
 		maneuvers.abort_current()
 	ship.hold_heading(offset)
@@ -112,15 +109,6 @@ func _end_heading_turn() -> void:
 		if ship.get_held_heading() == _combat_heading:
 			ship.release_heading()
 		_combat_heading = Vector2.ZERO
-
-
-## Manual orders replace whatever burn is running and drop time warp.
-func _take_manual_control() -> void:
-	if maneuvers:
-		maneuvers.abort_current()
-	ship.cancel_burn()
-	if orbital_system.TimeWarp > 1:
-		orbital_system.SetTimeWarpIndex(0)
 
 
 func _on_timewarp() -> void:
