@@ -1,14 +1,14 @@
 extends VBoxContainer
-## Navigation mode of the ShipConsole: clock and warp, fuel, current orbit, target encounter, next maneuver and the
+## Navigation mode of the ShipHud: clock and warp, fuel, current orbit, target encounter, next maneuver and the
 ## navigation computer, with buttons for the flight keys.
 
-var console: ShipConsole
+var console: ShipHud
 var _orbital_system: Node
 
 @onready var _readout: Label = %Readout
 
 
-func setup(owner_console: ShipConsole) -> void:
+func setup(owner_console: ShipHud) -> void:
 	console = owner_console
 	_orbital_system = get_tree().get_first_node_in_group(Constants.ORBITAL_SYSTEM_GROUP)
 	%NextTargetButton.pressed.connect(func() -> void:
@@ -39,12 +39,14 @@ func _process(_delta: float) -> void:
 		_readout.text = "No ship"
 		return
 	var lines: PackedStringArray = []
-	var clock := "T+%s   warp x%d" % [ShipConsole.format_time(_orbital_system.SimTime), _orbital_system.TimeWarp]
+	var clock := "T+%s   warp x%d" % [ShipHud.format_time(_orbital_system.SimTime), _orbital_system.TimeWarp]
 	if _orbital_system.IsWarpCapped:
 		clock += " (max x%d, burn ahead)" % _orbital_system.WarpLevels[_orbital_system.WarpCapIndex]
 	if get_tree().paused:
 		clock += "   PAUSED (planning: Esc or click empty space to resume)"
 	lines.append(clock)
+	if console.direct_control:
+		lines.append("DIRECT CONTROL: W thrust, A/D turn   (Ctrl or Esc to release)")
 	lines.append("Fuel %.2f / %.2f   Δv left %.1f px/s (thrusters %.1f)" % [ship.fuel, ship.fuel_capacity,
 		ship.get_delta_v_remaining(Spaceship.Drive.MAIN), ship.get_delta_v_remaining(Spaceship.Drive.THRUSTERS)])
 	lines.append("Engines: %s / %s" % [ship.main_engine.name if ship.main_engine else "none",
@@ -65,7 +67,7 @@ func _process(_delta: float) -> void:
 		if renderer and renderer.closest_approach.get("found", false):
 			var ca := renderer.closest_approach
 			line += "   closest approach %d px in %s" % [roundi(ca.distance),
-				ShipConsole.format_time(ca.time - _orbital_system.SimTime)]
+				ShipHud.format_time(ca.time - _orbital_system.SimTime)]
 		lines.append(line)
 	else:
 		lines.append("No target")
@@ -74,7 +76,7 @@ func _process(_delta: float) -> void:
 	if maneuvers and not maneuvers.nodes.is_empty():
 		var node: Dictionary = maneuvers.nodes[0]
 		var status := "executing" if maneuvers.is_executing(node) \
-			else "in %s" % ShipConsole.format_time(maneuvers.get_burn_start(node) - _orbital_system.SimTime)
+			else "in %s" % ShipHud.format_time(maneuvers.get_burn_start(node) - _orbital_system.SimTime)
 		var how: String = "translate" if maneuvers.is_translation(node) else Spaceship.DRIVE_NAMES[maneuvers.get_drive(node)]
 		lines.append("Maneuver %s (%s): Δv %.2f (total %.2f over %d)" % [status, how, maneuvers.get_delta_v(node),
 			maneuvers.get_total_delta_v(), maneuvers.nodes.size()])

@@ -1,67 +1,96 @@
-class_name CombatHud
-extends CanvasLayer
-## Combat readout for the player's hull: armor grid, internals, weapons, selected contact, inbound munitions,
-## railgun threats and warnings.
+extends VBoxContainer
+## Combat mode of the ShipHud: the player's armor grid and internals, weapons (pick the one that fires), the selected
+## contact, inbound munitions, railgun threats and warnings. The target line and brackets are drawn in the world by
+## the CombatOverlay.
 
-const WIDTH := 430.0
-const HELP := "T next contact   F torpedo   R railgun   V active sensors"
 const SEVERITY_COLORS := ["#cfe8ff", "#ffd27a", "#ff6b5e"]
 
-var _box: VBoxContainer
-var _text: RichTextLabel
-var _armor: ArmorDisplay
+var console: ShipHud
+var _weapons_group := ButtonGroup.new()
+var _weapon_buttons: Array[Button] = []
+
+@onready var _armor: ArmorDisplay = %ArmorDisplay
+@onready var _hull_readout: RichTextLabel = %HullReadout
+@onready var _weapon_list: VBoxContainer = %WeaponList
+@onready var _target_readout: RichTextLabel = %TargetReadout
 
 
-func _ready() -> void:
-	process_mode = Node.PROCESS_MODE_ALWAYS
-	_box = VBoxContainer.new()
-	_box.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_box.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	_box.offset_left = -WIDTH - 16.0
-	_box.offset_right = -16.0
-	_box.offset_top = 16.0
-	_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_box)
-	_armor = ArmorDisplay.new()
-	_armor.custom_minimum_size = Vector2(WIDTH, 0)
-	_box.add_child(_armor)
-	_text = RichTextLabel.new()
-	_text.bbcode_enabled = true
-	_text.fit_content = true
-	_text.scroll_active = false
-	_text.custom_minimum_size = Vector2(WIDTH, 0)
-	_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_text.add_theme_color_override(&"font_shadow_color", Color.BLACK)
-	_box.add_child(_text)
+func setup(owner_console: ShipHud) -> void:
+	console = owner_console
+	%NextContactButton.pressed.connect(_with_weapons.bind(&"cycle_contact"))
+	%FireButton.pressed.connect(_with_weapons.bind(&"fire_selected"))
 
 
 func _process(_delta: float) -> void:
+	if not is_visible_in_tree():
+		return
 	var manager := SpaceCombatManager.find(get_tree())
 	var hull: CombatHull = manager.get_player_hull() if manager else null
 	_armor.hull = hull
 	_armor.queue_redraw()
-	if manager == null:
-		_text.text = ""
+	if manager == null or hull == null:
+		_hull_readout.text = "[color=#ff6b5e]No combat hull[/color]"
+		_target_readout.text = ""
+		_update_weapons(null)
 		return
+	_hull_readout.text = "\n".join([_hull_line(hull), _internals_line(hull)])
+	_update_weapons(hull)
 	var lines: PackedStringArray = []
-	if hull:
-		lines.append(_hull_line(hull))
-		lines.append(_internals_line(hull))
-		var weapons: PackedStringArray = []
-		for weapon in hull.get_weapons():
-			weapons.append(weapon.get_status())
-		lines.append("Weapons: %s" % (", ".join(weapons) if not weapons.is_empty() else "none"))
-		var origin := hull.get_world_position()
-		lines.append(_target_line(manager, hull, origin))
-		lines.append_array(_threat_lines(manager, origin))
-	else:
-		lines.append("[color=#ff6b5e]No combat hull[/color]")
+	var origin := hull.get_world_position()
+	lines.append(_target_line(manager, hull, origin))
+	lines.append_array(_threat_lines(manager, origin))
 	for warning in manager.warnings:
 		var alpha := clampf(warning.time_left / 2.0, 0.25, 1.0)
 		lines.append("[color=%s%02x]%s[/color]" % [SEVERITY_COLORS[warning.severity], roundi(alpha * 255.0), warning.text])
-	lines.append("[color=#8899aa]%s[/color]" % HELP)
-	_text.text = "\n".join(lines)
+	_target_readout.text = "\n".join(lines)
 
+
+func _player_weapons() -> PlayerWeapons:
+	var manager := SpaceCombatManager.find(get_tree())
+	return PlayerWeapons.find_on(manager.get_player_hull()) if manager else null
+
+
+func _with_weapons(method: StringName) -> void:
+	var weapons := _player_weapons()
+	if weapons:
+		weapons.call(method)
+
+
+#region Weapons
+
+## One toggle button per weapon, numbered by its select key; the pressed one fires.
+func _update_weapons(hull: CombatHull) -> void:
+	var weapons: Array[WeaponMount] = []
+	if hull:
+		weapons = hull.get_weapons()
+	while _weapon_buttons.size() < weapons.size():
+		var button := Button.new()
+		button.toggle_mode = true
+		button.button_group = _weapons_group
+		button.focus_mode = Control.FOCUS_NONE
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.pressed.connect(_on_weapon_pressed.bind(_weapon_buttons.size()))
+		_weapon_list.add_child(button)
+		_weapon_buttons.append(button)
+	while _weapon_buttons.size() > weapons.size():
+		_weapon_buttons.pop_back().queue_free()
+	var player_weapons := PlayerWeapons.find_on(hull)
+	var selected := player_weapons.selected_weapon if player_weapons else -1
+	for i in weapons.size():
+		var key := "%d  " % (i + 1) if i < PlayerWeapons.WEAPON_ACTIONS.size() else ""
+		_weapon_buttons[i].text = key + weapons[i].get_status()
+		_weapon_buttons[i].set_pressed_no_signal(i == selected)
+
+
+func _on_weapon_pressed(index: int) -> void:
+	var weapons := _player_weapons()
+	if weapons:
+		weapons.select_weapon(index)
+
+#endregion
+
+
+#region Readout
 
 func _hull_line(hull: CombatHull) -> String:
 	var armor_name := hull.armor.name if hull.armor else "no armor"
@@ -119,30 +148,4 @@ func _threat_lines(manager: SpaceCombatManager, origin: Vector2) -> PackedString
 				roundi(contact.get_world_position().distance_to(origin))])
 	return lines
 
-
-## Draws the armor grid: one column per armor column, intact boxes from the outer layer (top) down.
-class ArmorDisplay:
-	extends Control
-
-	const BOX := 9.0
-	const GAP := 2.0
-
-	var hull: CombatHull
-
-	func _draw() -> void:
-		if hull == null or hull.grid == null or hull.grid.layers == 0:
-			custom_minimum_size.y = 0.0
-			return
-		var grid := hull.grid
-		var box := minf(BOX, (size.x - GAP * grid.columns) / grid.columns)
-		custom_minimum_size.y = grid.layers * (box + GAP) + 4.0
-		var intact := hull.armor.color if hull.armor else Color.GRAY
-		for column in grid.columns:
-			for layer in grid.layers:
-				# remaining[column] boxes are left, lost from the outside in: the top `layers - remaining` are gone.
-				var lost := layer < grid.layers - grid.remaining[column]
-				var rect := Rect2(column * (box + GAP), layer * (box + GAP), box, box)
-				if lost:
-					draw_rect(rect, Color(1.0, 0.4, 0.3, 0.6), false, 1.0)
-				else:
-					draw_rect(rect, intact)
+#endregion

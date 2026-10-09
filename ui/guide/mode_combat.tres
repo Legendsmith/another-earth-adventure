@@ -14,6 +14,7 @@
 [ext_resource type="Resource" uid="uid://cakgnyickafmu" path="res://ui/guide/combat_select_weapon_3.tres" id="12_0v7xv"]
 [ext_resource type="Script" uid="uid://dsa1dnifd6w32" path="res://addons/guide/guide_mapping_context.gd" id="13_0c7ya"]
 [ext_resource type="Resource" uid="uid://dlxm61ok7yip4" path="res://ui/guide/combat_move_to.tres" id="13_372gl"]
+[ext_resource type="Resource" uid="uid://bunilkqj8nlit" path="res://ui/guide/direct_control.tres" id="20_direct"]
 
 [sub_resource type="Resource" id="Resource_oqik3"]
 script = ExtResource("4_ea2hu")
@@ -106,8 +107,21 @@ script = ExtResource("1_gos76")
 action = ExtResource("12_0v7xv")
 input_mappings = Array[ExtResource("3_nxywj")]([SubResource("Resource_fhuwn")])
 
+[sub_resource type="Resource" id="Resource_dctrl_key"]
+script = ExtResource("4_ea2hu")
+key = 4194326
+
+[sub_resource type="Resource" id="Resource_dctrl_input"]
+script = ExtResource("3_nxywj")
+input = SubResource("Resource_dctrl_key")
+
+[sub_resource type="Resource" id="Resource_dctrl_action"]
+script = ExtResource("1_gos76")
+action = ExtResource("20_direct")
+input_mappings = Array[ExtResource("3_nxywj")]([SubResource("Resource_dctrl_input")])
+
 [resource]
 script = ExtResource("13_0c7ya")
 display_name = "Combat Mode"
-mappings = Array[ExtResource("1_gos76")]([SubResource("Resource_pt107"), SubResource("Resource_16ymx"), SubResource("Resource_7cr8k"), SubResource("Resource_epbox"), SubResource("Resource_vbpwf"), SubResource("Resource_ecd57"), SubResource("Resource_dilbi")])
+mappings = Array[ExtResource("1_gos76")]([SubResource("Resource_pt107"), SubResource("Resource_16ymx"), SubResource("Resource_7cr8k"), SubResource("Resource_epbox"), SubResource("Resource_vbpwf"), SubResource("Resource_ecd57"), SubResource("Resource_dilbi"), SubResource("Resource_dctrl_action")])
 metadata/_custom_type_script = "uid://dsa1dnifd6w32"

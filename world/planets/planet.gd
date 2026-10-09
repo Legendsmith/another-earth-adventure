@@ -7,7 +7,8 @@ signal rewards_collected(planet:Planet, rewards:PlanetRewards)
 
 const GROUP:StringName = &"planets"
 
-const COLLECT_HINT:String = "E: Collect"
+const COLLECT_HINT:String = "F: Collect"
+const INTERACT_ACTION:GUIDEAction = preload("res://ui/guide/interact.tres")
 const COLLECTED_HINT:String = "Collected"
 
 @export var data:PlanetData
@@ -45,6 +46,7 @@ func _ready() -> void:
 	orbit_shape.shape = orbit_circle
 	low_orbit.body_entered.connect(_on_body_entered)
 	low_orbit.body_exited.connect(_on_body_exited)
+	INTERACT_ACTION.just_triggered.connect(_on_interact_action)
 
 
 ## The surface sprite is clipped to this circle.
@@ -71,9 +73,8 @@ func _on_body_exited(node:Node2D) -> void:
 	_update_label()
 
 
-func _unhandled_input(event:InputEvent) -> void:
-	if event.is_action_pressed(&"interact") and can_collect():
-		get_viewport().set_input_as_handled()
+func _on_interact_action() -> void:
+	if can_collect():
 		on_interact()
 
 

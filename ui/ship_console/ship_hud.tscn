@@ -6,6 +6,9 @@
 [ext_resource type="Script" uid="uid://dhveeun76ki3f" path="res://ui/ship_console/command_panel.gd" id="5_fcca2"]
 [ext_resource type="Script" uid="uid://dwfh3coemnrvb" path="res://ui/ship_console/navigation_panel.gd" id="5_q6ngc"]
 [ext_resource type="PackedScene" path="res://ui/crew_manifest/crew_manifest.tscn" id="8_fcca2"]
+[ext_resource type="Script" path="res://ui/ship_console/ship_hud.gd" id="0_hud"]
+[ext_resource type="Script" path="res://ui/ship_console/combat_panel.gd" id="9_combat"]
+[ext_resource type="Script" path="res://ui/ship_console/armor_display.gd" id="10_armor"]
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_26vpt"]
 
@@ -23,6 +26,8 @@ grow_end = -1.0
 vertical = true
 
 [node name="ShipHud" type="CanvasLayer" unique_id=414802575]
+process_mode = 3
+script = ExtResource("0_hud")
 
 [node name="MainLayout" type="VBoxContainer" parent="." unique_id=260250108]
 anchors_preset = 15
@@ -73,21 +78,21 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
-text = "Plot course (N)"
+text = "Plot course"
 
 [node name="NavModeButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/NavigationPanel/NavButtons" unique_id=1697057282]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
-text = "Nav mode (M)"
+text = "Nav mode"
 
 [node name="NavEnginesButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/NavigationPanel/NavButtons" unique_id=413580853]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
-text = "Engines (B)"
+text = "Engines (Q)"
 
 [node name="WarpDownButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/NavigationPanel/NavButtons" unique_id=1952225221]
 unique_name_in_owner = true
@@ -107,7 +112,7 @@ text = "Warp + (.)"
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.62, 0.7, 1)
 theme_override_font_sizes/font_size = 12
-text = "Click path: add maneuver (hold: pick engines). Drag handles: plan burn. Drag node: move. Right-click/Del: remove. Wheel: zoom. Emergency: W thrust, A/D turn."
+text = "Click path: add maneuver (hold: pick engines). Drag handles or W/S prograde, A/D radial (Shift: fine), Q: engines. Drag node: move. Right-click/Backspace: remove. Esc: done. Wheel: zoom. Ctrl: direct control."
 autowrap_mode = 3
 
 [node name="SensorsPanel" type="VBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer" unique_id=1735036908]
@@ -125,7 +130,7 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
-text = "Active sensors (V)"
+text = "Active sensors (Q)"
 
 [node name="ActiveStatus" type="Label" parent="MainLayout/SplitContainer/HudTabContainer/SensorsPanel/ActiveRow" unique_id=1248545412]
 unique_name_in_owner = true
@@ -188,13 +193,74 @@ disabled = true
 toggle_mode = true
 text = "Retain ghost"
 
+[node name="CombatPanel" type="VBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 8
+script = ExtResource("9_combat")
+metadata/_tab_index = 2
+
+[node name="ArmorDisplay" type="Control" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("10_armor")
+
+[node name="HullReadout" type="RichTextLabel" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+
+[node name="WeaponsHeader" type="Label" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 17
+text = "Weapons"
+
+[node name="WeaponList" type="VBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="CombatButtons" type="HBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel"]
+layout_mode = 2
+
+[node name="NextContactButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel/CombatButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+text = "Next contact (Tab)"
+
+[node name="FireButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel/CombatButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+text = "Fire (Space)"
+
+[node name="TargetReadout" type="RichTextLabel" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+bbcode_enabled = true
+fit_content = true
+scroll_active = false
+
+[node name="CombatHelp" type="Label" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.62, 0.7, 1)
+theme_override_font_sizes/font_size = 12
+text = "Click a contact or Tab: target it. Q/W/E: pick weapon 1-3. Space: fire. Ctrl: direct control."
+autowrap_mode = 3
+
 [node name="CommandPanel" type="VBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer" unique_id=174187153]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 8
 script = ExtResource("5_fcca2")
-metadata/_tab_index = 2
+metadata/_tab_index = 3
 
 [node name="PlanetHeader" type="Label" parent="MainLayout/SplitContainer/HudTabContainer/CommandPanel" unique_id=547077811]
 layout_mode = 2
@@ -212,7 +278,7 @@ unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
 disabled = true
-text = "Collect rewards (E)"
+text = "Collect rewards (F)"
 
 [node name="RewardsLog" type="Label" parent="MainLayout/SplitContainer/HudTabContainer/CommandPanel" unique_id=1807910754]
 unique_name_in_owner = true
@@ -277,14 +343,17 @@ text = "Assign crew to expedition"
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
-metadata/_tab_index = 3
+metadata/_tab_index = 4
 
 [node name="SpaceViewContainer" type="SubViewportContainer" parent="MainLayout/SplitContainer" unique_id=250917181]
+unique_name_in_owner = true
 layout_mode = 2
+mouse_filter = 2
 stretch = true
 mouse_target = true
 
 [node name="SubViewport" type="SubViewport" parent="MainLayout/SplitContainer/SpaceViewContainer" unique_id=147584559]
+transparent_bg = true
 handle_input_locally = false
 size = Vector2i(1721, 1045)
 render_target_update_mode = 4
@@ -403,6 +472,7 @@ horizontal_alignment = 2
 vertical_alignment = 1
 
 [node name="FuelBar" type="ProgressBar" parent="MainLayout/PanelContainer/HudBar/RightBar/HBoxContainer" unique_id=45758763]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 1
