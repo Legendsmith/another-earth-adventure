@@ -11,6 +11,7 @@ const HOSTILE_HEX := "#ff6b5e"
 const FRIENDLY_HEX := "#8fe3ff"
 const UNKNOWN_HEX := "#ffd27a"
 const GHOST_HEX := "#9aa4b5"
+const EXPLOSION_HEX := "#ffa64d"
 
 var console: ShipConsole
 var _network: SensorNetwork
@@ -23,6 +24,7 @@ var _tree_dirty := true
 @onready var _details: RichTextLabel = %Details
 @onready var _target_button: Button = %TargetContactButton
 @onready var _forget_button: Button = %ForgetButton
+@onready var _retain_button: Button = %RetainButton
 
 
 func setup(owner_console: ShipConsole) -> void:
@@ -41,6 +43,7 @@ func setup(owner_console: ShipConsole) -> void:
 	_active_toggle.toggled.connect(_on_active_toggled)
 	_target_button.pressed.connect(_on_target_pressed)
 	_forget_button.pressed.connect(_on_forget_pressed)
+	_retain_button.toggled.connect(_on_retain_toggled)
 	visibility_changed.connect(func() -> void: _tree_dirty = true)
 
 
@@ -142,14 +145,19 @@ func _on_item_selected() -> void:
 
 
 func _status_text(track: SensorTrack, now: float) -> String:
+	var text: String
 	if track.is_held():
-		return "ACTIVE" if track.lock == SensorTrack.Lock.ACTIVE else "passive"
-	return "ghost %s" % ShipConsole.format_time(now - track.last_seen)
+		text = "flash" if track.is_explosion() else "ACTIVE" if track.lock == SensorTrack.Lock.ACTIVE else "passive"
+	else:
+		text = "ghost %s" % ShipConsole.format_time(now - track.last_seen)
+	return text + " (kept)" if track.retained else text
 
 
 func _color_hex(track: SensorTrack) -> String:
 	if track.is_ghost():
 		return GHOST_HEX
+	if track.is_explosion():
+		return EXPLOSION_HEX
 	if not track.identified:
 		return UNKNOWN_HEX
 	return HOSTILE_HEX if CombatHull.factions_hostile(track.get_faction(), _network.player_faction) else FRIENDLY_HEX
@@ -168,6 +176,9 @@ func _update_details() -> void:
 	_target_button.text = "Weapons target (T)" if not (manager and hull and manager.selected_contact == hull) \
 		else "Targeted"
 	_forget_button.disabled = not (track and track.is_ghost())
+	_retain_button.disabled = track == null
+	_retain_button.set_pressed_no_signal(track != null and track.retained)
+	_retain_button.text = "Retained" if track and track.retained else "Retain ghost"
 	if track == null:
 		_details.text = "[color=%s]Select a contact for details. Lost contacts stay on as ghosts with a projected course.[/color]" % GHOST_HEX
 		return
@@ -176,9 +187,14 @@ func _update_details() -> void:
 	var lines: PackedStringArray = []
 	lines.append("[b]%s  %s[/b]  [color=%s]%s[/color]" % [track.designation, track.get_display_name(), _color_hex(track),
 		_iff_text(track)])
-	if track.identified:
+	if track.identified and not track.is_explosion():
 		lines.append("Class: %s" % track.get_classification())
-	if track.is_held():
+	if track.retained:
+		lines.append("[color=%s]Retained: its ghost stays on the plot until you forget it.[/color]" % GHOST_HEX)
+	if track.is_explosion():
+		lines.append("Flash of signature %.0f at %s   %s ago" % [track.last_signature,
+			_format_distance(track.last_position.distance_to(origin)), ShipConsole.format_time(now - track.first_seen)])
+	elif track.is_held():
 		var at := _position_of(track, now)
 		var relative := at - origin
 		var player_velocity := _player_suite().get_world_velocity() if _player_suite() else Vector2.ZERO
@@ -206,6 +222,8 @@ func _update_details() -> void:
 
 
 func _iff_text(track: SensorTrack) -> String:
+	if track.is_explosion():
+		return "EXPLOSION"
 	if not track.identified:
 		return "UNKNOWN"
 	var faction := track.get_faction()
@@ -242,6 +260,12 @@ func _on_target_pressed() -> void:
 	var manager := SpaceCombatManager.find(get_tree())
 	if track and manager and track.get_hull():
 		manager.selected_contact = track.get_hull()
+
+
+func _on_retain_toggled(on: bool) -> void:
+	if _network and _network.selected_track:
+		_network.set_retained(_network.selected_track, on)
+		_tree_dirty = true
 
 
 func _on_forget_pressed() -> void:

@@ -16,6 +16,7 @@ const HOSTILE_COLOR := Color(1.0, 0.45, 0.4, 0.95)
 const UNKNOWN_COLOR := Color(1.0, 0.85, 0.45, 0.9)
 const GHOST_COLOR := Color(0.7, 0.75, 0.85, 0.55)
 const ACTIVE_RING_COLOR := Color(0.4, 0.9, 1.0, 0.18)
+const EXPLOSION_COLOR := Color(1.0, 0.65, 0.3, 0.9)
 
 var _network: SensorNetwork
 # Labels drawn this frame, so the next one can step clear of them.
@@ -43,7 +44,9 @@ func _draw() -> void:
 		var reach := player.active_range_for(1.0)
 		draw_arc(player.get_world_position(), reach, 0.0, TAU, 128, ACTIVE_RING_COLOR, 2.0 * s)
 	for track in _network.get_tracks():
-		if track.is_held():
+		if track.is_explosion():
+			_draw_explosion(track, now, s)
+		elif track.is_held():
 			_draw_held(track, s)
 		else:
 			_draw_ghost(track, now, s)
@@ -95,9 +98,27 @@ func _draw_ghost(track: SensorTrack, now: float, s: float) -> void:
 	var status := "lost %s ago" % _format_time(since)
 	if track.is_projection_expired(now):
 		status = "projection expired"
+	if track.retained:
+		status += ", kept"
 	_label(projected + Vector2(10.0, -8.0) * s, "%s ghost (%s)" % [track.designation, status], color, s)
 	if selected:
 		_brackets(projected, 16.0 * s, color, s)
+
+
+## Explosions sit where they flashed: a starburst, fading to the ghost colour once the flash is over.
+func _draw_explosion(track: SensorTrack, now: float, s: float) -> void:
+	var at := track.last_position
+	var color := EXPLOSION_COLOR if track.is_held() else GHOST_COLOR
+	if track == _network.selected_track:
+		color.a = 0.95
+		_brackets(at, 16.0 * s, color, s)
+	for i in 8:
+		var ray := Vector2.from_angle(i * TAU / 8.0)
+		draw_line(at + ray * 3.0 * s, at + ray * (i % 2 + 1) * 5.0 * s, color, 1.0 * s)
+	var label := "%s %s" % [track.designation, track.get_display_name()]
+	if track.is_ghost():
+		label += " (%s ago%s)" % [_format_time(now - track.last_seen), ", kept" if track.retained else ""]
+	_label(at + Vector2(10.0, -8.0) * s, label, color, s)
 
 
 func _live_position(track: SensorTrack) -> Vector2:

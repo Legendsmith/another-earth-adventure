@@ -74,12 +74,16 @@ func expire() -> void:
 	queue_free()
 
 
-func spawn_explosion(radius: float, color: Color = Color(1.0, 0.75, 0.4)) -> void:
-	var blast := CombatExplosion.new()
-	blast.radius = radius
-	blast.color = color
-	get_parent().add_child(blast)
-	blast.global_position = global_position
+## Damage the warhead carries: it sets how bright the explosion is to sensors.
+func get_warhead_damage() -> float:
+	return 0.0
+
+
+## Explosion at the munition. A `final` one ends the munition, and with it any sensor track of it.
+func spawn_explosion(radius: float, color: Color = Color(1.0, 0.75, 0.4), final: bool = true,
+		damage: float = -1.0) -> void:
+	CombatExplosion.spawn(get_parent(), global_position, radius, get_warhead_damage() if damage < 0.0 else damage,
+		"%s detonation" % munition_name, self if final else null, color)
 
 
 func _on_body_entered(_body: Node) -> void:

@@ -2,20 +2,27 @@ class_name Torpedo
 extends Munition
 ## Long range guided cruise munition.
 ##
+## COLD LAUNCH: it drifts clear of the launcher with its drive unlit for `cold_launch_time`, swinging its nose
+## toward the intercept heading.
 ## BOOST: a short burn after launch puts the torpedo on an intercept course at `cruise_speed`.
 ## COAST: it runs cold toward the target with only cold-gas corrections, nearly invisible to sensors.
 ## TERMINAL: inside `engagement_range` it lights its drive and burns continuously until it hits or runs dry,
 ## steering with zero-effort-miss proportional navigation. Its acceleration and long burn time outmatch any ship's,
-## so dodging means out-turning it at the last moment rather than outrunning it.
+## but its drive only pushes along its nose and the nose turns slowly (`turn_rate`), so a ship that jinks late
+## inside its turning circle can make it overshoot.
 
-enum Phase { BOOST, COAST, TERMINAL, SPENT }
+enum Phase { COLD_LAUNCH, BOOST, COAST, TERMINAL, SPENT }
 
-const PHASE_NAMES := ["boosting", "coasting cold", "terminal burn", "spent"]
+const PHASE_NAMES := ["cold launch", "boosting", "coasting cold", "terminal burn", "spent"]
 ## Proportional navigation constant.
 const NAVIGATION_GAIN := 3.0
 
 ## Drive acceleration (px/s^2).
 var thrust_accel: float = 30.0
+## How fast the nose (and so the drive) can swing (rad/s).
+var turn_rate: float = 0.25
+## Seconds after launch spent drifting with the drive unlit while the nose turns to the intercept heading.
+var cold_launch_time: float = 1.5
 ## Seconds of full drive burn in the tanks (boost and terminal burn share it).
 var burn_time: float = 40.0
 ## Closing speed the boost phase builds before going cold (px/s).
@@ -35,7 +42,9 @@ var signature_cold: float = 0.05
 var signature_boost: float = 8.0
 var signature_burning: float = 60.0
 
-var phase: Phase = Phase.BOOST
+var phase: Phase = Phase.COLD_LAUNCH
+## Direction the nose points (global). The drive only thrusts along it. Set by the launcher before launch.
+var heading := Vector2.ZERO
 var _boost_elapsed := 0.0
 var _thrust_fraction := 0.0
 var _thrust_direction := Vector2.RIGHT
@@ -44,6 +53,8 @@ var _thrust_direction := Vector2.RIGHT
 func _ready() -> void:
 	super._ready()
 	munition_name = "Torpedo"
+	if heading == Vector2.ZERO:
+		heading = linear_velocity.normalized() if linear_velocity.length_squared() > 1e-6 else Vector2.RIGHT
 
 
 func _physics_process(delta: float) -> void:
@@ -63,20 +74,27 @@ func _physics_process(delta: float) -> void:
 		return
 	var accel := Vector2.ZERO
 	match phase:
+		Phase.COLD_LAUNCH:
+			_turn_toward(guidance(thrust_accel, true), delta)
+			if _age >= cold_launch_time:
+				phase = Phase.BOOST
 		Phase.BOOST:
 			_boost_elapsed += delta
-			accel = guidance(thrust_accel, true)
+			accel = _drive(guidance(thrust_accel, true), delta)
 			var closing := -relative.dot(relative_velocity) / maxf(relative.length(), 1e-6)
 			if closing >= cruise_speed or _boost_elapsed >= max_boost_time:
 				phase = Phase.COAST
 		Phase.COAST:
+			# Keep the nose on the line of sight, ready for the terminal burn. The cold-gas trim is too weak to
+			# need the nose and pushes sideways directly.
+			_turn_toward(relative, delta)
 			if relative.length() <= engagement_range:
 				phase = Phase.TERMINAL
 			elif correction_delta_v > 0.0:
 				accel = guidance(correction_accel, false)
 				correction_delta_v -= accel.length() * delta
 		Phase.TERMINAL:
-			accel = guidance(thrust_accel, true)
+			accel = _drive(guidance(thrust_accel, true), delta)
 	if phase == Phase.BOOST or phase == Phase.TERMINAL:
 		burn_time -= delta * accel.length() / thrust_accel
 		if burn_time <= 0.0:
@@ -86,6 +104,21 @@ func _physics_process(delta: float) -> void:
 		apply_central_force(accel * mass)
 		_thrust_fraction = accel.length() / thrust_accel
 		_thrust_direction = accel.normalized()
+
+
+## Swings the nose toward `direction` at no more than `turn_rate`.
+func _turn_toward(direction: Vector2, delta: float) -> void:
+	if direction == Vector2.ZERO:
+		return
+	var max_step := turn_rate * delta
+	heading = heading.rotated(clampf(heading.angle_to(direction), -max_step, max_step))
+
+
+## Turns toward the commanded acceleration and returns what the drive actually gives: the command's component
+## along the nose, never backwards.
+func _drive(command: Vector2, delta: float) -> Vector2:
+	_turn_toward(command, delta)
+	return heading * maxf(command.dot(heading), 0.0)
 
 
 ## Acceleration command toward the target, at most `max_accel`. Steers out the predicted miss distance
@@ -115,10 +148,14 @@ func guidance(max_accel: float, keep_closing: bool) -> Vector2:
 func get_signature() -> float:
 	match phase:
 		Phase.BOOST:
-			return signature_boost
+			return signature_boost if _thrust_fraction > 0.0 else signature_cold
 		Phase.TERMINAL:
 			return signature_burning if _thrust_fraction > 0.0 else signature_cold
 	return signature_cold
+
+
+func get_warhead_damage() -> float:
+	return damage
 
 
 func _detonate() -> void:
@@ -130,7 +167,6 @@ func _detonate() -> void:
 
 func _draw() -> void:
 	var s := 4.0 * get_zoom_scale()
-	var heading := linear_velocity.normalized() if linear_velocity.length_squared() > 1e-6 else Vector2.RIGHT
 	var side := Vector2(-heading.y, heading.x)
 	var color := Color(1.0, 0.45, 0.35) if CombatHull.factions_hostile(faction, Constants.PLAYER_GROUP) else Color(0.5, 0.9, 1.0)
 	draw_colored_polygon(PackedVector2Array([heading * s, -heading * s * 0.6 + side * s * 0.35,

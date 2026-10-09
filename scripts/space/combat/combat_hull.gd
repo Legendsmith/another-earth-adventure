@@ -285,10 +285,9 @@ func _destroy() -> void:
 		ship.main_engine_online = false
 		ship.thrusters_online = false
 		ship.cancel_burn()
-	var blast := CombatExplosion.new()
-	blast.radius = hit_radius * 6.0
-	host.get_parent().add_child(blast)
-	blast.global_position = host.global_position
+	# A wreck left in place keeps its sensor track; a ship that breaks up ends it with the flash.
+	CombatExplosion.spawn(host.get_parent(), host.global_position, hit_radius * 6.0, structure,
+		"Ship destroyed", get_sensor_suite() if free_on_destroyed else null)
 	if free_on_destroyed:
 		host.queue_free()
 
