@@ -138,12 +138,15 @@ func set_mode(new_mode: Mode, show_panel := true) -> void:
 		# Maneuvers are only edited in Navigation: put the edit widget away.
 		maneuver_editor.deselect()
 	var changed := new_mode != mode
-	mode = new_mode
-	for m: Mode in _mode_buttons:
-		(_mode_buttons[m] as Button).set_pressed_no_signal(m == mode)
-	_tabs.current_tab = (_mode_panels[mode] as Control).get_index() if show_panel else -1
-	_queue_refresh()
-	if changed:
+	if not changed:		
+		_tabs.visible = !_tabs.visible
+	elif changed:
+		mode = new_mode
+		for m: Mode in _mode_buttons:
+			(_mode_buttons[m] as Button).set_pressed_no_signal(m == mode)
+		_tabs.visible = show_panel
+		_tabs.current_tab = (_mode_panels[mode] as Control).get_index()
+		_queue_refresh()
 		mode_changed.emit(mode)
 
 

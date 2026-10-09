@@ -1,7 +1,6 @@
 [gd_scene format=3 uid="uid://d2iyh546mhb4c"]
 
 [ext_resource type="Script" uid="uid://uxa5j7hx7kyo" path="res://ui/ship_console/ship_hud.gd" id="0_hud"]
-[ext_resource type="Script" uid="uid://bidgo1pu6b3c" path="res://ui/ship_console/hud_tab_container.gd" id="1_5ucd3"]
 [ext_resource type="Script" uid="uid://brqna2lyu2duu" path="res://ui/ship_console/fuel_bar.gd" id="1_h2mfe"]
 [ext_resource type="Theme" uid="uid://b46yb74emjn7s" path="res://ui/space_ui_theme.theme" id="1_o55ln"]
 [ext_resource type="Script" uid="uid://kc3yymuw7oy1" path="res://ui/ship_console/sensors_panel.gd" id="4_q6ngc"]
@@ -50,17 +49,18 @@ theme = ExtResource("1_o55ln")
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
-split_offsets = PackedInt32Array(0, 0)
+split_offsets = PackedInt32Array(187)
+split_offset = 187
 
 [node name="HudTabContainer" type="TabContainer" parent="MainLayout/SplitContainer" unique_id=1504202597]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
-deselect_enabled = true
-script = ExtResource("1_5ucd3")
+current_tab = 0
+tabs_visible = false
 
 [node name="NavigationPanel" type="VBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer" unique_id=102509228]
 unique_name_in_owner = true
-visible = false
 layout_mode = 2
 theme_override_constants/separation = 8
 script = ExtResource("5_q6ngc")
@@ -361,7 +361,9 @@ layout_mode = 2
 stretch = true
 
 [node name="SubViewport" type="SubViewport" parent="MainLayout/SplitContainer/SpaceView" unique_id=807039494]
-size = Vector2i(1721, 1023)
+handle_input_locally = false
+size = Vector2i(1920, 1023)
+render_target_update_mode = 4
 
 [node name="SpaceTravelOverworld" parent="MainLayout/SplitContainer/SpaceView/SubViewport" unique_id=512653754 instance=ExtResource("10_ocjjs")]
 
@@ -534,7 +536,5 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_type_variation = &"ClearButton"
-
-[connection signal="tab_changed" from="MainLayout/SplitContainer/HudTabContainer" to="MainLayout/SplitContainer/HudTabContainer" method="_on_tab_changed"]
 
 [editable path="MainLayout/SplitContainer/SpaceView/SubViewport/SpaceTravelOverworld"]
