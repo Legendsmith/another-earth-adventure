@@ -311,13 +311,13 @@ func get_turn_torque() -> float:
 
 
 ## Moment of inertia of the hull in local space.
-func get_inertia() -> float:
+func get_turn_inertia() -> float:
 	return (get_dry_mass() + fuel) * radius_of_gyration * radius_of_gyration
 
 
 ## Angular acceleration the thrusters can give the ship (rad/s^2).
 func get_turn_acceleration() -> float:
-	var current_inertia := get_inertia()
+	var current_inertia := get_turn_inertia()
 	return get_turn_torque() / current_inertia if current_inertia > 0.0 else 0.0
 
 
@@ -403,7 +403,7 @@ func _set_turn_rate(rate: float, delta: float) -> void:
 	var max_torque := get_turn_torque()
 	if max_torque <= 0.0:
 		return
-	var current_inertia := get_inertia()
+	var current_inertia := get_turn_inertia()
 	var torque := clampf((rate - spin) * current_inertia / delta, -max_torque, max_torque)
 	if absf(torque) < 1e-6:
 		return
