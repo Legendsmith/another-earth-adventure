@@ -14,6 +14,7 @@ func _initialize() -> void:
 	_test_thrusters()
 	_test_layout_editing()
 	_test_breakup_is_hard()
+	await _test_editor()
 	print("ship internals: %s" % ("OK" if _failures == 0 else "%d FAILED" % _failures))
 	quit(1 if _failures else 0)
 
@@ -186,3 +187,56 @@ func _test_breakup_is_hard() -> void:
 	_check(hits > 200, "a ship takes many hits before it breaks up (%d)" % hits)
 	_check(hull.is_destroyed, "it does break up in the end")
 	host.free()
+
+
+func _test_editor() -> void:
+	var editor: ShipLayoutEditor = load("res://ui/ship_internals/ship_layout_editor.tscn").instantiate()
+	root.add_child(editor)
+	await process_frame
+	var internals := editor._view.internals
+	_check(editor.layout.modules.size() == internals.layout.modules.size(), "the editor previews its layout")
+	# Paint a wall across the mess and put a door in it.
+	editor._set_tool(ShipLayoutEditor.Tool.WALL)
+	editor._on_press(Vector2i(28, 8), false)
+	for y in range(9, 11):
+		editor._on_drag_to(Vector2i(28, y))
+	editor._on_release(Vector2i(28, 10))
+	_check(internals.get_cell(Vector2i(28, 10)) == ShipInternals.Cell.WALL, "walls can be painted")
+	editor._set_tool(ShipLayoutEditor.Tool.DOOR)
+	editor._on_press(Vector2i(28, 9), false)
+	_check(internals.get_cell(Vector2i(28, 9)) == ShipInternals.Cell.DOOR, "doors go in walls")
+	# A module in the crew quarters, and one that would overlap it.
+	editor._set_tool(ShipLayoutEditor.Tool.MODULE)
+	editor._on_preset_selected(editor._presets.find_custom(func(c: ShipComponent) -> bool:
+		return c.name == "Reactor") + 1)
+	var count := editor.layout.modules.size()
+	editor._on_press(Vector2i(26, 1), false)
+	editor._on_release(Vector2i(27, 2))
+	_check(editor.layout.modules.size() == count + 1, "modules can be placed")
+	_check(internals.get_module_at(Vector2i(27, 2)) != ShipInternals.NO_MODULE, "placed modules are live")
+	editor._on_press(Vector2i(27, 2), false)
+	editor._on_release(Vector2i(29, 3))
+	_check(editor.layout.modules.size() == count + 1, "modules cannot overlap")
+	# A cargo zone, then undo it.
+	editor._set_tool(ShipLayoutEditor.Tool.ZONE)
+	editor._zone_type.select(ShipRoom.Zone.CARGO)
+	var rooms := editor.layout.rooms.size()
+	editor._on_press(Vector2i(29, 9), false)
+	editor._on_release(Vector2i(31, 10))
+	_check(editor.layout.rooms.size() == rooms + 1 and editor.layout.rooms[-1].zone == ShipRoom.Zone.CARGO,
+		"zones can be marked")
+	editor.undo()
+	_check(editor.layout.rooms.size() == rooms, "undo removes it")
+	# Move the new module with Select, then save and load.
+	editor._set_tool(ShipLayoutEditor.Tool.SELECT)
+	editor._on_press(Vector2i(26, 1), false)
+	editor._on_drag_to(Vector2i(29, 1))
+	editor._on_release(Vector2i(29, 1))
+	_check(editor.layout.modules[-1].rect.position == Vector2i(29, 1), "modules can be dragged")
+	_check(editor.save_layout("user://test_layout.tres") == OK, "layouts save")
+	editor._new_layout(true)
+	_check(editor.layout.modules.is_empty(), "an empty hull has no modules")
+	editor.load_layout("user://test_layout.tres")
+	_check(editor.layout.modules.size() == count + 1 and editor.layout.get_wall_cells().has(Vector2i(28, 10)),
+		"layouts load back")
+	editor.queue_free()
