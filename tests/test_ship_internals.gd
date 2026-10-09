@@ -10,6 +10,9 @@ func _initialize() -> void:
 	_test_layout()
 	_test_railgun_bores_through()
 	_test_repairs()
+	_test_fuel_tank()
+	_test_thrusters()
+	_test_layout_editing()
 	_test_breakup_is_hard()
 	print("ship internals: %s" % ("OK" if _failures == 0 else "%d FAILED" % _failures))
 	quit(1 if _failures else 0)
@@ -26,6 +29,56 @@ func _make_internals() -> ShipInternals:
 	root.add_child(internals)
 	internals.rng.seed = 1234
 	return internals
+
+
+func _find_module(internals: ShipInternals, module_name: String) -> int:
+	for i in internals.layout.modules.size():
+		if internals.get_module(i).name == module_name:
+			return i
+	return -1
+
+
+func _test_fuel_tank() -> void:
+	var internals := _make_internals()
+	var tank := _find_module(internals, "Fuel Tank")
+	_check(internals.is_fuel_tank(tank), "the default layout has a fuel tank")
+	internals.damage_module(tank, 50)
+	_check(internals.is_module_operational(tank), "a fuel tank cannot be knocked out")
+	_check(is_equal_approx(internals.fuel_lost, 50 * internals.fuel_loss_per_hit), "hits on the tank lose fuel")
+	_check(_find_module(internals, "Thrusters") < 0, "thrusters have no module")
+	internals.free()
+
+
+func _test_thrusters() -> void:
+	var internals := _make_internals()
+	var at := func(integrity: float) -> float:
+		var t := inverse_lerp(internals.thruster_dead_integrity, internals.thruster_full_integrity, integrity)
+		return ease(clampf(t, 0.0, 1.0), internals.thruster_ease)
+	_check(internals.get_thruster_performance() == 1.0, "an undamaged frame gives full thrust")
+	_check(at.call(0.6) == 1.0 and at.call(0.5) == 1.0, "full thrust down to half the frame")
+	_check(at.call(0.1) == 0.0 and at.call(0.05) == 0.0, "no thrust at a tenth of the frame")
+	var high_drop: float = at.call(0.5) - at.call(0.4)
+	var low_drop: float = at.call(0.2) - at.call(0.1)
+	_check(low_drop > high_drop * 2.0, "thrust falls off faster near the critical level (%.2f vs %.2f)" % [low_drop,
+		high_drop])
+	print("  thrusters at frame 50/40/30/20/10%%: %s" % [[0.5, 0.4, 0.3, 0.2, 0.1].map(func(f: float) -> String:
+		return "%d%%" % roundi(at.call(f) * 100.0))])
+	internals.free()
+
+
+func _test_layout_editing() -> void:
+	var internals := _make_internals()
+	var layout := ShipLayout.create_default()
+	var walls := layout.get_wall_cells()
+	walls.erase(Vector2i(10, 4))
+	layout.set_wall_cells(walls)
+	_check(layout.get_wall_cells().size() == walls.size(), "wall cells survive the round trip to rectangles")
+	_check(layout.walls.size() < walls.size(), "walls are stored as runs")
+	internals.resolve_hit(64, ArmorGrid.DamageProfile.KINETIC, Vector2.DOWN)
+	internals.set_layout(layout)
+	_check(internals.breaches.is_empty() and internals.get_frame_integrity() == 1.0, "a new layout clears the damage")
+	_check(internals.get_cell(Vector2i(10, 4)) == ShipInternals.Cell.DECK, "the new layout is used")
+	internals.free()
 
 
 func _test_armor_surface() -> void:
@@ -89,7 +142,7 @@ func _test_railgun_bores_through() -> void:
 
 func _test_repairs() -> void:
 	var internals := _make_internals()
-	var reactor := 2
+	var reactor := _find_module(internals, "Reactor")
 	internals.damage_module(reactor, 5)
 	_check(not internals.is_module_operational(reactor), "a wrecked module is offline")
 	_check(internals.repair_module(reactor), "a damaged module can be repaired")
@@ -122,11 +175,14 @@ func _test_breakup_is_hard() -> void:
 	_check(hull.internals == internals, "internals attach to their hull")
 	var reactor := hull.find_component("Reactor")
 	var hits := 0
-	while not hull.is_destroyed and hits < 2000:
+	var thrust_gone := -1
+	while not hull.is_destroyed and hits < 20000:
+		if thrust_gone < 0 and internals.get_thruster_performance() == 0.0:
+			thrust_gone = hits
 		hull.take_hit(2, ArmorGrid.DamageProfile.KINETIC, Vector2.from_angle(randf() * TAU))
 		hits += 1
-	print("  hull with %d-deep armor broke up after %d fragment hits; reactor %s" % [internals.armor.thickness, hits,
-		"up" if hull.is_component_operational(reactor) else "down"])
+	print("  hull with %d-deep armor: thrusters dead after %d fragment hits, broke up after %d; reactor %s" % [
+		internals.armor.thickness, thrust_gone, hits, "up" if hull.is_component_operational(reactor) else "down"])
 	_check(hits > 200, "a ship takes many hits before it breaks up (%d)" % hits)
 	_check(hull.is_destroyed, "it does break up in the end")
 	host.free()

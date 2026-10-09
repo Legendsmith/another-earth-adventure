@@ -95,12 +95,14 @@ func _connect(target: ShipInternals) -> void:
 	target.module_damaged.connect(_on_module_changed)
 	target.module_repaired.connect(_on_module_changed)
 	target.round_tracked.connect(_on_round_tracked)
+	target.layout_changed.connect(_on_layout_changed)
 
 
 func _disconnect(target: ShipInternals) -> void:
 	for connection in [[target.armor_changed, queue_redraw], [target.breach_opened, _on_breach_opened],
 			[target.breach_patched, _on_breach_patched], [target.module_damaged, _on_module_changed],
-			[target.module_repaired, _on_module_changed], [target.round_tracked, _on_round_tracked]]:
+			[target.module_repaired, _on_module_changed], [target.round_tracked, _on_round_tracked],
+			[target.layout_changed, _on_layout_changed]]:
 		if (connection[0] as Signal).is_connected(connection[1]):
 			(connection[0] as Signal).disconnect(connection[1])
 
@@ -118,6 +120,12 @@ func _on_breach_patched(cell: Vector2i) -> void:
 
 
 func _on_module_changed(_index: int) -> void:
+	queue_redraw()
+
+
+func _on_layout_changed() -> void:
+	_tracks.clear()
+	_rebuild_bodies()
 	queue_redraw()
 
 
@@ -217,6 +225,10 @@ func _draw() -> void:
 				_:
 					draw_rect(rect, FLOOR_COLOR)
 					draw_rect(rect, FLOOR_LINE_COLOR, false, 1.0)
+	for room in internals.layout.rooms:
+		var tint: Color = ShipRoom.ZONE_COLORS[room.zone]
+		if tint.a > 0.0:
+			draw_rect(Rect2(Vector2(room.rect.position) * cell_size, Vector2(room.rect.size) * cell_size), tint)
 	if show_room_names:
 		for room in internals.layout.rooms:
 			# On the room's row nearest the middle of the hull, clear of the systems against the hull walls.
@@ -242,6 +254,12 @@ func _draw_module(index: int, font: Font) -> void:
 		color = Color(0.3, 0.12, 0.1)
 	draw_rect(rect, color)
 	draw_rect(rect, color.lightened(0.3), false, 1.0)
+	if internals.is_fuel_tank(index):
+		# Self-sealing compartments.
+		var x := rect.position.x + cell_size
+		while x < rect.end.x - 1.0:
+			draw_line(Vector2(x, rect.position.y), Vector2(x, rect.end.y), color.darkened(0.35), 1.0)
+			x += cell_size
 	if not internals.is_module_operational(index):
 		draw_line(rect.position, rect.end, SPACE_BREACH_COLOR, 2.0)
 		draw_line(Vector2(rect.end.x, rect.position.y), Vector2(rect.position.x, rect.end.y), SPACE_BREACH_COLOR, 2.0)

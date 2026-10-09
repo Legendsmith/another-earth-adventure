@@ -7,7 +7,11 @@ extends Node
 ## tube: it holes the hull where it enters, every wall it crosses, damages each module in its path (one point each, which
 ## it spends) and, if it still has points left, digs its way out the far side. An explosive hit bursts just inside the
 ## hole it blew. So rounds through the crew quarters and corridors only leave holes for the crew to patch, and a ship
-## is crippled long before it is destroyed: it only breaks up once most of its frame is holed.
+## is crippled long before it is destroyed: it only breaks up once nearly all of its frame is holed.
+##
+## Two systems are spread through the ship rather than knocked out: fuel tanks are compartmentalised and self-sealing,
+## so hits on them only lose a little fuel; and thrusters have no module at all, but weaken as the frame they are
+## mounted on is holed (see get_thruster_performance).
 ##
 ## Add it as a child of a CombatHull to take over the hull's armor and internal damage (see CombatHull.internals):
 ## modules then stand for the hull's components of the same name. On its own it works as a standalone model (tests,
@@ -21,6 +25,11 @@ signal module_destroyed(index: int)
 signal module_repaired(index: int)
 ## A round's path across the deck, in cells (from where it entered to where it exited or stopped).
 signal round_tracked(from: Vector2, to: Vector2)
+## A hit on a fuel tank module lost `fraction` of the ship's fuel capacity before the tank sealed.
+signal fuel_leaked(index: int, fraction: float)
+signal thrusters_changed(performance: float)
+## A new layout was set (set_layout): everything was rebuilt and all damage cleared.
+signal layout_changed
 
 enum Cell { DECK, HULL, WALL, DOOR }
 ## Where a hole is. HULL and DECK breaches are open to space: through the hull wall at the side of the deck, or through
@@ -31,9 +40,20 @@ const NO_MODULE := -1
 
 @export var layout: ShipLayout
 ## Share of the frame (hull and wall cells) that must stay intact; when more is holed the ship breaks up.
-@export_range(0.0, 1.0, 0.01) var breakup_integrity: float = 0.35
+@export_range(0.0, 1.0, 0.01) var breakup_integrity: float = 0.05
 ## Spread (radians, standard deviation) of the height rounds hit at: the space view is flat, so it is random.
 @export var vertical_spread: float = 0.35
+## Share of the fuel capacity a fuel tank loses per point of damage before it self-seals.
+@export_range(0.0, 0.2, 0.001) var fuel_loss_per_hit: float = 0.01
+
+@export_group("Thrusters")
+## Thrusters keep full performance while the frame integrity is at least this.
+@export_range(0.0, 1.0, 0.01) var thruster_full_integrity: float = 0.5
+## Thrusters are dead once the frame integrity falls to this.
+@export_range(0.0, 1.0, 0.01) var thruster_dead_integrity: float = 0.1
+## Shape of the fall-off between the two, as Godot's ease() curve: below 1 the thrust fades slowly at first and drops
+## off faster and faster as the frame nears the dead level (0.5 = 1 - (1 - t)^2).
+@export_exp_easing var thruster_ease: float = 0.5
 
 var hull: CombatHull
 var armor: HullArmorSurface
@@ -51,6 +71,9 @@ var breaches: Dictionary = {}
 ## Paths over open deck (cell units): hull, walls and modules are solid, doors are open.
 var astar: AStarGrid2D
 var rng := RandomNumberGenerator.new()
+## Fuel lost to hits on fuel tanks, as a share of the fuel capacity.
+var fuel_lost := 0.0
+var thruster_performance := 1.0
 
 var _frame_cells := 0
 ## Frame cells ever holed: patching seals a hole but does not restore the frame's strength.
@@ -59,6 +82,8 @@ var _damaged_frame: Dictionary = {}
 var _component_index: PackedInt32Array
 ## Deck point that internal blasts start from (the module that just blew up), or x < 0 for a random point.
 var _blast_origin := Vector2(-1.0, -1.0)
+## The ship's undamaged thrusters: the ship gets its own copy, scaled by thruster_performance.
+var _base_thrusters: EngineDefinition
 
 
 func _ready() -> void:
@@ -73,7 +98,17 @@ func _ready() -> void:
 
 #region Setup
 
+## Replaces the layout (the layout editor's live preview): rebuilds the deck and armor and clears all damage.
+func set_layout(new_layout: ShipLayout) -> void:
+	layout = new_layout if new_layout else ShipLayout.create_default()
+	_build()
+	layout_changed.emit()
+
+
 func _build() -> void:
+	breaches.clear()
+	_damaged_frame.clear()
+	fuel_lost = 0.0
 	length = maxi(layout.length, 3)
 	diameter = maxi(layout.diameter, 3)
 	radius = diameter / 2.0
@@ -112,6 +147,7 @@ func _build() -> void:
 		if value == Cell.HULL or value == Cell.WALL:
 			_frame_cells += 1
 	_build_astar()
+	_update_thrusters()
 
 
 func _build_astar() -> void:
@@ -160,12 +196,19 @@ func get_module_hit_points(index: int) -> int:
 	return hull.components[component].hit_to_kill if component >= 0 else maxi(layout.modules[index].hit_points, 1)
 
 
+## Fuel tanks are never knocked out.
 func is_module_operational(index: int) -> bool:
-	return module_damage[index] < get_module_hit_points(index)
+	return is_fuel_tank(index) or module_damage[index] < get_module_hit_points(index)
+
+
+func is_fuel_tank(index: int) -> bool:
+	return layout.modules[index].type == ShipModule.Type.FUEL_TANK
 
 
 ## 0 (wrecked) .. 1 (undamaged).
 func get_module_condition(index: int) -> float:
+	if is_fuel_tank(index):
+		return 1.0
 	return 1.0 - float(module_damage[index]) / get_module_hit_points(index)
 
 
@@ -203,6 +246,14 @@ func get_hull_breach_count() -> int:
 ## frame too. The ship breaks up below breakup_integrity.
 func get_frame_integrity() -> float:
 	return 1.0 - minf(float(_damaged_frame.size()) / maxi(_frame_cells, 1), 1.0)
+
+
+## Thrust of the ship's thrusters, 0..1. They are mounted all over the hull, so no single hit knocks them out: they
+## keep full thrust while the frame is at least thruster_full_integrity, then fade along the thruster_ease curve, more
+## and more steeply, to nothing at thruster_dead_integrity.
+func get_thruster_performance() -> float:
+	var t := inverse_lerp(thruster_dead_integrity, thruster_full_integrity, get_frame_integrity())
+	return ease(clampf(t, 0.0, 1.0), thruster_ease)
 
 #endregion
 
@@ -246,7 +297,12 @@ func apply_internal_damage(points: int) -> void:
 
 ## Adds damage to a module. On a CombatHull it also damages the module's component (and may knock out its system).
 func damage_module(index: int, points: int = 1) -> void:
-	if points <= 0 or not is_module_operational(index):
+	if points <= 0:
+		return
+	if is_fuel_tank(index):
+		_leak_fuel(index, points)
+		return
+	if not is_module_operational(index):
 		return
 	module_damage[index] = mini(module_damage[index] + points, get_module_hit_points(index))
 	module_damaged.emit(index)
@@ -327,8 +383,33 @@ func _open_breach(cell: Vector2i, kind: BreachKind) -> void:
 
 
 func _check_breakup() -> void:
+	_update_thrusters()
 	if hull and not hull.is_destroyed and get_frame_integrity() < breakup_integrity:
 		hull.break_up()
+
+
+func _leak_fuel(index: int, points: int) -> void:
+	var fraction := fuel_loss_per_hit * points
+	fuel_lost += fraction
+	var ship := hull.host as Spaceship if hull else null
+	if ship:
+		ship.fuel = maxf(ship.fuel - fraction * ship.fuel_capacity, 0.0)
+	fuel_leaked.emit(index, fraction)
+
+
+func _update_thrusters() -> void:
+	var performance := get_thruster_performance()
+	var ship := hull.host as Spaceship if hull else null
+	if ship and ship.thrusters:
+		if _base_thrusters == null:
+			# Engine definitions are shared resources: scale a copy of this ship's own.
+			_base_thrusters = ship.thrusters
+			ship.thrusters = _base_thrusters.duplicate()
+		ship.thrusters.max_thrust = _base_thrusters.max_thrust * performance
+		ship.thrusters.turn_torque = _base_thrusters.turn_torque * performance
+	if not is_equal_approx(performance, thruster_performance):
+		thruster_performance = performance
+		thrusters_changed.emit(performance)
 
 #endregion
 

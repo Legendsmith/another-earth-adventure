@@ -70,8 +70,12 @@ func _update_status() -> void:
 		internals.armor.get_hole_count()])
 	lines.append("Frame %d%%  breaches: %d to space, %d in walls" % [roundi(internals.get_frame_integrity() * 100.0),
 		internals.get_hull_breach_count(), internals.breaches.size() - internals.get_hull_breach_count()])
+	lines.append("Thrusters %d%%  fuel lost %d%%" % [roundi(internals.get_thruster_performance() * 100.0),
+		roundi(internals.fuel_lost * 100.0)])
 	for i in internals.layout.modules.size():
 		var module := internals.get_module(i)
+		if internals.is_fuel_tank(i):
+			continue
 		var state := "OFFLINE" if not internals.is_module_operational(i) else "%d%%" % roundi(
 			internals.get_module_condition(i) * 100.0)
 		lines.append("%s: %s" % [module.name, state])
