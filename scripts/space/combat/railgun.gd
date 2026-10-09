@@ -17,6 +17,9 @@ extends WeaponMount
 ## Signature of the discharge flash.
 @export var discharge_signature: float = 3000.0
 
+## Flight time (s) that marks the railgun's close band: rounds arriving sooner leave little time to dodge.
+const CLOSE_FLIGHT_TIME := 2.0
+
 var charge := 0.0
 var _rng := RandomNumberGenerator.new()
 
@@ -42,6 +45,15 @@ func is_ready() -> bool:
 
 func get_readiness() -> float:
 	return charge / shot_energy if shot_energy > 0.0 else 1.0
+
+
+## Bands by time of flight (ignoring the target's motion).
+func get_range_bands() -> Array[Dictionary]:
+	var close := minf(muzzle_velocity * CLOSE_FLIGHT_TIME, max_range)
+	return [
+		{"inner": 0.0, "outer": close, "label": "Railgun: under %.0f s flight" % CLOSE_FLIGHT_TIME},
+		{"inner": close, "outer": max_range, "label": "Railgun: %.1f s flight at max" % (max_range / muzzle_velocity)},
+	]
 
 
 ## Time (s) for a round fired now to reach a target at `relative_position` moving at `relative_velocity` (both relative

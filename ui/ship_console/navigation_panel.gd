@@ -42,7 +42,9 @@ func _process(_delta: float) -> void:
 	var clock := "T+%s   warp x%d" % [ShipHud.format_time(_orbital_system.SimTime), _orbital_system.TimeWarp]
 	if _orbital_system.IsWarpCapped:
 		clock += " (max x%d, burn ahead)" % _orbital_system.WarpLevels[_orbital_system.WarpCapIndex]
-	if get_tree().paused:
+	if console.player_paused:
+		clock += "   PAUSED (P to resume)"
+	elif get_tree().paused:
 		clock += "   PAUSED (planning: Esc or click empty space to resume)"
 	lines.append(clock)
 	if console.direct_control:

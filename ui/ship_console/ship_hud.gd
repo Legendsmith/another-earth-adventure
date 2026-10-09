@@ -8,6 +8,8 @@ extends CanvasLayer
 ##
 ## Input comes from G.U.I.D.E: the HUD context is always on, plus the context of the current mode. Direct control
 ## (Ctrl) swaps the mode context for the direct control one; editing a maneuver node adds the maneuver edit context.
+## Keyboard input belongs to G.U.I.D.E, so only editable text fields may hold GUI focus (focus would otherwise use up
+## Tab and other keys moving between controls).
 
 signal mode_changed(mode: Mode)
 signal direct_control_changed(active: bool)
@@ -29,6 +31,7 @@ const MODE_COMBAT_ACTION: GUIDEAction = preload("res://ui/guide/hud_mode_combat.
 const SHOW_COMMAND_ACTION: GUIDEAction = preload("res://ui/guide/hud_show_command.tres")
 const DIRECT_CONTROL_ACTION: GUIDEAction = preload("res://ui/guide/direct_control.tres")
 const CANCEL_ACTION: GUIDEAction = preload("res://ui/guide/cancel.tres")
+const PAUSE_ACTION: GUIDEAction = preload("res://ui/guide/pause.tres")
 
 @export var ship: Spaceship
 @export var controller: PlayerShipController
@@ -42,6 +45,8 @@ const CANCEL_ACTION: GUIDEAction = preload("res://ui/guide/cancel.tres")
 var mode: Mode = Mode.NAVIGATION
 ## Flying the ship by hand: the direct control context replaces the mode's context.
 var direct_control := false
+## Paused by the player (P) to plan. Editing a maneuver node also pauses; the game runs when neither does.
+var player_paused := false
 
 ## The primary mode to go back to when the command view is closed again.
 var _last_primary_mode: Mode = Mode.NAVIGATION
@@ -59,6 +64,7 @@ var _fuel_as_percent := false
 @onready var _fuel_bar: ProgressBar = %FuelBar
 @onready var _fuel_total: LineEdit = %FuelTotalDisplay
 @onready var _fuel_unit: Label = %FuelUnitLabel
+@onready var _pause_label: Label = %PauseLabel
 @onready var _mode_buttons := {
 	Mode.NAVIGATION: %NavigationModeButton as Button,
 	Mode.SENSORS: %SensorsModeButton as Button,
@@ -86,10 +92,14 @@ func _ready() -> void:
 	SHOW_COMMAND_ACTION.just_triggered.connect(_on_show_command)
 	DIRECT_CONTROL_ACTION.just_triggered.connect(_on_direct_control)
 	CANCEL_ACTION.just_triggered.connect(_on_cancel)
+	PAUSE_ACTION.just_triggered.connect(toggle_pause)
 	if maneuver_editor:
 		maneuver_editor.planning_changed.connect(_on_planning_changed)
+	get_viewport().gui_focus_changed.connect(_on_gui_focus_changed)
 	set_mode(mode)
 	_refresh_contexts()
+	_update_overlays()
+	_apply_pause()
 
 
 func _exit_tree() -> void:
@@ -147,6 +157,7 @@ func set_mode(new_mode: Mode, show_panel := true) -> void:
 		_tabs.visible = show_panel
 		_tabs.current_tab = (_mode_panels[mode] as Control).get_index()
 		_queue_refresh()
+		_update_overlays()
 		mode_changed.emit(mode)
 
 
@@ -188,6 +199,43 @@ func _on_cancel() -> void:
 
 func _on_planning_changed(_planning: bool) -> void:
 	_queue_refresh()
+	# The editor pauses and resumes the game for planning; a pause the player asked for outlasts it.
+	_apply_pause()
+
+
+func toggle_pause() -> void:
+	player_paused = not player_paused
+	_apply_pause()
+
+
+func _apply_pause() -> void:
+	var planning := maneuver_editor != null and maneuver_editor.pause_while_planning and maneuver_editor.is_planning()
+	get_tree().paused = player_paused or planning
+	_pause_label.visible = get_tree().paused
+	_pause_label.text = "PAUSED (P)" if player_paused else "PAUSED: planning"
+
+
+## Range rings belong to their mode: sensor reach in Sensors, weapon bands in Combat.
+func _update_overlays() -> void:
+	var sensor_overlay := SensorOverlay.find(get_tree())
+	if sensor_overlay:
+		sensor_overlay.show_ranges = mode == Mode.SENSORS
+	var combat_overlay := CombatOverlay.find(get_tree())
+	if combat_overlay:
+		combat_overlay.show_weapon_ranges = mode == Mode.COMBAT
+
+
+func _on_gui_focus_changed(control: Control) -> void:
+	if not _takes_text(control):
+		control.release_focus.call_deferred()
+
+
+static func _takes_text(control: Control) -> bool:
+	if control is LineEdit:
+		return (control as LineEdit).editable
+	if control is TextEdit:
+		return (control as TextEdit).editable
+	return control is SpinBox
 
 
 ## Context changes wait for the end of the frame: actions signal from inside G.U.I.D.E's own update.
