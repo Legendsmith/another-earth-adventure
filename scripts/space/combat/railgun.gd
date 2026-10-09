@@ -21,8 +21,10 @@ enum ArcFacing {
 const SOLVE_ITERATIONS := 12
 ## Integration step of the firing solution (s). Rounds and targets fall under the same gravity, so a coarse step is
 ## close enough to the physics engine's flight.
-const SOLVE_STEP := 0.75
-const SOLVE_MAX_STEPS := 300
+const SOLVE_STEP := 1.0
+const SOLVE_MAX_STEPS := 160
+## Real milliseconds between firing solutions, whatever the time warp: solving is the costly part of a railgun.
+const SOLVE_MIN_REAL_INTERVAL_MS := 250
 ## The firing solution must bring the round within this distance (px) of the target.
 const SOLVE_TOLERANCE := 1.0
 
@@ -68,6 +70,7 @@ var _track: CombatHull
 ## Last firing solution for _track: {direction, time, closing_speed}; empty when there is none.
 var _solution: Dictionary = {}
 var _solution_age := INF
+var _next_solve_ms := 0
 
 
 func _init() -> void:
@@ -125,12 +128,14 @@ static func linear_intercept_time(relative_position: Vector2, relative_velocity:
 func get_arc_center() -> Vector2:
 	if arc_facing == ArcFacing.AWAY_FROM_BODY and _orbital_system and _orbital_system.IsReady:
 		var origin := hull.get_world_position()
-		var body: int = _orbital_system.FindDominantBody(origin)
+		var body: int = _orbital_system.FindDominantBody(SpaceScale.to_map(origin))
 		if body >= 0:
-			var up: Vector2 = origin - _orbital_system.GetBodyPosition(body, _orbital_system.StateTime)
+			var up: Vector2 = origin - SpaceScale.to_world(_orbital_system.GetBodyPosition(body, _orbital_system.StateTime))
 			if up.length_squared() > 1e-6:
 				return up.normalized()
 	var host: Node2D = hull.host if hull and hull.host else self
+	if host is Spaceship:
+		return (host as Spaceship).get_nose()
 	return Vector2.RIGHT.rotated(host.global_rotation)
 
 
@@ -152,7 +157,7 @@ func _update_tracking(delta: float) -> void:
 	if _track == null:
 		return
 	_solution_age += delta
-	if _solution_age >= solve_interval:
+	if _solution_age >= solve_interval and Time.get_ticks_msec() >= _next_solve_ms:
 		_solve(_track)
 	if _solution.is_empty():
 		return
@@ -165,14 +170,16 @@ func _update_tracking(delta: float) -> void:
 
 func _solve(target: CombatHull) -> void:
 	_solution_age = 0.0
+	_next_solve_ms = Time.get_ticks_msec() + SOLVE_MIN_REAL_INTERVAL_MS
 	var mu := 0.0
 	var center := Vector2.ZERO
 	var origin := hull.get_world_position()
 	if _orbital_system and _orbital_system.IsReady:
-		var body: int = _orbital_system.FindDominantBody(origin)
+		var body: int = _orbital_system.FindDominantBody(SpaceScale.to_map(origin))
 		if body >= 0:
-			mu = _orbital_system.GetBodyMu(body)
-			center = _orbital_system.GetBodyPosition(body, _orbital_system.StateTime)
+			# The solution is worked in world px: scale the body's map gravity up (mu goes as length cubed).
+			mu = _orbital_system.GetBodyMu(body) / pow(SpaceScale.MAP_SCALE, 3.0)
+			center = SpaceScale.to_world(_orbital_system.GetBodyPosition(body, _orbital_system.StateTime))
 	_solution = solve_intercept(origin, hull.get_world_velocity(), target.get_world_position(),
 		target.get_world_velocity(), muzzle_velocity, mu, center, max_flight_time)
 
@@ -182,7 +189,7 @@ func _solve(target: CombatHull) -> void:
 func fire_at(target: CombatHull) -> bool:
 	if not can_engage(target):
 		return false
-	if target != _track or _solution_age >= solve_interval:
+	if target != _track or (_solution_age >= solve_interval and Time.get_ticks_msec() >= _next_solve_ms):
 		_track = target
 		_solve(target)
 	if _solution.is_empty():
@@ -301,8 +308,7 @@ static func _coast(start_position: Vector2, start_velocity: Vector2, time: float
 func _draw() -> void:
 	if not show_arc or arc_half_angle >= PI or hull == null or hull.is_destroyed:
 		return
-	var zoom := maxf(1.0, 1.0 / get_canvas_transform().get_scale().x)
-	var length := arc_draw_length * zoom
+	var length := arc_draw_length / get_canvas_transform().get_scale().x
 	# Draw in world orientation from the gun's position.
 	draw_set_transform(Vector2.ZERO, -global_rotation)
 	var center := get_arc_center().angle()

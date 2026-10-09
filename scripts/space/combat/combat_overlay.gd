@@ -1,7 +1,8 @@
 class_name CombatOverlay
 extends Node2D
 ## World-space combat plot for the player: the target line from the player's hull to the selected contact with its
-## range, brackets on the selected contact, and the selected weapon's reach.
+## range, brackets on the selected contact, and the selected weapon's reach. Drawn in world px over the map (see
+## SpaceScale).
 
 const GROUP := &"combat_overlay"
 ## Screen distance within which a click picks a contact.
@@ -35,8 +36,8 @@ func contact_under_mouse() -> CombatHull:
 	var player: CombatHull = manager.get_player_hull() if manager else null
 	if player == null:
 		return null
-	var mouse := get_global_mouse_position()
-	var pixel := 1.0 / get_canvas_transform().get_scale().x
+	var mouse := SpaceScale.to_world(get_global_mouse_position())
+	var pixel := 1.0 / SpaceScale.world_zoom(self)
 	var best: CombatHull = null
 	var best_distance := INF
 	for contact in manager.get_contacts(manager.player_faction, player.get_world_position()):
@@ -55,7 +56,8 @@ func _draw() -> void:
 	var target := manager.selected_contact
 	if player == null or player.is_destroyed or not is_instance_valid(target):
 		return
-	var s := maxf(1.0, 1.0 / get_canvas_transform().get_scale().x)
+	SpaceScale.begin_world_draw(self)
+	var s := SpaceScale.world_pixel(self)
 	var from := player.get_world_position()
 	var to := target.get_world_position()
 	var weapons := PlayerWeapons.find_on(player)
@@ -84,7 +86,4 @@ func _brackets(at: Vector2, b: float, color: Color, s: float) -> void:
 
 
 func _label(at: Vector2, text: String, color: Color, s: float) -> void:
-	var font := ThemeDB.fallback_font
-	var size := roundi(FONT_SIZE * s)
-	draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, maxi(roundi(3.0 * s), 1), Color(0, 0, 0, 0.7))
-	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, color)
+	SpaceScale.draw_label(self, at, text, color, s, FONT_SIZE, SpaceScale.world_transform(self))

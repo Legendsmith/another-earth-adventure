@@ -26,7 +26,7 @@ grow_begin = -1.0
 grow_end = -1.0
 vertical = true
 
-[node name="ShipHud" type="CanvasLayer" unique_id=414802575 node_paths=PackedStringArray("ship", "controller", "navigation_computer", "renderer", "maneuvers", "maneuver_editor", "camera")]
+[node name="ShipHud" type="CanvasLayer" unique_id=414802575 node_paths=PackedStringArray("ship", "controller", "navigation_computer", "renderer", "maneuvers", "maneuver_editor", "camera", "views")]
 process_mode = 3
 script = ExtResource("0_hud")
 ship = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/PlanetOrbitSpace/PlayerShip")
@@ -35,7 +35,8 @@ navigation_computer = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/
 renderer = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/PlanetOrbitSpace/TrajectoryRenderer")
 maneuvers = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/PlanetOrbitSpace/PlayerShip/Maneuvers")
 maneuver_editor = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/PlanetOrbitSpace/ManeuverEditor")
-camera = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/PlanetOrbitSpace/Camera2D")
+camera = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/PlanetOrbitSpace/MapCamera")
+views = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/PlanetOrbitSpace/SpaceViews")
 
 [node name="MainLayout" type="VBoxContainer" parent="." unique_id=260250108]
 anchors_preset = 15

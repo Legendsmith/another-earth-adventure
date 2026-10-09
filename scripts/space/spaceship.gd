@@ -3,6 +3,11 @@ extends RigidBody2D
 ## A ship flying under Godot's own 2D physics. Gravity comes from the point-gravity Area2D wells that
 ## every CelestialBody creates, so this script only handles the engine: thrust, fuel and attitude.
 ##
+## The body lives on the orbital map (see SpaceScale), in map units: engines push it with MAP_SCALE of their thrust
+## and their exhaust velocity is scaled the same way, so accelerations and delta-v are in map units while fuel use is
+## unchanged. Facing belongs to local space: the body never rotates on the map; `facing` and `spin` are integrated
+## here at world scale from the thruster torque, and only local-space drawing shows them.
+##
 ## Fuel use follows the rocket equation: thrust F consumes F / exhaust_velocity mass per second,
 ## so total delta-v = exhaust_velocity * ln(wet mass / dry mass).
 
@@ -39,13 +44,13 @@ const TURN_PROFILE := 0.9
 ## Turn rate limit in radians per second. Turning is done by the thrusters (their turn_torque) and costs fuel:
 ## every turn spins the ship up and back down, so faster turns cost more.
 @export_range(0.1, 10.0, 0.01, "radians_as_degrees") var max_turn_rate: float = 1.6
-## Radius of gyration of the hull in px: moment of inertia = mass * radius_of_gyration^2.
+## Radius of gyration of the hull in world px: moment of inertia = mass * radius_of_gyration^2.
 @export var radius_of_gyration: float = 1.5
 ## Lever arm of the attitude thrusters in px: a torque T takes T / thruster_arm of thrust.
 @export var thruster_arm: float = 8.0
 ## A burn only fires while the nose is within this angle of the burn direction.
 @export_range(0.0, 45.0, 0.1, "radians_as_degrees") var burn_alignment: float = deg_to_rad(5.0)
-## Remaining delta-v (px/s) at which an automatic burn is considered complete.
+## Remaining delta-v (world px/s) at which an automatic burn is considered complete.
 @export var burn_tolerance: float = 0.02
 
 @export_category("Orbit")
@@ -75,6 +80,9 @@ var manual_drive: Drive = Drive.MAIN
 ## Manual thruster translation in world space (length 0..1 is the throttle): the thrusters push the ship along it
 ## without turning. Fired alongside the manual throttle; ignored during automatic burns.
 var manual_translation := Vector2.ZERO
+## Facing in local space (radians, 0 = +x) and its rate of turn (rad/s). The map body itself never rotates.
+var facing := 0.0
+var spin := 0.0
 ## Engines knocked out by combat damage (CombatHull) produce no thrust.
 var main_engine_online := true
 var thrusters_online := true
@@ -104,6 +112,10 @@ var _next_park_check := 0.0
 
 
 func _ready() -> void:
+	# Attitude is simulated in local space, not by the map body.
+	facing = global_rotation
+	rotation = 0.0
+	lock_rotation = true
 	gravity_scale = 1.0
 	linear_damp_mode = RigidBody2D.DAMP_MODE_REPLACE
 	linear_damp = 0.0
@@ -143,7 +155,7 @@ func _physics_process(delta: float) -> void:
 		_try_auto_park()
 	# Mass is updated at the start of the tick so the physics step uses the mass the thrust was computed for.
 	_update_mass()
-	var nose := Vector2.RIGHT.rotated(global_rotation)
+	var nose := get_nose()
 	var direction := nose
 	var drive := manual_drive
 	var force := 0.0
@@ -152,7 +164,7 @@ func _physics_process(delta: float) -> void:
 	if _burning:
 		drive = _burn_drive
 		var thrust := get_drive_thrust(drive)
-		if _burn_remaining.length() <= burn_tolerance:
+		if _burn_remaining.length() <= burn_tolerance * SpaceScale.MAP_SCALE:
 			_finish_burn()
 			_set_turn_rate(0.0, delta)
 		elif _burn_translate:
@@ -190,6 +202,7 @@ func _physics_process(delta: float) -> void:
 			_burn_remaining -= achieved
 			_burn_achieved += achieved
 	_apply_manual_translation(delta)
+	facing = wrapf(facing + spin * delta, -PI, PI)
 	queue_redraw()
 
 
@@ -222,7 +235,6 @@ func get_dry_mass() -> float:
 
 func _update_mass() -> void:
 	mass = get_dry_mass() + fuel
-	inertia = mass * radius_of_gyration * radius_of_gyration
 
 
 ## Engines that fire for `drive` (falls back to whichever engine is installed).
@@ -245,14 +257,16 @@ func has_drive(drive: Drive) -> bool:
 	return not get_drive_engines(drive).is_empty()
 
 
+## Thrust of `drive` on the orbital map: MAP_SCALE of the engines' thrust (see SpaceScale).
 func get_drive_thrust(drive: Drive) -> float:
 	var total := 0.0
 	for engine in get_drive_engines(drive):
 		total += engine.max_thrust
-	return total
+	return total * SpaceScale.MAP_SCALE
 
 
-## Effective exhaust velocity of the engines of `drive` firing together (total thrust / total mass flow).
+## Effective exhaust velocity of the engines of `drive` firing together (total thrust / total mass flow), in map
+## units: delta-v from it is map delta-v. Scaling thrust and exhaust velocity together leaves fuel use unchanged.
 func get_drive_exhaust_velocity(drive: Drive) -> float:
 	var thrust := 0.0
 	var flow := 0.0
@@ -260,7 +274,7 @@ func get_drive_exhaust_velocity(drive: Drive) -> float:
 		if engine.exhaust_velocity > 0.0:
 			thrust += engine.max_thrust
 			flow += engine.max_thrust / engine.exhaust_velocity
-	return thrust / flow if flow > 0.0 else 1.0
+	return thrust / flow * SpaceScale.MAP_SCALE if flow > 0.0 else SpaceScale.MAP_SCALE
 
 
 ## {thrust, mass, exhaust_velocity} of `drive` for the C# planners and predictor (finite burns).
@@ -272,17 +286,17 @@ func get_engine_model(drive: Drive = Drive.MAIN) -> Dictionary:
 	}
 
 
-## Delta-v left in the tanks using `drive` (rocket equation).
+## Delta-v left in the tanks using `drive` (rocket equation), in map units.
 func get_delta_v_remaining(drive: Drive = Drive.MAIN) -> float:
 	return get_drive_exhaust_velocity(drive) * log((get_dry_mass() + fuel) / get_dry_mass())
 
 
-## Seconds of full thrust needed for a burn of `delta_v` px/s with the current mass.
+## Seconds of full thrust needed for a burn of `delta_v` (map units) with the current mass.
 func get_burn_duration(delta_v: float, drive: Drive = Drive.MAIN) -> float:
 	return burn_duration_for(get_dry_mass() + fuel, delta_v, drive)
 
 
-## Seconds of full thrust needed for a burn of `delta_v` px/s starting at mass `start_mass`.
+## Seconds of full thrust needed for a burn of `delta_v` (map units) starting at mass `start_mass`.
 func burn_duration_for(start_mass: float, delta_v: float, drive: Drive) -> float:
 	var exhaust := get_drive_exhaust_velocity(drive)
 	var thrust := get_drive_thrust(drive)
@@ -296,15 +310,25 @@ func get_turn_torque() -> float:
 	return thrusters.turn_torque if thrusters and thrusters_online else 0.0
 
 
+## Moment of inertia of the hull in local space.
+func get_inertia() -> float:
+	return (get_dry_mass() + fuel) * radius_of_gyration * radius_of_gyration
+
+
 ## Angular acceleration the thrusters can give the ship (rad/s^2).
 func get_turn_acceleration() -> float:
-	var current_inertia := (get_dry_mass() + fuel) * radius_of_gyration * radius_of_gyration
+	var current_inertia := get_inertia()
 	return get_turn_torque() / current_inertia if current_inertia > 0.0 else 0.0
+
+
+## Direction the nose points (local space facing).
+func get_nose() -> Vector2:
+	return Vector2.from_angle(facing)
 
 
 ## Seconds needed to turn the nose to `direction` from rest (accelerate, coast at max_turn_rate, brake).
 func get_turn_time(direction: Vector2) -> float:
-	var angle := absf(Vector2.RIGHT.rotated(global_rotation).angle_to(direction))
+	var angle := absf(get_nose().angle_to(direction))
 	var accel := get_turn_acceleration() * TURN_PROFILE
 	if accel <= 0.0:
 		return 0.0 # Cannot turn at all.
@@ -316,7 +340,7 @@ func get_turn_time(direction: Vector2) -> float:
 	return time * 1.1
 
 
-## Starts an automatic burn: turns to the remaining delta-v vector and thrusts until it is used up.
+## Starts an automatic burn: turns to the remaining delta-v vector (map units) and thrusts until it is used up.
 ## A `translate` burn pushes along the delta-v vector without turning (thrusters only).
 func execute_burn(delta_v: Vector2, drive: Drive = Drive.MAIN, translate_burn: bool = false) -> void:
 	unpark()
@@ -366,26 +390,28 @@ func _turn_toward(direction: Vector2, delta: float) -> void:
 	if direction == Vector2.ZERO:
 		_set_turn_rate(0.0, delta)
 		return
-	var diff := Vector2.RIGHT.rotated(global_rotation).angle_to(direction)
+	var diff := get_nose().angle_to(direction)
 	# Fastest rate from which the ship can still stop at the target heading.
 	var stop_rate := sqrt(2.0 * get_turn_acceleration() * TURN_PROFILE * absf(diff))
 	var rate := minf(minf(max_turn_rate, stop_rate), absf(diff) / delta)
 	_set_turn_rate(signf(diff) * rate, delta)
 
 
-## Fires the attitude thrusters (a Godot torque) toward angular velocity `rate`, limited by their torque and the fuel.
+## Fires the attitude thrusters toward turn rate `rate`, limited by their torque and the fuel. The torque turns the
+## ship in local space (`spin`), not the map body.
 func _set_turn_rate(rate: float, delta: float) -> void:
 	var max_torque := get_turn_torque()
 	if max_torque <= 0.0:
 		return
-	var torque := clampf((rate - angular_velocity) * inertia / delta, -max_torque, max_torque)
+	var current_inertia := get_inertia()
+	var torque := clampf((rate - spin) * current_inertia / delta, -max_torque, max_torque)
 	if absf(torque) < 1e-6:
 		return
 	# The torque is a thrust of torque / arm at the thrusters' exhaust velocity.
 	var force := _consume_fuel(absf(torque) / thruster_arm, thrusters.exhaust_velocity, delta)
 	torque = signf(torque) * force * thruster_arm
 	_current_torque = torque
-	apply_torque(torque)
+	spin += torque / current_inertia * delta
 
 
 ## Draws fuel for `force` at `exhaust_velocity` for one tick; returns the force actually available.
@@ -457,7 +483,7 @@ func park(body: int = -1) -> bool:
 	_park_angle0 = rel.angle()
 	_park_t0 = now
 	_held_heading = Vector2.ZERO
-	angular_velocity = 0.0
+	spin = 0.0
 	# A frozen kinematic body ignores gravity and forces; it is moved along the circle in _update_parked().
 	freeze_mode = RigidBody2D.FREEZE_MODE_KINEMATIC
 	freeze = true
@@ -478,7 +504,7 @@ func unpark() -> void:
 	freeze = false
 	global_position = exit_position
 	linear_velocity = exit_velocity
-	angular_velocity = 0.0
+	spin = 0.0
 	_next_park_check = now + park_check_interval
 	unparked.emit()
 
@@ -565,11 +591,25 @@ func _on_body_entered(body: Node) -> void:
 
 
 func _draw() -> void:
-	# Keep the ship visible when the camera is zoomed far out.
-	var s := hull_size * maxf(1.0, 1.0 / get_canvas_transform().get_scale().x)
+	if not SpaceScale.local_view:
+		_draw_map_marker()
+		return
+	_draw_hull()
+
+
+## On the orbital map a ship is a dot: its facing only exists in local space.
+func _draw_map_marker() -> void:
+	var pixel := 1.0 / get_canvas_transform().get_scale().x
+	draw_circle(Vector2.ZERO, 3.0 * pixel, hull_color)
+
+
+## The hull at its local-space facing, with engine plumes. Sizes are world px, kept visible when zoomed out.
+func _draw_hull() -> void:
+	var s := hull_size * SpaceScale.draw_scale(self)
+	draw_set_transform(Vector2.ZERO, facing)
 	draw_colored_polygon(PackedVector2Array([Vector2(s, 0), Vector2(-s * 0.7, s * 0.6), Vector2(-s * 0.4, 0), Vector2(-s * 0.7, -s * 0.6)]), hull_color)
 	if _current_thrust > 0.0:
-		var local := _current_direction.rotated(-global_rotation)
+		var local := _current_direction.rotated(-facing)
 		var total := get_drive_thrust(_current_drive)
 		for engine in get_drive_engines(_current_drive):
 			var strength := _current_thrust / total
@@ -580,7 +620,7 @@ func _draw() -> void:
 				_draw_plume(-local * s * 0.5, -local, s * 0.5, strength, engine)
 	if _current_translation != Vector2.ZERO and thrusters:
 		# Thruster puff on the side opposite the push.
-		var push := _current_translation.rotated(-global_rotation).normalized()
+		var push := _current_translation.rotated(-facing).normalized()
 		_draw_plume(-push * s * 0.5, -push, s * 0.5, _current_translation.length() / maxf(get_drive_thrust(Drive.THRUSTERS), 1e-6), thrusters)
 	if _current_torque != 0.0 and thrusters:
 		# Attitude puffs at the nose and tail, on opposite sides.
@@ -588,6 +628,7 @@ func _draw() -> void:
 		var strength := absf(_current_torque) / maxf(get_turn_torque(), 1e-6)
 		_draw_plume(Vector2(s * 0.6, 0.0) - side * s * 0.15, -side, s * 0.35, strength, thrusters)
 		_draw_plume(Vector2(-s * 0.5, 0.0) + side * s * 0.4, side, s * 0.35, strength, thrusters)
+	draw_set_transform(Vector2.ZERO)
 
 
 func _draw_plume(at: Vector2, direction: Vector2, size: float, strength: float, engine: EngineDefinition) -> void:

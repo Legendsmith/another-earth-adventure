@@ -263,7 +263,7 @@ func _update_tracks(suites: Array[SensorSuite], munitions: Array[Munition]) -> v
 	for munition in munitions:
 		if munition.faction != player_faction:
 			_update_track(munition, SensorTrack.Kind.MUNITION, seen.get(munition, SensorTrack.Lock.LOST),
-				munition.get_world_position(), munition.linear_velocity, munition.get_signature(), now)
+				munition.get_world_position(), munition.get_world_velocity(), munition.get_signature(), now)
 	for explosion in get_explosions():
 		if passive_detects(player_faction, explosion.get_world_position(), explosion.signature):
 			_update_explosion(explosion, now)
@@ -370,7 +370,9 @@ func _lose(track: SensorTrack, now: float) -> void:
 	var lifetime := get_ghost_lifetime(track)
 	if is_inf(lifetime):
 		lifetime = ghost_lifetime
-	var job: RefCounted = _orbital_system.PredictAsync(track.last_position, track.last_velocity, {
+	# Tracks are in world px; the orbital solver works on the map.
+	var job: RefCounted = _orbital_system.PredictAsync(SpaceScale.to_map(track.last_position),
+			SpaceScale.to_map(track.last_velocity), {
 		"max_time": lifetime,
 		"sample_every": ghost_sample_every,
 		"stop_after_orbits": 0.0,
@@ -381,7 +383,7 @@ func _lose(track: SensorTrack, now: float) -> void:
 		# Ignore a projection that arrives after the contact was picked up again (or lost again since).
 		if prediction == null or not track.is_ghost() or track.last_seen != lost_at or prediction.SampleCount < 2:
 			return
-		track.ghost_points = prediction.GetWorldPoints()
+		track.ghost_points = SpaceScale.points_to_world(prediction.GetWorldPoints())
 		track.ghost_start = prediction.StartTime
 		track.ghost_end = prediction.EndTime)
 

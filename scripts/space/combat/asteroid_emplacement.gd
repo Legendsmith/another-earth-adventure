@@ -37,7 +37,10 @@ func _build_outline() -> void:
 func _draw() -> void:
 	if _outline.is_empty():
 		return
+	# The rock is sized in world px; the node sits on the orbital map (see SpaceScale).
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * SpaceScale.MAP_SCALE)
 	draw_colored_polygon(_outline, rock_color)
 	var edge := _outline.duplicate()
 	edge.append(_outline[0])
-	draw_polyline(edge, rock_color.lightened(0.25), 1.5)
+	draw_polyline(edge, rock_color.lightened(0.25), -1.0)
+	draw_set_transform(Vector2.ZERO)

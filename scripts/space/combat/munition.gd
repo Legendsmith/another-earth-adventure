@@ -2,6 +2,8 @@ class_name Munition
 extends RigidBody2D
 ## Base for anything fired in space combat. Munitions fly under the same point gravity as ships, crash into planets,
 ## and pass through ships physically: hits are decided by their own fuses (see closest_approach).
+## Like ships, the body is on the orbital map (map units); gameplay code uses the world accessors and
+## apply_world_force(), which convert (see SpaceScale).
 
 const GROUP := &"combat_munitions"
 ## Physics layer of munitions (layer 20): inside every gravity well's mask, outside every ship's mask.
@@ -38,7 +40,7 @@ func _init() -> void:
 	max_contacts_reported = 1
 	var shape := CollisionShape2D.new()
 	var circle := CircleShape2D.new()
-	circle.radius = 0.5
+	circle.radius = 0.5 * SpaceScale.MAP_SCALE
 	shape.shape = circle
 	add_child(shape)
 
@@ -62,7 +64,16 @@ func get_signature() -> float:
 
 
 func get_world_position() -> Vector2:
-	return global_position
+	return SpaceScale.to_world(global_position)
+
+
+func get_world_velocity() -> Vector2:
+	return SpaceScale.to_world(linear_velocity)
+
+
+## Pushes the munition with `force` in world units (mass * world px/s^2).
+func apply_world_force(force: Vector2) -> void:
+	apply_central_force(force * SpaceScale.MAP_SCALE)
 
 
 func has_valid_target() -> bool:
@@ -82,7 +93,7 @@ func get_warhead_damage() -> float:
 ## Explosion at the munition. A `final` one ends the munition, and with it any sensor track of it.
 func spawn_explosion(radius: float, color: Color = Color(1.0, 0.75, 0.4), final: bool = true,
 		damage: float = -1.0) -> void:
-	CombatExplosion.spawn(get_parent(), global_position, radius, get_warhead_damage() if damage < 0.0 else damage,
+	CombatExplosion.spawn(get_parent(), get_world_position(), radius, get_warhead_damage() if damage < 0.0 else damage,
 		"%s detonation" % munition_name, self if final else null, color)
 
 
@@ -102,19 +113,19 @@ static func closest_approach(relative_position: Vector2, relative_velocity: Vect
 	return (relative_position + relative_velocity * t).length()
 
 
-## Scale that keeps a drawing the same size on screen when the camera zooms out.
+## Map units to draw per world px of size, keeping the drawing visible when the camera zooms out.
 func get_zoom_scale() -> float:
-	return maxf(1.0, 1.0 / get_canvas_transform().get_scale().x)
+	return SpaceScale.draw_scale(self)
 
 
-## Spawns a munition into the world (the root of the launcher's scene, so it does not move with the launcher's parent).
-## The space scene may sit in a SubViewport of the HUD, so the root is the launcher's topmost ancestor inside its own
-## viewport, which shares the launcher's physics space.
+## Spawns a munition at `at` moving at `velocity` (world px and px/s) into the world: the root of the launcher's scene,
+## so it does not move with the launcher's parent. The space scene may sit in a SubViewport of the HUD, so the root is
+## the launcher's topmost ancestor inside its own viewport, which shares the launcher's physics space.
 static func launch(munition: Munition, from: Node, at: Vector2, velocity: Vector2) -> void:
 	var world: Node = from
 	while world.get_parent() and not world.get_parent() is Viewport:
 		world = world.get_parent()
-	munition.position = at
-	munition.linear_velocity = velocity
+	munition.position = SpaceScale.to_map(at)
+	munition.linear_velocity = SpaceScale.to_map(velocity)
 	world.add_child(munition)
-	munition.global_position = at
+	munition.global_position = SpaceScale.to_map(at)

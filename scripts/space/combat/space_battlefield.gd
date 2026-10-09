@@ -5,6 +5,7 @@ extends Node2D
 ## with their speed relative to the field, so the safe way through is slowly. Some wrecks still carry automated
 ## torpedo racks (the derelict faction, hostile to everyone) that wake when a ship comes within their weak sensors.
 ## Place it as a child of a planet or moon so the field moves with that body, or of an OrbitAnchor so it orbits.
+## The node sits on the orbital map; its radius, layout and speeds are in world px (see SpaceScale).
 
 @export var display_name: String = "Old battlefield"
 @export var radius: float = 250.0
@@ -25,11 +26,12 @@ var _debris := PackedVector2Array()
 var _last_position := Vector2.ZERO
 var _velocity := Vector2.ZERO
 var _rng := RandomNumberGenerator.new()
+var _last_zoom := 0.0
 
 
 func _ready() -> void:
 	_build_layout()
-	_last_position = global_position
+	_last_position = SpaceScale.to_world(global_position)
 	if Engine.is_editor_hint():
 		return
 	_rng.randomize()
@@ -37,16 +39,25 @@ func _ready() -> void:
 		_add_derelict(i, _wrecks[i].position)
 
 
+func _process(_delta: float) -> void:
+	# The name label keeps its screen size: redraw when the zoom changes.
+	var zoom := get_canvas_transform().get_scale().x
+	if not is_equal_approx(zoom, _last_zoom):
+		_last_zoom = zoom
+		queue_redraw()
+
+
 func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint() or delta <= 0.0:
 		return
-	_velocity = (global_position - _last_position) / delta
-	_last_position = global_position
+	var world_position := SpaceScale.to_world(global_position)
+	_velocity = (world_position - _last_position) / delta
+	_last_position = world_position
 	for node in get_tree().get_nodes_in_group(CombatHull.GROUP):
 		var hull := node as CombatHull
 		if hull == null or hull.is_destroyed or hull.faction == CombatHull.DERELICT_FACTION:
 			continue
-		if hull.get_world_position().distance_squared_to(global_position) > radius * radius:
+		if hull.get_world_position().distance_squared_to(world_position) > radius * radius:
 			continue
 		var speed := (hull.get_world_velocity() - _velocity).length()
 		var strikes := debris_density * speed * hull.hit_radius * 2.0 * delta
@@ -83,7 +94,7 @@ func _build_layout() -> void:
 func _add_derelict(index: int, at: Vector2) -> void:
 	var wreck := Node2D.new()
 	wreck.name = "Derelict%d" % (index + 1)
-	wreck.position = at
+	wreck.position = SpaceScale.to_map(at)
 	add_child(wreck)
 	var hull := CombatHull.new()
 	hull.name = "CombatHull"
@@ -131,16 +142,21 @@ static func _component(component_name: String, kind: ShipComponent.Kind, size: f
 
 
 func _draw() -> void:
-	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, Color(1.0, 0.7, 0.3, 0.25), 2.0)
+	# Drawn in world px, scaled down onto the map.
+	var world := Transform2D.IDENTITY.scaled(Vector2.ONE * SpaceScale.MAP_SCALE)
+	draw_set_transform_matrix(world)
+	draw_arc(Vector2.ZERO, radius, 0.0, TAU, 64, Color(1.0, 0.7, 0.3, 0.25), -1.0)
 	for point in _debris:
 		draw_rect(Rect2(point - Vector2.ONE, Vector2(2, 2)), Color(0.7, 0.65, 0.6, 0.6))
 	for wreck in _wrecks:
-		draw_set_transform(wreck.position, wreck.rotation)
+		draw_set_transform_matrix(world * Transform2D(wreck.rotation, wreck.position))
 		draw_colored_polygon(wreck.points, Color(0.35, 0.33, 0.32))
 		var outline: PackedVector2Array = wreck.points.duplicate()
 		outline.append(wreck.points[0])
-		draw_polyline(outline, Color(0.6, 0.5, 0.45), 1.0)
+		draw_polyline(outline, Color(0.6, 0.5, 0.45), -1.0)
+	draw_set_transform_matrix(world)
+	var zoom := get_canvas_transform().get_scale().x * SpaceScale.MAP_SCALE
+	var pixel := maxf(1.0, 1.0 / maxf(zoom, 1e-9))
+	SpaceScale.draw_label(self, Vector2(-radius, -radius - 8.0 * pixel), display_name, Color(1.0, 0.75, 0.45, 0.8), pixel,
+		14, world)
 	draw_set_transform(Vector2.ZERO)
-	var font := ThemeDB.fallback_font
-	draw_string(font, Vector2(-radius, -radius - 8.0), display_name, HORIZONTAL_ALIGNMENT_LEFT, -1, 14,
-		Color(1.0, 0.75, 0.45, 0.8))

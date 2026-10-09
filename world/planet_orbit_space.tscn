@@ -38,11 +38,12 @@
 [ext_resource type="Script" uid="uid://0lue586uclve" path="res://scripts/space/sensors/sensor_overlay.gd" id="29_overlay"]
 [ext_resource type="Script" path="res://scripts/space/orbit_anchor.gd" id="30_anchor"]
 [ext_resource type="Script" path="res://scripts/space/orbit_guides.gd" id="31_guides"]
+[ext_resource type="Script" path="res://scripts/space/space_views.gd" id="34_views"]
 [ext_resource type="PackedScene" path="res://entities/space/combat/orbital_gun_platform.tscn" id="32_platform"]
 [ext_resource type="PackedScene" path="res://entities/space/combat/drone.tscn" id="33_drone"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_planet"]
-radius = 30000.0
+radius = 300.0
 
 [node name="PlanetOrbitSpace" type="Node2D"]
 
@@ -52,8 +53,8 @@ WarpLevels = PackedInt32Array(1, 2, 4, 8, 16, 32, 64)
 
 [node name="Ferra" type="AnimatableBody2D" parent="."]
 script = ExtResource("2_body")
-Mu = 12000000000.0
-Radius = 30000.0
+Mu = 12000.0
+Radius = 300.0
 BodyColor = Color(0.25, 0.45, 0.75, 1)
 DrawInfluence = false
 
@@ -62,11 +63,11 @@ shape = SubResource("CircleShape2D_planet")
 
 [node name="OrbitGuides" type="Node2D" parent="Ferra"]
 script = ExtResource("31_guides")
-low_orbit_radius = 36000.0
+low_orbit_radius = 360.0
 rotation_period = 1800.0
 
 [node name="LowOrbitDebris" type="Node2D" parent="Ferra"]
-position = Vector2(16750.0, 29011.9)
+position = Vector2(167.5, 290.119)
 script = ExtResource("30_anchor")
 retrograde = false
 
@@ -81,7 +82,7 @@ derelict_armor = ExtResource("23_steel")
 field_seed = 11
 
 [node name="RetrogradeDebris" type="Node2D" parent="Ferra"]
-position = Vector2(-36178.2, -13167.8)
+position = Vector2(-361.782, -131.678)
 script = ExtResource("30_anchor")
 retrograde = true
 
@@ -96,7 +97,7 @@ derelict_armor = ExtResource("23_steel")
 field_seed = 23
 
 [node name="OldBattlefield" type="Node2D" parent="Ferra"]
-position = Vector2(26000.0, -45033.3)
+position = Vector2(260, -450.333)
 script = ExtResource("30_anchor")
 retrograde = false
 
@@ -111,7 +112,7 @@ derelict_armor = ExtResource("23_steel")
 field_seed = 1337
 
 [node name="ShatteredTanker" type="Node2D" parent="Ferra"]
-position = Vector2(-58219.4, 48851.9)
+position = Vector2(-582.194, 488.519)
 script = ExtResource("30_anchor")
 retrograde = true
 
@@ -126,7 +127,7 @@ derelict_armor = ExtResource("23_steel")
 field_seed = 77
 
 [node name="CapturedAsteroid" type="Node2D" parent="Ferra"]
-position = Vector2(61080.0, 22231.3)
+position = Vector2(610.8, 222.313)
 script = ExtResource("30_anchor")
 
 [node name="AsteroidEmplacement" parent="Ferra/CapturedAsteroid" instance=ExtResource("25_emplacement")]
@@ -147,7 +148,7 @@ NodePath("../Ferra"): 1
 script = ExtResource("7_lines")
 
 [node name="PlayerShip" parent="." instance=ExtResource("3_ship")]
-position = Vector2(0, -125000)
+position = Vector2(0, -1250)
 fuel_capacity = 44.0
 fuel = 44.0
 main_engine = ExtResource("13_fusion")
@@ -193,46 +194,46 @@ passive_strength = 4000.0
 active_strength = 20000.0
 
 [node name="GunPlatform1" parent="." instance=ExtResource("32_platform")]
-position = Vector2(35000.0, 0.0)
+position = Vector2(350, 0)
 
 [node name="GunPlatform2" parent="." instance=ExtResource("32_platform")]
-position = Vector2(0.0, 35000.0)
+position = Vector2(0, 350)
 
 [node name="GunPlatform3" parent="." instance=ExtResource("32_platform")]
-position = Vector2(-35000.0, 0.0)
+position = Vector2(-350, 0)
 
 [node name="GunPlatform4" parent="." instance=ExtResource("32_platform")]
-position = Vector2(-0.0, -35000.0)
+position = Vector2(0, -350)
 
 [node name="Drone1" parent="." instance=ExtResource("33_drone")]
-position = Vector2(38971.1, 22500.0)
+position = Vector2(389.711, 225)
 
 [node name="Drone2" parent="." instance=ExtResource("33_drone")]
-position = Vector2(-38971.1, -22500.0)
+position = Vector2(-389.711, -225)
 orbit_retrograde = true
 
 [node name="Drone3" parent="." instance=ExtResource("33_drone")]
-position = Vector2(-29000.0, 50229.5)
+position = Vector2(-290, 502.295)
 
 [node name="Drone4" parent="." instance=ExtResource("33_drone")]
-position = Vector2(-23941.4, -65778.5)
+position = Vector2(-239.414, -657.785)
 orbit_retrograde = true
 
 [node name="Drone5" parent="." instance=ExtResource("33_drone")]
-position = Vector2(76210.2, -44000.0)
+position = Vector2(762.102, -440)
 
 [node name="Drone6" parent="." instance=ExtResource("33_drone")]
-position = Vector2(-97988.4, 17278.0)
+position = Vector2(-979.884, 172.78)
 
 [node name="Gunship1" parent="." instance=ExtResource("24_gunship")]
-position = Vector2(-60000.0, 0.0)
+position = Vector2(-600, 0)
 
 [node name="SensorSuite" parent="Gunship1"]
 passive_strength = 3000.0
 active_strength = 10000.0
 
 [node name="Gunship2" parent="." instance=ExtResource("24_gunship")]
-position = Vector2(67175.1, 67175.1)
+position = Vector2(671.751, 671.751)
 orbit_retrograde = true
 
 [node name="SensorSuite" parent="Gunship2"]
@@ -243,7 +244,7 @@ active_strength = 10000.0
 script = ExtResource("6_render")
 ship = NodePath("../PlayerShip")
 maneuvers = NodePath("../PlayerShip/Maneuvers")
-prediction_time = 3000.0
+prediction_time = 2400.0
 
 [node name="ManeuverEditor" type="Node2D" parent="." node_paths=PackedStringArray("renderer", "planner")]
 script = ExtResource("11_editor")
@@ -251,11 +252,25 @@ renderer = NodePath("../TrajectoryRenderer")
 planner = NodePath("../PlayerShip/Maneuvers")
 drag_rate = 40.0
 
-[node name="Camera2D" type="Camera2D" parent="." node_paths=PackedStringArray("target")]
-zoom = Vector2(0.005, 0.005)
+[node name="MapCamera" type="Camera2D" parent="." node_paths=PackedStringArray("target")]
+zoom = Vector2(0.5, 0.5)
 script = ExtResource("8_camera")
 target = NodePath("../PlayerShip")
-min_zoom = 0.002
+min_zoom = 0.2
+max_zoom = 40.0
+
+[node name="LocalCamera" type="Camera2D" parent="." node_paths=PackedStringArray("target")]
+enabled = false
+zoom = Vector2(50, 50)
+script = ExtResource("8_camera")
+target = NodePath("../PlayerShip")
+min_zoom = 2.0
+max_zoom = 400.0
+
+[node name="SpaceViews" type="Node" parent="." node_paths=PackedStringArray("map_camera", "local_camera")]
+script = ExtResource("34_views")
+map_camera = NodePath("../MapCamera")
+local_camera = NodePath("../LocalCamera")
 
 [node name="SensorNetwork" type="Node" parent="."]
 script = ExtResource("28_network")

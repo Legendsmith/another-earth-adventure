@@ -25,7 +25,7 @@ var source_id := 0
 var _age := 0.0
 
 
-## Spawns an explosion of `damage` points at `at` under `parent`.
+## Spawns an explosion of `damage` points at `at` (world px) under `parent`. `blast_radius` is in world px too.
 static func spawn(parent: Node, at: Vector2, blast_radius: float, damage: float, what: String, from: Object = null,
 		blast_color: Color = Color(1.0, 0.75, 0.4)) -> CombatExplosion:
 	var blast := CombatExplosion.new()
@@ -35,7 +35,7 @@ static func spawn(parent: Node, at: Vector2, blast_radius: float, damage: float,
 	blast.description = what
 	blast.source_id = from.get_instance_id() if from else 0
 	parent.add_child(blast)
-	blast.global_position = at
+	blast.global_position = SpaceScale.to_map(at)
 	return blast
 
 
@@ -52,12 +52,12 @@ func _process(delta: float) -> void:
 
 
 func get_world_position() -> Vector2:
-	return global_position
+	return SpaceScale.to_world(global_position)
 
 
 func _draw() -> void:
 	var t := _age / duration
-	var scale_factor := maxf(1.0, 1.0 / get_canvas_transform().get_scale().x)
+	var scale_factor := SpaceScale.draw_scale(self)
 	var r := radius * (0.3 + 0.7 * t) * scale_factor
 	draw_circle(Vector2.ZERO, r * (1.0 - t), Color(1.0, 0.95, 0.8, 0.8 * (1.0 - t)))
 	draw_arc(Vector2.ZERO, r, 0.0, TAU, 32, Color(color, 1.0 - t), 2.0 * scale_factor)

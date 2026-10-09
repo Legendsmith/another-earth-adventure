@@ -39,7 +39,8 @@ const CANCEL_ACTION: GUIDEAction = preload("res://ui/guide/cancel.tres")
 @export var node_radius: float = 7.0
 ## Screen distance within which a click picks the path.
 @export var pick_distance: float = 10.0
-## Delta-v change per real second at full pull, or with a direction key held (px/s per s).
+## Delta-v change per real second at full pull, or with a direction key held (world px/s per s; nodes hold map
+## delta-v, see SpaceScale).
 @export var drag_rate: float = 6.0
 ## Screen pull (px) that gives the full rate.
 @export var full_pull: float = 90.0
@@ -337,7 +338,7 @@ func _process(delta: float) -> void:
 	var keys := direction_action.value_axis_2d if _is_editing() else Vector2.ZERO
 	if _drag_handle == Handle.NONE and not _dragging_node and keys != Vector2.ZERO:
 		# Direction keys: x is prograde/retrograde, y radial/anti-radial.
-		var key_rate := drag_rate * (0.1 if Input.is_key_pressed(KEY_SHIFT) else 1.0) * real_delta
+		var key_rate := drag_rate * SpaceScale.MAP_SCALE * (0.1 if Input.is_key_pressed(KEY_SHIFT) else 1.0) * real_delta
 		selected.prograde += clampf(keys.x, -1.0, 1.0) * key_rate
 		selected.radial += clampf(keys.y, -1.0, 1.0) * key_rate
 		_take_over(selected)
@@ -350,7 +351,7 @@ func _process(delta: float) -> void:
 		# Signed pull along the handle axis, in screen pixels, measured from the handle's rest position.
 		var pull := (world - _handle_position(frame, _drag_handle)).dot(direction) / _pixel()
 		var strength := clampf(pull / full_pull, -1.0, 1.0)
-		var rate := signf(strength) * strength * strength * drag_rate
+		var rate := signf(strength) * strength * strength * drag_rate * SpaceScale.MAP_SCALE
 		if Input.is_key_pressed(KEY_SHIFT):
 			rate *= 0.1
 		var change := rate * real_delta
@@ -394,7 +395,7 @@ func _draw() -> void:
 		draw_arc(p, node_radius * pixel, 0.0, TAU, 20, color, 2.0 * pixel)
 		var engines: String = "Thrusters (translate)" if planner.is_translation(node) 			else Spaceship.DRIVE_NAMES[planner.get_drive(node)]
 		var lines := PackedStringArray([
-			"Δv %.2f px/s" % planner.get_delta_v(node),
+			"Δv %.1f px/s" % (planner.get_delta_v(node) / SpaceScale.MAP_SCALE),
 			engines,
 			"T-%s   burn %.1fs" % [_format_time(node.time - now), planner.get_burn_duration(node)],
 		])
