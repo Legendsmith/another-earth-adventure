@@ -154,6 +154,10 @@ func get_signature() -> float:
 	return signature_cold
 
 
+func get_warhead_damage() -> float:
+	return damage
+
+
 func _detonate() -> void:
 	if has_valid_target():
 		target.take_hit(damage, ArmorGrid.DamageProfile.EXPLOSIVE)

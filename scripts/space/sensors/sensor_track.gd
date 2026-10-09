@@ -4,20 +4,30 @@ extends RefCounted
 ## the track becomes a ghost: the last known position, plus a projection of where it should be now and next,
 ## assuming it kept coasting under gravity.
 
-enum Kind { SHIP, MUNITION }
+enum Kind { SHIP, MUNITION, EXPLOSION }
 ## How the contact is held this sweep.
 enum Lock { LOST, PASSIVE, ACTIVE }
 
 const LOCK_NAMES := ["lost", "passive", "active"]
 
-## "S-04" for ships and stations, "M-12" for munitions.
+## "S-04" for ships and stations, "M-12" for munitions, "X-03" for explosions.
 var designation: String
 var kind: Kind
-## The SensorSuite or Munition being tracked. May be freed while the track is a ghost.
+## The SensorSuite, Munition or CombatExplosion being tracked. May be freed while the track is a ghost.
 var target: Object
+## Instance id of `target`, to recognise it once it has been freed.
+var target_id := 0
 var lock: Lock = Lock.LOST
 ## Identified contacts show their name, class and faction. Stays true once earned.
 var identified := false
+## Kept by the player: the ghost stays on the plot until forgotten by hand.
+var retained := false
+## Faction of the contact when last held (it outlives the target).
+var faction: StringName = &""
+## Name and class the contact was identified as, or what an explosion was ("Torpedo detonation"). Kept once the
+## target is gone.
+var description := ""
+var classification := ""
 
 var first_seen := 0.0
 var last_seen := 0.0
@@ -52,27 +62,27 @@ func get_hull() -> CombatHull:
 
 
 func get_faction() -> StringName:
-	if not has_target():
-		return &""
-	if target is SensorSuite:
-		return (target as SensorSuite).get_faction()
-	return target.faction
+	return faction
+
+
+func is_explosion() -> bool:
+	return kind == Kind.EXPLOSION
 
 
 func get_display_name() -> String:
-	if not identified or not has_target():
+	if is_explosion():
+		return description
+	if not identified or description.is_empty():
 		return "Unknown contact" if kind == Kind.SHIP else "Unknown munition"
-	if target is SensorSuite:
-		return (target as SensorSuite).display_name
-	return target.munition_name
+	return description
 
 
 func get_classification() -> String:
-	if not identified or not has_target():
+	if is_explosion():
+		return "Explosion"
+	if not identified or classification.is_empty():
 		return "?"
-	if target is SensorSuite:
-		return (target as SensorSuite).classification
-	return "Munition"
+	return classification
 
 
 ## Projected position at `time`: the live position while held, the ghost projection once lost.

@@ -213,6 +213,16 @@ focus_mode = 0
 disabled = true
 text = "Forget ghost"
 
+[node name="RetainButton" type="Button" parent="Panel/VBox/ModeScroll/Modes/SensorsPanel/ContactActions"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+focus_mode = 0
+disabled = true
+tooltip_text = "Keep this contact's ghost on the plot until you forget it"
+toggle_mode = true
+text = "Retain ghost"
+
 [node name="CommandPanel" type="VBoxContainer" parent="Panel/VBox/ModeScroll/Modes"]
 unique_name_in_owner = true
 visible = false

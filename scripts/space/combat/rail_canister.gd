@@ -72,7 +72,12 @@ func _do_burst() -> void:
 	freeze_mode = RigidBody2D.FREEZE_MODE_KINEMATIC
 	set_deferred(&"freeze", true)
 	collision_mask = 0
-	spawn_explosion(4.0, Color(0.8, 0.9, 1.0))
+	# Only the small dispersal charge flashes, and the fragments fly on.
+	spawn_explosion(4.0, Color(0.8, 0.9, 1.0), false, fragment_damage)
+
+
+func get_warhead_damage() -> float:
+	return fragment_damage * fragment_count
 
 
 func get_signature() -> float:
