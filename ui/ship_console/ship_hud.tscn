@@ -253,7 +253,7 @@ scroll_active = false
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.62, 0.7, 1)
 theme_override_font_sizes/font_size = 12
-text = "Click a contact or Tab: target it. Q/W/E: pick weapon 1-3. Space: fire. Ctrl: direct control."
+text = "Click a contact or Tab: target it. Q/W/E: pick weapon 1-3. Space: fire. Right-click: thrust toward (no turn). Shift+right-click: turn to face. Ctrl: direct control."
 autowrap_mode = 3
 
 [node name="CommandPanel" type="VBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer" unique_id=174187153]

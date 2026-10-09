@@ -1,8 +1,10 @@
 class_name PlayerShipController
 extends Node
 ## Player flight: maneuver nodes are the primary way to navigate (see ManeuverEditor); direct control (the ShipHud
-## turns it on) flies the ship by hand and aborts any burn in progress. The navigation computer plots a course to the
-## selected target as maneuver nodes. Also handles target selection, time warp and the active sensors switch.
+## turns it on) flies the ship by hand (W thrust, A/D turn, Shift+A/D strafe on the thrusters) and aborts any burn in
+## progress. In combat mode, right-click translates toward the mouse on the thrusters without turning and
+## Shift+right-click turns the ship to face it. The navigation computer plots a course to the selected target as
+## maneuver nodes. Also handles target selection, time warp and the active sensors switch.
 
 signal target_changed(body_index: int)
 
@@ -10,6 +12,12 @@ const MANEUVER_EDIT_CONTEXT: GUIDEMappingContext = preload("res://ui/guide/ship_
 const NEXT_DESTINATION_ACTION: GUIDEAction = preload("res://ui/guide/nav_next_destination.tres")
 const CYCLE_ENGINE_ACTION: GUIDEAction = preload("res://ui/guide/nav_cycle_engine.tres")
 const TOGGLE_ACTIVE_SENSORS_ACTION: GUIDEAction = preload("res://ui/guide/sensors_toggle_active.tres")
+const MOVE_TO_ACTION: GUIDEAction = preload("res://ui/guide/combat_move_to.tres")
+const MOVE_TURN_ACTION: GUIDEAction = preload("res://ui/guide/combat_move_turn.tres")
+const COMBAT_SHIFT_ACTION: GUIDEAction = preload("res://ui/guide/combat_shift.tres")
+## Heading error (radians) and turn rate (radians/s) below which a combat turn counts as done.
+const TURN_DONE_ANGLE := 0.01
+const TURN_DONE_RATE := 0.02
 
 @export var navigation_computer: NavigationComputer
 @export var renderer: TrajectoryRenderer
@@ -18,12 +26,17 @@ const TOGGLE_ACTIVE_SENSORS_ACTION: GUIDEAction = preload("res://ui/guide/sensor
 @export var move_action: GUIDEAction = preload("res://ui/guide/ship_move.tres")
 @export var rotate_action: GUIDEAction = preload("res://ui/guide/ship_rotate.tres")
 @export var timewarp_action: GUIDEAction = preload("res://ui/guide/ship_timewarp.tres")
+## Combat move: delta-v (px/s) per screen pixel from the ship to the click, and the most one click asks for.
+@export var move_delta_v_per_pixel: float = 0.02
+@export var max_move_delta_v: float = 10.0
 
 var ship: Spaceship
 var target_index: int = -1
 var orbital_system: Node
 ## Flying by hand: the ship_move and ship_rotate actions drive the ship.
 var direct_control := false
+## Heading being turned to by a combat turn (Shift+right-click) until the ship settles on it; zero when none.
+var _combat_heading := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -34,16 +47,22 @@ func _ready() -> void:
 	NEXT_DESTINATION_ACTION.just_triggered.connect(cycle_target)
 	CYCLE_ENGINE_ACTION.just_triggered.connect(_on_cycle_engine)
 	TOGGLE_ACTIVE_SENSORS_ACTION.just_triggered.connect(toggle_active_sensors)
+	MOVE_TO_ACTION.just_triggered.connect(_on_move_to)
+	MOVE_TURN_ACTION.just_triggered.connect(_on_move_turn)
 
 
 func _physics_process(_delta: float) -> void:
 	var thrust := 0.0
 	var turn := 0.0
+	var strafe := 0.0
 	if direct_control:
-		# ship_move is screen-like: up (negative y) is along the nose. The ship only thrusts forward.
-		thrust = clampf(-move_action.value_axis_2d.y, 0.0, 1.0)
+		# ship_move is ship-relative and screen-like: up (negative y) is along the nose, x is to the right of it.
+		# The main drive only thrusts forward; sideways is a translation on the thrusters.
+		var move := move_action.value_axis_2d
+		thrust = clampf(-move.y, 0.0, 1.0)
+		strafe = clampf(move.x, -1.0, 1.0)
 		turn = clampf(rotate_action.value_axis_1d, -1.0, 1.0)
-	if thrust > 0.0 or turn != 0.0:
+	if thrust > 0.0 or turn != 0.0 or strafe != 0.0:
 		# Manual control overrides everything automatic.
 		if maneuvers:
 			maneuvers.abort_current()
@@ -51,6 +70,57 @@ func _physics_process(_delta: float) -> void:
 			orbital_system.SetTimeWarpIndex(0)
 	ship.throttle = thrust
 	ship.steer = turn
+	# Right of the nose: the nose rotated a quarter turn clockwise (y is down).
+	ship.manual_translation = Vector2.RIGHT.rotated(ship.global_rotation + PI / 2.0) * strafe
+	if turn != 0.0:
+		_end_heading_turn()
+	elif _combat_heading != Vector2.ZERO:
+		var nose := Vector2.RIGHT.rotated(ship.global_rotation)
+		if ship.get_held_heading() != _combat_heading:
+			_combat_heading = Vector2.ZERO # Something else (a maneuver) took the heading over.
+		elif absf(nose.angle_to(_combat_heading)) < TURN_DONE_ANGLE and absf(ship.angular_velocity) < TURN_DONE_RATE:
+			_end_heading_turn()
+
+
+## Combat move: a thruster burn toward the mouse without turning, sized by how far away the click was on screen.
+func _on_move_to() -> void:
+	if COMBAT_SHIFT_ACTION.is_triggered():
+		return # Shift+right-click turns instead.
+	var offset := ship.get_global_mouse_position() - ship.global_position
+	var screen_distance := offset.length() * ship.get_canvas_transform().get_scale().x
+	if screen_distance < 1.0:
+		return
+	var delta_v := minf(screen_distance * move_delta_v_per_pixel, max_move_delta_v)
+	_take_manual_control()
+	ship.execute_burn(offset.normalized() * delta_v, Spaceship.Drive.THRUSTERS, true)
+
+
+## Combat turn: points the nose at the mouse and holds it there until the ship has settled.
+func _on_move_turn() -> void:
+	var offset := ship.get_global_mouse_position() - ship.global_position
+	if offset == Vector2.ZERO:
+		return
+	# A combat move's translation burn keeps going: it does not care where the nose points.
+	if maneuvers:
+		maneuvers.abort_current()
+	ship.hold_heading(offset)
+	_combat_heading = ship.get_held_heading()
+
+
+func _end_heading_turn() -> void:
+	if _combat_heading != Vector2.ZERO:
+		if ship.get_held_heading() == _combat_heading:
+			ship.release_heading()
+		_combat_heading = Vector2.ZERO
+
+
+## Manual orders replace whatever burn is running and drop time warp.
+func _take_manual_control() -> void:
+	if maneuvers:
+		maneuvers.abort_current()
+	ship.cancel_burn()
+	if orbital_system.TimeWarp > 1:
+		orbital_system.SetTimeWarpIndex(0)
 
 
 func _on_timewarp() -> void:

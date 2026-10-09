@@ -72,6 +72,9 @@ var throttle: float = 0.0
 var steer: float = 0.0
 ## Engines used by the manual throttle.
 var manual_drive: Drive = Drive.MAIN
+## Manual thruster translation in world space (length 0..1 is the throttle): the thrusters push the ship along it
+## without turning. Fired alongside the manual throttle; ignored during automatic burns.
+var manual_translation := Vector2.ZERO
 ## Engines knocked out by combat damage (CombatHull) produce no thrust.
 var main_engine_online := true
 var thrusters_online := true
@@ -89,6 +92,7 @@ var _current_thrust := 0.0
 var _current_drive: Drive = Drive.MAIN
 var _current_direction := Vector2.ZERO
 var _current_torque := 0.0
+var _current_translation := Vector2.ZERO
 
 # Parking orbit: circle of radius _park_radius around _park_body, angle = _park_angle0 + _park_rate * (t - _park_t0).
 var _park_body := -1
@@ -152,8 +156,12 @@ func _physics_process(delta: float) -> void:
 			_finish_burn()
 			_set_turn_rate(0.0, delta)
 		elif _burn_translate:
-			# Thrusters push along the burn vector whatever the heading: no turning needed.
-			_set_turn_rate(0.0, delta)
+			# Thrusters push along the burn vector whatever the heading: no turning needed, but a held heading is
+			# still flown to.
+			if _held_heading != Vector2.ZERO:
+				_turn_toward(_held_heading, delta)
+			else:
+				_set_turn_rate(0.0, delta)
 			direction = _burn_remaining.normalized()
 			force = minf(thrust, _burn_remaining.length() * mass / delta)
 		else:
@@ -181,7 +189,20 @@ func _physics_process(delta: float) -> void:
 			var achieved := direction * (force / mass * delta)
 			_burn_remaining -= achieved
 			_burn_achieved += achieved
+	_apply_manual_translation(delta)
 	queue_redraw()
+
+
+## Thrusters push along `manual_translation` whatever the heading.
+func _apply_manual_translation(delta: float) -> void:
+	_current_translation = Vector2.ZERO
+	if _burning or manual_translation == Vector2.ZERO or thrusters == null or not thrusters_online:
+		return
+	var thrust := get_drive_thrust(Drive.THRUSTERS) * minf(manual_translation.length(), 1.0)
+	var force := _consume_fuel(thrust, get_drive_exhaust_velocity(Drive.THRUSTERS), delta)
+	if force > 0.0:
+		_current_translation = manual_translation.normalized() * force
+		apply_central_force(_current_translation)
 
 
 #region Engine
@@ -324,6 +345,11 @@ func get_burn_remaining() -> Vector2:
 func hold_heading(direction: Vector2) -> void:
 	unpark()
 	_held_heading = direction.normalized()
+
+
+## The heading being held (zero when none).
+func get_held_heading() -> Vector2:
+	return _held_heading
 
 
 func release_heading() -> void:
@@ -509,7 +535,7 @@ func _update_parked() -> void:
 ## Something needs the ship under power: manual input, a burn, a held heading, or a blocking child
 ## (a node with `blocks_parking()`, e.g. pending maneuvers or an active autopilot).
 func _wants_control() -> bool:
-	if _burning or throttle > 0.0 or steer != 0.0 or _held_heading != Vector2.ZERO:
+	if _burning or throttle > 0.0 or steer != 0.0 or manual_translation != Vector2.ZERO or _held_heading != Vector2.ZERO:
 		return true
 	for child in get_children():
 		if child.has_method(&"blocks_parking") and child.blocks_parking():
@@ -552,6 +578,10 @@ func _draw() -> void:
 			else:
 				# Thruster puff on the side opposite the push.
 				_draw_plume(-local * s * 0.5, -local, s * 0.5, strength, engine)
+	if _current_translation != Vector2.ZERO and thrusters:
+		# Thruster puff on the side opposite the push.
+		var push := _current_translation.rotated(-global_rotation).normalized()
+		_draw_plume(-push * s * 0.5, -push, s * 0.5, _current_translation.length() / maxf(get_drive_thrust(Drive.THRUSTERS), 1e-6), thrusters)
 	if _current_torque != 0.0 and thrusters:
 		# Attitude puffs at the nose and tail, on opposite sides.
 		var side := Vector2.DOWN if _current_torque > 0.0 else Vector2.UP

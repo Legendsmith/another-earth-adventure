@@ -165,5 +165,5 @@ input_mappings = Array[ExtResource("3_nxywj")]([SubResource("Resource_ea2hu")])
 [resource]
 script = ExtResource("13_0c7ya")
 display_name = "Combat Mode"
-mappings = Array[ExtResource("1_gos76")]([SubResource("Resource_pt107"), SubResource("Resource_ryatb"), SubResource("Resource_16ymx"), SubResource("Resource_epbox"), SubResource("Resource_vbpwf"), SubResource("Resource_ecd57"), SubResource("Resource_dilbi"), SubResource("Resource_dctrl_action"), SubResource("Resource_5t56r"), SubResource("Resource_7cr8k")])
+mappings = Array[ExtResource("1_gos76")]([SubResource("Resource_pt107"), SubResource("Resource_5t56r"), SubResource("Resource_7cr8k"), SubResource("Resource_ryatb"), SubResource("Resource_16ymx"), SubResource("Resource_epbox"), SubResource("Resource_vbpwf"), SubResource("Resource_ecd57"), SubResource("Resource_dilbi"), SubResource("Resource_dctrl_action")])
 metadata/_custom_type_script = "uid://dsa1dnifd6w32"

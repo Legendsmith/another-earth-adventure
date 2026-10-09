@@ -50,12 +50,15 @@ var _last_primary_mode: Mode = Mode.NAVIGATION
 var _await_release: Array[GUIDEAction] = []
 var _contexts_dirty := false
 var _orbital_system: Node
+## The fuel readout shows the fuel left as a percentage instead of the delta-v it is worth.
+var _fuel_as_percent := false
 
 @onready var _tabs: TabContainer = %HudTabContainer
-@onready var _space_view: Control = %SpaceViewContainer
+@onready var _space_view: Control = %SpaceView
 @onready var _velocity_display: LineEdit = %VelocityDisplay
 @onready var _fuel_bar: ProgressBar = %FuelBar
 @onready var _fuel_total: LineEdit = %FuelTotalDisplay
+@onready var _fuel_unit: Label = %FuelUnitLabel
 @onready var _mode_buttons := {
 	Mode.NAVIGATION: %NavigationModeButton as Button,
 	Mode.SENSORS: %SensorsModeButton as Button,
@@ -76,6 +79,7 @@ func _ready() -> void:
 		(_mode_buttons[m] as Button).pressed.connect(set_mode.bind(m))
 	for panel: Control in _mode_panels.values():
 		panel.call(&"setup", self)
+	%FuelBarButton.pressed.connect(_toggle_fuel_readout)
 	MODE_NAVIGATION_ACTION.just_triggered.connect(set_mode.bind(Mode.NAVIGATION))
 	MODE_SENSORS_ACTION.just_triggered.connect(set_mode.bind(Mode.SENSORS))
 	MODE_COMBAT_ACTION.just_triggered.connect(set_mode.bind(Mode.COMBAT))
@@ -115,10 +119,22 @@ func _update_bar() -> void:
 	_velocity_display.text = "%.1f" % velocity.length()
 	_fuel_bar.max_value = ship.fuel_capacity
 	_fuel_bar.value = ship.fuel
-	_fuel_total.text = "%.1f" % ship.get_delta_v_remaining(Spaceship.Drive.MAIN)
+	if _fuel_as_percent:
+		_fuel_total.text = "%d" % roundi(100.0 * ship.fuel / maxf(ship.fuel_capacity, 1e-6))
+	else:
+		_fuel_total.text = "%.1f" % ship.get_delta_v_remaining(Spaceship.Drive.MAIN)
 
 
-func set_mode(new_mode: Mode) -> void:
+func _toggle_fuel_readout() -> void:
+	_fuel_as_percent = not _fuel_as_percent
+	_fuel_unit.text = "%" if _fuel_as_percent else "m/s ∆v"
+	_update_bar()
+	# Let the readout move with the new text width.
+	_fuel_bar.call_deferred(&"_on_value_changed", _fuel_bar.value)
+
+
+## Switches mode and shows its panel; `show_panel` false hides the sidebar instead.
+func set_mode(new_mode: Mode, show_panel := true) -> void:
 	if new_mode != Mode.COMMAND:
 		_last_primary_mode = new_mode
 	if new_mode != Mode.NAVIGATION and maneuver_editor:
@@ -128,7 +144,7 @@ func set_mode(new_mode: Mode) -> void:
 	mode = new_mode
 	for m: Mode in _mode_buttons:
 		(_mode_buttons[m] as Button).set_pressed_no_signal(m == mode)
-	_tabs.current_tab = (_mode_panels[mode] as Control).get_index()
+	_tabs.current_tab = (_mode_panels[mode] as Control).get_index() if show_panel else -1
 	_queue_refresh()
 	if changed:
 		mode_changed.emit(mode)
@@ -153,8 +169,11 @@ func set_direct_control(active: bool) -> void:
 
 
 func _on_show_command() -> void:
-	# The command key toggles the command view.
-	set_mode(_last_primary_mode if mode == Mode.COMMAND else Mode.COMMAND)
+	# The command key toggles the command view; closing it goes back to the last primary mode with the sidebar hidden.
+	if mode == Mode.COMMAND:
+		set_mode(_last_primary_mode, false)
+	else:
+		set_mode(Mode.COMMAND)
 
 
 func _on_direct_control() -> void:

@@ -46,7 +46,7 @@ func _process(_delta: float) -> void:
 		clock += "   PAUSED (planning: Esc or click empty space to resume)"
 	lines.append(clock)
 	if console.direct_control:
-		lines.append("DIRECT CONTROL: W thrust, A/D turn   (Ctrl or Esc to release)")
+		lines.append("DIRECT CONTROL: W thrust, A/D turn, Shift+A/D strafe   (Ctrl or Esc to release)")
 	lines.append("Fuel %.2f / %.2f   Δv left %.1f px/s (thrusters %.1f)" % [ship.fuel, ship.fuel_capacity,
 		ship.get_delta_v_remaining(Spaceship.Drive.MAIN), ship.get_delta_v_remaining(Spaceship.Drive.THRUSTERS)])
 	lines.append("Engines: %s / %s" % [ship.main_engine.name if ship.main_engine else "none",
