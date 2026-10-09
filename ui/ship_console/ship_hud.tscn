@@ -606,3 +606,5 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_type_variation = &"ClearButton"
+
+[connection signal="tab_changed" from="VBoxContainer/MainContainer/HudTabContainer" to="VBoxContainer/MainContainer/HudTabContainer" method="_on_tab_changed"]
