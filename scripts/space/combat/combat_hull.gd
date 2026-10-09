@@ -295,7 +295,8 @@ func _destroy() -> void:
 
 
 func _draw() -> void:
-	# Contact marker in screen orientation, kept the same size on screen when zoomed out.
+	# Contact marker in screen orientation, kept the same size on screen when zoomed out. The selected contact's
+	# brackets and target line are the CombatOverlay's.
 	var scale_factor := maxf(1.0, 1.0 / get_canvas_transform().get_scale().x)
 	draw_set_transform(Vector2.ZERO, -global_rotation)
 	var r := (hit_radius + 4.0) * scale_factor
@@ -307,12 +308,5 @@ func _draw() -> void:
 	if faction != player_side:
 		var diamond := PackedVector2Array([Vector2(r, 0), Vector2(0, r), Vector2(-r, 0), Vector2(0, -r), Vector2(r, 0)])
 		draw_polyline(diamond, color, 1.0 * scale_factor)
-	if manager and manager.selected_contact == self:
-		var b := r * 1.6
-		var l := b * 0.4
-		for corner in [Vector2(1, 1), Vector2(-1, 1), Vector2(1, -1), Vector2(-1, -1)]:
-			var c: Vector2 = corner * b
-			draw_line(c, c - Vector2(corner.x * l, 0), color, 1.5 * scale_factor)
-			draw_line(c, c - Vector2(0, corner.y * l), color, 1.5 * scale_factor)
 	if _flash > 0.0:
 		draw_circle(Vector2.ZERO, r * 0.8, Color(1.0, 0.9, 0.6, _flash / 0.3 * 0.7))

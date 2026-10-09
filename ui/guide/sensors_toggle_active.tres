@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="GUIDEAction" format=3 uid="uid://lttbqygvsj6y"]
+
+[ext_resource type="Script" uid="uid://cluhc11vixkf1" path="res://addons/guide/guide_action.gd" id="1_8gliq"]
+
+[resource]
+script = ExtResource("1_8gliq")
+name = &"sensors_toggle_active"
+metadata/_custom_type_script = "uid://cluhc11vixkf1"

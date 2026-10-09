@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="GUIDEAction" format=3 uid="uid://dq0j1ta4qnfy"]
+
+[ext_resource type="Script" uid="uid://cluhc11vixkf1" path="res://addons/guide/guide_action.gd" id="1_vw5by"]
+
+[resource]
+script = ExtResource("1_vw5by")
+name = &"hud_mode_combat"
+metadata/_custom_type_script = "uid://cluhc11vixkf1"

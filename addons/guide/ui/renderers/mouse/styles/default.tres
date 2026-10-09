@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="GUIDEMouseRenderStyle" load_steps=15 format=3 uid="uid://cmbcfs6ubll5t"]
+[gd_resource type="Resource" script_class="GUIDEMouseRenderStyle" format=3 uid="uid://cmbcfs6ubll5t"]
 
-[ext_resource type="Script" path="res://addons/guide/ui/renderers/mouse/guide_mouse_render_style.gd" id="1_qsbcc"]
+[ext_resource type="Script" uid="uid://bsl3fwebcwgcu" path="res://addons/guide/ui/renderers/mouse/guide_mouse_render_style.gd" id="1_qsbcc"]
 [ext_resource type="Texture2D" uid="uid://oq2vvwgbdsh7" path="res://addons/guide/ui/renderers/textures/arrow_down.svg" id="1_snv1n"]
 [ext_resource type="Texture2D" uid="uid://bmgxqbypegjxh" path="res://addons/guide/ui/renderers/textures/arrow_horizontal.svg" id="2_7emdp"]
 [ext_resource type="Texture2D" uid="uid://1swh072gtbb4" path="res://addons/guide/ui/renderers/textures/arrow_left.svg" id="3_jmgjr"]

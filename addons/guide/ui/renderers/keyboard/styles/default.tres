@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="GUIDEKeyRenderStyle" load_steps=4 format=3 uid="uid://ctk0epydr07en"]
+[gd_resource type="Resource" script_class="GUIDEKeyRenderStyle" format=3 uid="uid://ctk0epydr07en"]
 
-[ext_resource type="Script" path="res://addons/guide/ui/renderers/keyboard/guide_key_render_style.gd" id="1_8d7yy"]
+[ext_resource type="Script" uid="uid://kjmhcoww0pte" path="res://addons/guide/ui/renderers/keyboard/guide_key_render_style.gd" id="1_8d7yy"]
 [ext_resource type="FontFile" uid="uid://cu8bvod6tnnwr" path="res://addons/guide/ui/renderers/keyboard/styles/Lato-Black.ttf" id="1_qtcq6"]
 [ext_resource type="Texture2D" uid="uid://b3x586os8uuwb" path="res://addons/guide/ui/renderers/keyboard/styles/Blank_White_Normal.png" id="2_3oqp6"]
 

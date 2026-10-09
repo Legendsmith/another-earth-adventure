@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="GUIDEAction" format=3 uid="uid://cl0ik4gafj8hy"]
+
+[ext_resource type="Script" uid="uid://cluhc11vixkf1" path="res://addons/guide/guide_action.gd" id="1_nio6h"]
+
+[resource]
+script = ExtResource("1_nio6h")
+name = &"sensors_cycle_contact"
+metadata/_custom_type_script = "uid://cluhc11vixkf1"

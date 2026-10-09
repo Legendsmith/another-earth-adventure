@@ -1,3 +1,4 @@
+class_name SpaceCamera
 extends Camera2D
 ## Follows a target and zooms with the mouse wheel across the whole system (ship scale to star system scale).
 

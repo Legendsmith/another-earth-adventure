@@ -1,6 +1,8 @@
 class_name ManeuverEditor
 extends Node2D
-## Mouse editing of the player's maneuver nodes on the predicted path.
+## Editing of the player's maneuver nodes on the predicted path, driven by G.U.I.D.E actions: nav_select (click)
+## and maneuver_delete come from the navigation mode context; while a node is selected the ShipHud adds the maneuver
+## edit context (direction, engines, delete, cancel).
 ##
 ## - Click the orbital path to create a maneuver node there (and select it). Click and hold (on the path or on a node)
 ##   to pick the engines that fly it: Main drive, Thrusters or both; release over the choice. New nodes use the last
@@ -9,10 +11,12 @@ extends Node2D
 ##   the handle is pulled, the faster delta-v changes; hold Shift for fine control. Pushing back reduces it.
 ##   Several handles can be used one after another to combine directions.
 ## - Drag the node itself to slide it along the path.
-## - Right-click a node or its part of the planned trajectory, or press Delete, to remove it.
+## - With a node selected, nav_maneuver_direction (W/S/A/D) adds delta-v: x is prograde/retrograde, y is
+##   radial/anti-radial. nav_cycle_engine switches the engines that fly it.
+## - maneuver_delete (right-click a node or its part of the planned trajectory, or Delete) removes it.
 ##
 ## While a node is selected the player is planning: the simulation is paused (if `pause_while_planning`).
-## Deselecting (clicking empty space, Escape, or removing the node) leaves planning, deleting any empty nodes.
+## Deselecting (clicking empty space, cancel, or removing the node) leaves planning, deleting any empty nodes.
 
 signal selection_changed(node: Dictionary)
 signal planning_changed(planning: bool)
@@ -20,6 +24,12 @@ signal planning_changed(planning: bool)
 enum Handle { NONE = -1, PROGRADE, RETROGRADE, RADIAL, ANTI_RADIAL }
 
 const HANDLE_NAMES := ["Prograde", "Retrograde", "Radial", "Anti-radial"]
+
+const MANEUVER_EDIT_CONTEXT: GUIDEMappingContext = preload("res://ui/guide/ship_maneuver_edit.tres")
+const SELECT_ACTION: GUIDEAction = preload("res://ui/guide/nav_select.tres")
+const DELETE_ACTION: GUIDEAction = preload("res://ui/guide/maneuver_delete.tres")
+const CYCLE_ENGINE_ACTION: GUIDEAction = preload("res://ui/guide/nav_cycle_engine.tres")
+const CANCEL_ACTION: GUIDEAction = preload("res://ui/guide/cancel.tres")
 
 @export var renderer: TrajectoryRenderer
 @export var planner: ManeuverPlanner
@@ -29,7 +39,7 @@ const HANDLE_NAMES := ["Prograde", "Retrograde", "Radial", "Anti-radial"]
 @export var node_radius: float = 7.0
 ## Screen distance within which a click picks the path.
 @export var pick_distance: float = 10.0
-## Delta-v change per real second at full pull (px/s per s).
+## Delta-v change per real second at full pull, or with a direction key held (px/s per s).
 @export var drag_rate: float = 6.0
 ## Screen pull (px) that gives the full rate.
 @export var full_pull: float = 90.0
@@ -43,6 +53,9 @@ const HANDLE_NAMES := ["Prograde", "Retrograde", "Radial", "Anti-radial"]
 @export var picker_distance: float = 55.0
 ## Engines used by new nodes (the last one picked).
 @export var new_node_drive: Spaceship.Drive = Spaceship.Drive.MAIN
+## Adds delta-v to the selected node: x prograde/retrograde, y radial/anti-radial. A variable, not a constant:
+## GDScript would fold a constant's value at compile time.
+@export var direction_action: GUIDEAction = preload("res://ui/guide/nav_maneuver_direction.tres")
 
 @export_group("Colors")
 @export var prograde_color := Color(1.0, 0.85, 0.25)
@@ -75,6 +88,11 @@ func _ready() -> void:
 	# Editing must keep working while the tree is paused for planning.
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	planner.nodes_changed.connect(_on_nodes_changed)
+	SELECT_ACTION.just_triggered.connect(_on_select_pressed)
+	SELECT_ACTION.completed.connect(_on_left_release)
+	DELETE_ACTION.just_triggered.connect(_on_delete)
+	CYCLE_ENGINE_ACTION.just_triggered.connect(_on_cycle_engine)
+	CANCEL_ACTION.just_triggered.connect(_on_cancel)
 
 
 func _exit_tree() -> void:
@@ -84,6 +102,12 @@ func _exit_tree() -> void:
 
 func is_planning() -> bool:
 	return not selected.is_empty()
+
+
+## Leaves planning: puts the edit widget away.
+func deselect() -> void:
+	if is_planning():
+		_select({})
 
 
 func _on_nodes_changed() -> void:
@@ -159,31 +183,52 @@ func _handle_at(world: Vector2) -> int:
 
 #region Input
 
-func _unhandled_input(event: InputEvent) -> void:
-	if not _orbital_system or not _orbital_system.IsReady:
+func _is_ready() -> bool:
+	return _orbital_system != null and _orbital_system.IsReady
+
+
+func _is_editing() -> bool:
+	return is_planning() and GUIDE.is_mapping_context_enabled(MANEUVER_EDIT_CONTEXT)
+
+
+func _on_select_pressed() -> void:
+	if _is_ready():
+		_on_left_press(get_global_mouse_position())
+
+
+## Removes the node under the mouse (or whose part of the planned trajectory is), else the selected one.
+func _on_delete() -> void:
+	if not _is_ready():
 		return
-	var button := event as InputEventMouseButton
-	if button:
-		var world := get_global_mouse_position()
-		if button.button_index == MOUSE_BUTTON_LEFT:
-			if button.pressed:
-				_on_left_press(world)
-			else:
-				_on_left_release()
-			get_viewport().set_input_as_handled()
-		elif button.button_index == MOUSE_BUTTON_RIGHT and button.pressed:
-			var node := _node_at(world)
-			if node.is_empty():
-				node = _maneuver_for_planned_path(world)
-			if not node.is_empty():
-				planner.remove_node(node)
-				get_viewport().set_input_as_handled()
-	elif event.is_action_pressed(&"maneuver_delete") and not selected.is_empty():
-		planner.remove_node(selected)
-		get_viewport().set_input_as_handled()
-	elif event.is_action_pressed(&"ui_cancel") and is_planning():
-		_select({})
-		get_viewport().set_input_as_handled()
+	var world := get_global_mouse_position()
+	var node := _node_at(world)
+	if node.is_empty():
+		node = _maneuver_for_planned_path(world)
+	if node.is_empty():
+		node = selected
+	if not node.is_empty():
+		planner.remove_node(node)
+
+
+func _on_cancel() -> void:
+	if _is_editing():
+		deselect()
+
+
+## Switches the engines that fly the selected node to the next one the ship has.
+func _on_cycle_engine() -> void:
+	if not _is_editing() or planner.is_executing(selected):
+		return
+	var drive := planner.get_drive(selected) as int
+	for i in PICK_DIRECTIONS.size():
+		drive = (drive + 1) % PICK_DIRECTIONS.size()
+		if ship_has_drive(drive):
+			break
+	if drive != planner.get_drive(selected):
+		selected.drive = drive
+		new_node_drive = drive as Spaceship.Drive
+		_take_over(selected)
+		planner.node_edited(selected)
 
 
 ## The maneuver whose effect is drawn at `world` on the planned trajectory: the last node before that point.
@@ -289,7 +334,15 @@ func _process(delta: float) -> void:
 	if _pick_open:
 		return
 
-	if _drag_handle != Handle.NONE:
+	var keys := direction_action.value_axis_2d if _is_editing() else Vector2.ZERO
+	if _drag_handle == Handle.NONE and not _dragging_node and keys != Vector2.ZERO:
+		# Direction keys: x is prograde/retrograde, y radial/anti-radial.
+		var key_rate := drag_rate * (0.1 if Input.is_key_pressed(KEY_SHIFT) else 1.0) * real_delta
+		selected.prograde += clampf(keys.x, -1.0, 1.0) * key_rate
+		selected.radial += clampf(keys.y, -1.0, 1.0) * key_rate
+		_take_over(selected)
+		planner.node_edited(selected)
+	elif _drag_handle != Handle.NONE:
 		var frame := _node_frame(selected)
 		if frame.is_empty():
 			return

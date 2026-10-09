@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="GUIDEAction" format=3 uid="uid://xovwf7hqhv3w"]
+
+[ext_resource type="Script" uid="uid://cluhc11vixkf1" path="res://addons/guide/guide_action.gd" id="1_6gnmo"]
+
+[resource]
+script = ExtResource("1_6gnmo")
+name = &"combat_shift"
+metadata/_custom_type_script = "uid://cluhc11vixkf1"

@@ -1,10 +1,10 @@
 extends VBoxContainer
-## Command mode of the ShipConsole: collecting rewards from the planet in low orbit, the crew, and crew expeditions
+## Command mode of the ShipHud: collecting rewards from the planet in low orbit, the crew, and crew expeditions
 ## (coming later).
 
 const LOG_LINES := 4
 
-var console: ShipConsole
+var console: ShipHud
 var _log: PackedStringArray = []
 var _watched_planets: Dictionary = {}
 var _crew_dirty := true
@@ -14,13 +14,12 @@ var _crew_dirty := true
 @onready var _rewards_log: Label = %RewardsLog
 @onready var _crew_title: Label = %CrewTitle
 @onready var _crew_list: VBoxContainer = %CrewList
-@onready var _manifest_popup: PopupPanel = %ManifestPopup
 
 
-func setup(owner_console: ShipConsole) -> void:
+func setup(owner_console: ShipHud) -> void:
 	console = owner_console
 	_collect_button.pressed.connect(_on_collect_pressed)
-	%ManifestButton.pressed.connect(func() -> void: _manifest_popup.popup_centered())
+	%ManifestButton.pressed.connect(console.show_crew_manifest)
 	Crew.roster_changed.connect(func() -> void: _crew_dirty = true)
 	Crew.freshness_updated.connect(func() -> void: _crew_dirty = true)
 	visibility_changed.connect(func() -> void: _crew_dirty = true)
@@ -65,7 +64,7 @@ func _on_collect_pressed() -> void:
 		planet.collect_rewards()
 
 
-## Collection with E happens on the planet itself, so the log listens to every planet.
+## Collection with the interact action happens on the planet itself, so the log listens to every planet.
 func _watch_planets() -> void:
 	for node in get_tree().get_nodes_in_group(Planet.GROUP):
 		if not _watched_planets.has(node):

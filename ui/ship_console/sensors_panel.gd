@@ -1,5 +1,5 @@
 extends VBoxContainer
-## Sensors mode of the ShipConsole: the active sensors switch, what the ship can see and how visible it is, the
+## Sensors mode of the ShipHud: the active sensors switch, what the ship can see and how visible it is, the
 ## contact list (held contacts and ghosts of lost ones) and details on the selected contact.
 
 ## Signatures the range readout is quoted against.
@@ -13,7 +13,11 @@ const UNKNOWN_HEX := "#ffd27a"
 const GHOST_HEX := "#9aa4b5"
 const EXPLOSION_HEX := "#ffa64d"
 
-var console: ShipConsole
+const CYCLE_CONTACT_ACTION: GUIDEAction = preload("res://ui/guide/sensors_cycle_contact.tres")
+const SELECT_ACTION: GUIDEAction = preload("res://ui/guide/sensors_select.tres")
+const DELETE_ACTION: GUIDEAction = preload("res://ui/guide/sensors_delete.tres")
+
+var console: ShipHud
 var _network: SensorNetwork
 var _tree_dirty := true
 
@@ -27,7 +31,7 @@ var _tree_dirty := true
 @onready var _retain_button: Button = %RetainButton
 
 
-func setup(owner_console: ShipConsole) -> void:
+func setup(owner_console: ShipHud) -> void:
 	console = owner_console
 	_tree.set_column_title(0, "ID")
 	_tree.set_column_title(1, "Contact")
@@ -45,6 +49,9 @@ func setup(owner_console: ShipConsole) -> void:
 	_forget_button.pressed.connect(_on_forget_pressed)
 	_retain_button.toggled.connect(_on_retain_toggled)
 	visibility_changed.connect(func() -> void: _tree_dirty = true)
+	CYCLE_CONTACT_ACTION.just_triggered.connect(cycle_contact)
+	SELECT_ACTION.just_triggered.connect(_on_select_action)
+	DELETE_ACTION.just_triggered.connect(_on_delete_action)
 
 
 func _process(_delta: float) -> void:
@@ -138,6 +145,37 @@ func _rebuild_tree() -> void:
 		empty.set_selectable(3, false)
 
 
+## Selects the next contact in the list.
+func cycle_contact() -> void:
+	if _network == null:
+		return
+	var tracks := _network.get_tracks()
+	if tracks.is_empty():
+		_network.selected_track = null
+	else:
+		_network.selected_track = tracks[(tracks.find(_network.selected_track) + 1) % tracks.size()]
+	_tree_dirty = true
+
+
+## Selects the contact clicked on the plot (clicking empty space clears the selection).
+func _on_select_action() -> void:
+	var overlay := SensorOverlay.find(get_tree())
+	if _network and overlay:
+		_network.selected_track = overlay.track_under_mouse()
+		_tree_dirty = true
+
+
+## Forgets the ghost under the mouse, or the selected one.
+func _on_delete_action() -> void:
+	var overlay := SensorOverlay.find(get_tree())
+	var track: SensorTrack = overlay.track_under_mouse() if overlay else null
+	if track == null and _network:
+		track = _network.selected_track
+	if track and track.is_ghost():
+		_network.forget(track)
+		_tree_dirty = true
+
+
 func _on_item_selected() -> void:
 	var item := _tree.get_selected()
 	if item and _network:
@@ -149,7 +187,7 @@ func _status_text(track: SensorTrack, now: float) -> String:
 	if track.is_held():
 		text = "flash" if track.is_explosion() else "ACTIVE" if track.lock == SensorTrack.Lock.ACTIVE else "passive"
 	else:
-		text = "ghost %s" % ShipConsole.format_time(now - track.last_seen)
+		text = "ghost %s" % ShipHud.format_time(now - track.last_seen)
 	return text + " (kept)" if track.retained else text
 
 
@@ -173,7 +211,7 @@ func _update_details() -> void:
 	var manager := SpaceCombatManager.find(get_tree())
 	_target_button.disabled = not (track and track.is_held() and hull and manager
 		and hull.is_hostile_to(manager.player_faction) and manager.is_detected_by(manager.player_faction, hull))
-	_target_button.text = "Weapons target (T)" if not (manager and hull and manager.selected_contact == hull) \
+	_target_button.text = "Weapons target" if not (manager and hull and manager.selected_contact == hull) \
 		else "Targeted"
 	_forget_button.disabled = not (track and track.is_ghost())
 	_retain_button.disabled = track == null
@@ -193,7 +231,7 @@ func _update_details() -> void:
 		lines.append("[color=%s]Retained: its ghost stays on the plot until you forget it.[/color]" % GHOST_HEX)
 	if track.is_explosion():
 		lines.append("Flash of signature %.0f at %s   %s ago" % [track.last_signature,
-			_format_distance(track.last_position.distance_to(origin)), ShipConsole.format_time(now - track.first_seen)])
+			_format_distance(track.last_position.distance_to(origin)), ShipHud.format_time(now - track.first_seen)])
 	elif track.is_held():
 		var at := _position_of(track, now)
 		var relative := at - origin
@@ -204,14 +242,14 @@ func _update_details() -> void:
 			"Active" if track.lock == SensorTrack.Lock.ACTIVE else "Passive", _format_distance(relative.length()),
 			_bearing(relative), closing])
 		lines.append("Speed %.0f px/s   signature %.1f   tracked %s" % [track.last_velocity.length(), track.last_signature,
-			ShipConsole.format_time(now - track.first_seen)])
+			ShipHud.format_time(now - track.first_seen)])
 		if hull and track.identified:
 			lines.append_array(_hull_lines(hull, track.lock == SensorTrack.Lock.ACTIVE))
 		elif not track.identified:
 			lines.append("[color=%s]Unidentified: ping it with active sensors or close in to identify.[/color]" % UNKNOWN_HEX)
 	else:
 		var since := now - track.last_seen
-		lines.append("Lost %s ago at %s" % [ShipConsole.format_time(since), _format_distance(track.last_position.distance_to(origin))])
+		lines.append("Lost %s ago at %s" % [ShipHud.format_time(since), _format_distance(track.last_position.distance_to(origin))])
 		if track.is_projection_expired(now):
 			lines.append("Projection expired: it could be anywhere by now.")
 		else:

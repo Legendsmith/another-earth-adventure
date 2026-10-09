@@ -17,14 +17,50 @@ const UNKNOWN_COLOR := Color(1.0, 0.85, 0.45, 0.9)
 const GHOST_COLOR := Color(0.7, 0.75, 0.85, 0.55)
 const ACTIVE_RING_COLOR := Color(0.4, 0.9, 1.0, 0.18)
 const EXPLOSION_COLOR := Color(1.0, 0.65, 0.3, 0.9)
+const GROUP := &"sensor_overlay"
+## Screen distance within which a click picks a contact.
+const PICK_DISTANCE := 16.0
 
 var _network: SensorNetwork
 # Labels drawn this frame, so the next one can step clear of them.
 var _label_rects: Array[Rect2] = []
 
 
+static func find(tree: SceneTree) -> SensorOverlay:
+	return tree.get_first_node_in_group(GROUP) as SensorOverlay if tree else null
+
+
+func _enter_tree() -> void:
+	add_to_group(GROUP)
+
+
 func _ready() -> void:
 	z_index = 10
+
+
+## The track drawn nearest the mouse, within the pick distance, or null.
+func track_under_mouse() -> SensorTrack:
+	if _network == null:
+		return null
+	var mouse := get_global_mouse_position()
+	var reach := PICK_DISTANCE / get_canvas_transform().get_scale().x
+	var now := _network.get_time()
+	var best: SensorTrack = null
+	for track in _network.get_tracks():
+		var distance := mouse.distance_to(plotted_position(track, now))
+		if distance <= reach:
+			reach = distance
+			best = track
+	return best
+
+
+## Where a track is drawn: live for held contacts, the projection for ghosts, the flash for explosions.
+func plotted_position(track: SensorTrack, now: float) -> Vector2:
+	if track.is_explosion():
+		return track.last_position
+	if track.is_held():
+		return _live_position(track)
+	return track.get_position_at(now)
 
 
 func _process(_delta: float) -> void:

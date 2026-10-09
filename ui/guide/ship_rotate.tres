@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="GUIDEAction" format=3 uid="uid://c2pf0m64rwlqb"]
+
+[ext_resource type="Script" uid="uid://cluhc11vixkf1" path="res://addons/guide/guide_action.gd" id="1_dcm7r"]
+
+[resource]
+script = ExtResource("1_dcm7r")
+name = &"ship_rotate"
+action_value_type = 1
+metadata/_custom_type_script = "uid://cluhc11vixkf1"

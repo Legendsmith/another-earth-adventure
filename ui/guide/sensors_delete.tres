@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="GUIDEAction" format=3 uid="uid://cdm6t68tkymwk"]
+
+[ext_resource type="Script" uid="uid://cluhc11vixkf1" path="res://addons/guide/guide_action.gd" id="1_xg3n6"]
+
+[resource]
+script = ExtResource("1_xg3n6")
+name = &"sensors_delete"
+metadata/_custom_type_script = "uid://cluhc11vixkf1"
