@@ -46,6 +46,9 @@ const EMISSION_DECAY := 4.0
 @export var hit_radius: float = 6.0
 
 var grid: ArmorGrid
+## Armor surface and deck plan that take over from the armor grid when the hull has a ShipInternals child (it sets
+## this itself). Null for hulls without one, which keep the Aurora damage model.
+var internals: ShipInternals
 var host: Node2D
 var is_destroyed := false
 ## Internal damage taken by each component (same order as `components`).
@@ -204,11 +207,18 @@ func has_railgun() -> bool:
 #region Damage
 
 ## A hit of `damage` points on a random armor column, cratering it in the shape of `profile`. Returns the points
-## that penetrated the armor.
-func take_hit(damage: int, profile: ArmorGrid.DamageProfile = ArmorGrid.DamageProfile.KINETIC) -> int:
+## that penetrated the armor. `direction` is the round's world velocity relative to the hull (zero when unknown): with
+## ShipInternals it sets where the round enters and the path it bores through the ship.
+func take_hit(damage: int, profile: ArmorGrid.DamageProfile = ArmorGrid.DamageProfile.KINETIC,
+		direction: Vector2 = Vector2.ZERO) -> int:
 	if is_destroyed or damage <= 0:
 		return 0
 	_flash = 0.3
+	if internals:
+		# The internals apply the damage along the round's path themselves.
+		var through := internals.resolve_hit(damage, profile, direction)
+		hit_taken.emit(damage, through)
+		return through
 	var penetrating := grid.apply_hit(damage, profile, rng)
 	hit_taken.emit(damage, penetrating)
 	if penetrating > 0:
@@ -218,6 +228,9 @@ func take_hit(damage: int, profile: ArmorGrid.DamageProfile = ArmorGrid.DamagePr
 
 ## Damage that got through the armor: each point hits a random intact component (chance by size) and the structure.
 func apply_internal_damage(points: int) -> void:
+	if internals:
+		internals.apply_internal_damage(points)
+		return
 	for i in points:
 		if is_destroyed:
 			return
@@ -245,6 +258,41 @@ func _pick_component() -> int:
 			if roll <= 0.0:
 				return i
 	return -1
+
+
+## Sets a component's damage directly (ShipInternals: hits on its module and crew repairs), taking its system offline
+## when it is destroyed and back online when it is repaired.
+func set_component_damage(index: int, value: int) -> void:
+	if index < 0 or index >= components.size() or is_destroyed:
+		return
+	var was_operational := is_component_operational(index)
+	component_damage[index] = clampi(value, 0, components[index].hit_to_kill)
+	var operational := is_component_operational(index)
+	if was_operational and not operational:
+		_on_component_destroyed(index)
+	elif operational and not was_operational:
+		_on_component_restored(index)
+
+
+func _on_component_restored(index: int) -> void:
+	var ship := host as Spaceship
+	if ship == null:
+		return
+	match components[index].kind:
+		ShipComponent.Kind.MAIN_ENGINE:
+			ship.main_engine_online = true
+		ShipComponent.Kind.THRUSTERS:
+			ship.thrusters_online = true
+
+
+## Fraction of armor left, on the internals' armor surface when the hull has one.
+func get_armor_integrity() -> float:
+	return internals.armor.get_integrity() if internals else grid.get_integrity()
+
+
+## Destroys the hull outright (ShipInternals: once its frame is holed through).
+func break_up() -> void:
+	_destroy()
 
 
 func _on_component_destroyed(index: int) -> void:

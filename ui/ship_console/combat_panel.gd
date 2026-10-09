@@ -96,7 +96,7 @@ func _hull_line(hull: CombatHull) -> String:
 	var armor_name := hull.armor.name if hull.armor else "no armor"
 	var status := "  [color=#ff6b5e]DESTROYED[/color]" if hull.is_destroyed else ""
 	return "[b]%s[/b]  structure %d/%d   %s %d%% (%d layers x %d)%s" % [hull.display_name, maxi(hull.structure_left, 0),
-		hull.structure, armor_name, roundi(hull.grid.get_integrity() * 100.0), hull.grid.layers, hull.grid.columns, status]
+		hull.structure, armor_name, roundi(hull.get_armor_integrity() * 100.0), hull.grid.layers, hull.grid.columns, status]
 
 
 func _internals_line(hull: CombatHull) -> String:
@@ -121,7 +121,7 @@ func _target_line(manager: SpaceCombatManager, hull: CombatHull, origin: Vector2
 	var line := "Target: [b]%s[/b]  %d px  closing %.0f px/s" % [_contact_name(target), roundi(relative.length()), closing]
 	var network := SensorNetwork.find(get_tree())
 	if network and network.get_lock(manager.player_faction, target.get_sensor_suite()) == SensorTrack.Lock.ACTIVE:
-		line += "  armor %d%%" % roundi(target.grid.get_integrity() * 100.0)
+		line += "  armor %d%%" % roundi(target.get_armor_integrity() * 100.0)
 	return line
 
 
