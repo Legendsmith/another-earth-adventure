@@ -37,6 +37,9 @@ func setup(planet_data:PlanetData, generator:PlanetGenerator, orbit_radius:float
 func _ready() -> void:
 	add_to_group(GROUP)
 	surface.texture = surface_texture
+	# Planets larger than the noise texture stretch their region over the whole disc.
+	if data.region.size.x > 0.0:
+		surface.scale = Vector2.ONE * maxf(data.radius * 2.0 / data.region.size.x, 1.0)
 	body.draw.connect(_draw_mask)
 	body.queue_redraw()
 	type_label.position = Vector2(-type_label.size.x / 2.0, data.radius + 8.0)

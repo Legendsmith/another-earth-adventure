@@ -9,7 +9,7 @@
 [ext_resource type="PackedScene" path="res://ui/crew_manifest/crew_manifest.tscn" id="8_fcca2"]
 [ext_resource type="Script" uid="uid://4gvhsgwysacp" path="res://ui/ship_console/combat_panel.gd" id="9_combat"]
 [ext_resource type="Script" uid="uid://c560cwdkgjp14" path="res://ui/ship_console/armor_display.gd" id="10_armor"]
-[ext_resource type="PackedScene" uid="uid://cg7jx7idvycnf" path="res://world/space_travel_overworld.tscn" id="10_ocjjs"]
+[ext_resource type="PackedScene" path="res://world/planet_orbit_space.tscn" id="10_ocjjs"]
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_26vpt"]
 
@@ -26,16 +26,17 @@ grow_begin = -1.0
 grow_end = -1.0
 vertical = true
 
-[node name="ShipHud" type="CanvasLayer" unique_id=414802575 node_paths=PackedStringArray("ship", "controller", "navigation_computer", "renderer", "maneuvers", "maneuver_editor", "camera")]
+[node name="ShipHud" type="CanvasLayer" unique_id=414802575 node_paths=PackedStringArray("ship", "controller", "navigation_computer", "renderer", "maneuvers", "maneuver_editor", "camera", "views")]
 process_mode = 3
 script = ExtResource("0_hud")
-ship = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/SpaceTravelOverworld/PlayerShip")
-controller = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/SpaceTravelOverworld/PlayerShip/Controller")
-navigation_computer = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/SpaceTravelOverworld/PlayerShip/NavigationComputer")
-renderer = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/SpaceTravelOverworld/TrajectoryRenderer")
-maneuvers = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/SpaceTravelOverworld/PlayerShip/Maneuvers")
-maneuver_editor = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/SpaceTravelOverworld/ManeuverEditor")
-camera = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/SpaceTravelOverworld/Camera2D")
+ship = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/PlanetOrbitSpace/PlayerShip")
+controller = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/PlanetOrbitSpace/PlayerShip/Controller")
+navigation_computer = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/PlanetOrbitSpace/PlayerShip/NavigationComputer")
+renderer = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/PlanetOrbitSpace/TrajectoryRenderer")
+maneuvers = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/PlanetOrbitSpace/PlayerShip/Maneuvers")
+maneuver_editor = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/PlanetOrbitSpace/ManeuverEditor")
+camera = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/PlanetOrbitSpace/MapCamera")
+views = NodePath("MainLayout/SplitContainer/SpaceView/SubViewport/PlanetOrbitSpace/SpaceViews")
 
 [node name="MainLayout" type="VBoxContainer" parent="." unique_id=260250108]
 anchors_preset = 15
@@ -394,7 +395,7 @@ handle_input_locally = false
 size = Vector2i(1920, 1023)
 render_target_update_mode = 4
 
-[node name="SpaceTravelOverworld" parent="MainLayout/SplitContainer/SpaceView/SubViewport" unique_id=512653754 instance=ExtResource("10_ocjjs")]
+[node name="PlanetOrbitSpace" parent="MainLayout/SplitContainer/SpaceView/SubViewport" instance=ExtResource("10_ocjjs")]
 
 [node name="PanelContainer" type="PanelContainer" parent="MainLayout" unique_id=802306571]
 layout_mode = 2
@@ -573,4 +574,4 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_type_variation = &"ClearButton"
 
-[editable path="MainLayout/SplitContainer/SpaceView/SubViewport/SpaceTravelOverworld"]
+[editable path="MainLayout/SplitContainer/SpaceView/SubViewport/PlanetOrbitSpace"]

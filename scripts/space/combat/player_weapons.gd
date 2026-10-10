@@ -197,7 +197,7 @@ func get_point_defence_mounts() -> Array[WeaponMount]:
 func assess_munition(munition: Munition) -> Dictionary:
 	var target: CombatHull = munition.target if munition.has_valid_target() else hull
 	var relative := munition.get_world_position() - target.get_world_position()
-	var relative_velocity := munition.linear_velocity - target.get_world_velocity()
+	var relative_velocity := munition.get_world_velocity() - target.get_world_velocity()
 	var speed_squared := relative_velocity.length_squared()
 	var time := 0.0 if speed_squared < 1e-6 else maxf(-relative.dot(relative_velocity) / speed_squared, 0.0)
 	var closest := (relative + relative_velocity * time).length()

@@ -60,7 +60,7 @@ func _physics_process(_delta: float) -> void:
 		strafe = clampf(move.x, -1.0, 1.0)
 		turn = clampf(rotate_action.value_axis_1d, -1.0, 1.0)
 	# Right of the nose: the nose rotated a quarter turn clockwise (y is down).
-	var push := Vector2.RIGHT.rotated(ship.global_rotation + PI / 2.0) * strafe
+	var push := Vector2.from_angle(ship.facing + PI / 2.0) * strafe
 	var combat_move := _combat_move_direction()
 	if combat_move != Vector2.ZERO:
 		push = combat_move
@@ -76,10 +76,10 @@ func _physics_process(_delta: float) -> void:
 	if turn != 0.0:
 		_end_heading_turn()
 	elif _combat_heading != Vector2.ZERO:
-		var nose := Vector2.RIGHT.rotated(ship.global_rotation)
+		var nose := ship.get_nose()
 		if ship.get_held_heading() != _combat_heading:
 			_combat_heading = Vector2.ZERO # Something else (a maneuver) took the heading over.
-		elif absf(nose.angle_to(_combat_heading)) < TURN_DONE_ANGLE and absf(ship.angular_velocity) < TURN_DONE_RATE:
+		elif absf(nose.angle_to(_combat_heading)) < TURN_DONE_ANGLE and absf(ship.spin) < TURN_DONE_RATE:
 			_end_heading_turn()
 
 

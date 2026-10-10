@@ -1,0 +1,62 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://entities/space/spaceship.tscn" id="1_ship"]
+[ext_resource type="Script" path="res://scripts/space/combat/orbital_platform.gd" id="2_platform"]
+[ext_resource type="Resource" path="res://data/engines/cold_gas_thrusters.tres" id="3_thrusters"]
+[ext_resource type="Script" uid="uid://b1m8bchjbxn2j" path="res://scripts/space/combat/combat_hull.gd" id="4_hull"]
+[ext_resource type="Script" uid="uid://b26stp8afe7wd" path="res://scripts/space/combat/railgun.gd" id="5_railgun"]
+[ext_resource type="Script" uid="uid://b4quxlo3fymv1" path="res://scripts/space/combat/combat_ai.gd" id="6_ai"]
+[ext_resource type="Script" uid="uid://5yu4xlegvbdy" path="res://data/ship_component.gd" id="7_component"]
+[ext_resource type="Resource" path="res://data/armor/steel_plate.tres" id="8_armor"]
+[ext_resource type="Script" uid="uid://xjv7l0p9hpv1u" path="res://scripts/space/sensors/sensor_suite.gd" id="9_sensors"]
+[ext_resource type="Resource" path="res://data/components/reactor.tres" id="c1_reactor"]
+[ext_resource type="Resource" path="res://data/components/railgun.tres" id="c2_railgun"]
+[ext_resource type="Resource" path="res://data/components/sensors.tres" id="c3_sensors"]
+[ext_resource type="Resource" path="res://data/components/structure.tres" id="c4_structure"]
+
+[node name="OrbitalGunPlatform" instance=ExtResource("1_ship")]
+script = ExtResource("2_platform")
+dry_mass = 60.0
+fuel_capacity = 2.0
+fuel = 2.0
+main_engine = null
+thrusters = ExtResource("3_thrusters")
+hull_color = Color(0.85, 0.35, 0.3, 1)
+hull_size = 10.0
+
+[node name="CombatHull" type="Node2D" parent="."]
+script = ExtResource("4_hull")
+display_name = "Orbital gun platform"
+hide_host_when_undetected = false
+armor = ExtResource("8_armor")
+armor_mass = 8.0
+armor_columns = 16
+components = Array[ExtResource("7_component")]([ExtResource("c1_reactor"), ExtResource("c2_railgun"), ExtResource("c3_sensors"), ExtResource("c4_structure")])
+hit_radius = 12.0
+
+[node name="Railgun" type="Node2D" parent="CombatHull"]
+script = ExtResource("5_railgun")
+component_name = "Railgun"
+muzzle_velocity = 650.0
+burst_distance = 2000.0
+fragment_count = 30
+fragment_damage = 4
+spread_speed = 80.0
+aim_error = 0.0004
+max_range = 80000.0
+arc_facing = 1
+arc_half_angle = 0.698132
+traverse_rate = 0.0698132
+max_flight_time = 300.0
+
+[node name="CombatAI" type="Node" parent="CombatHull"]
+script = ExtResource("6_ai")
+
+[node name="SensorSuite" type="Node" parent="."]
+script = ExtResource("9_sensors")
+display_name = "Orbital gun platform"
+classification = "Orbital gun platform"
+passive_strength = 6000.0
+base_signature = 3.0
+active_strength = 25000.0
+cross_section = 4.0

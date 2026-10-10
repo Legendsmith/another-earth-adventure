@@ -230,7 +230,8 @@ func _on_plotted(result: Dictionary, serial: int) -> void:
 		_fail(_describe_failure(result.message))
 		return
 	if result.total_delta_v > ship.get_delta_v_remaining(get_drive()):
-		_fail("needs %.1f px/s, only %.1f left" % [result.total_delta_v, ship.get_delta_v_remaining(get_drive())])
+		_fail("needs %.1f px/s, only %.1f left" % [result.total_delta_v / SpaceScale.MAP_SCALE,
+			ship.get_delta_v_remaining(get_drive()) / SpaceScale.MAP_SCALE])
 		return
 	if result.nodes[0].time - orbital_system.SimTime < 1.0:
 		# Plotting took longer than the lead time allowed for: try again with more lead time.
@@ -267,7 +268,7 @@ func _update_status(result: Dictionary) -> void:
 	var via := ""
 	if result.assist_body >= 0:
 		via = " via %s" % orbital_system.GetBodyName(result.assist_body)
-	var remaining := _course_delta_v()
+	var remaining := _course_delta_v() / SpaceScale.MAP_SCALE # Shown in world px/s.
 	var what: String = MODE_NAMES[mode]
 	if result.reaches_target:
 		status = "%s %s%s: %d burns, Δv %.1f" % [what, destination, via, _course_node_count(), remaining]
@@ -403,10 +404,11 @@ func _complete() -> void:
 		Mode.ORBIT:
 			var info: Dictionary = orbital_system.GetOrbitInfo(ship.get_state_position(), ship.get_state_velocity(), _target)
 			var radius: float = orbital_system.GetBodyRadius(_target)
-			status = "In orbit around %s: Pe %d  Ap %d" % [body_name, roundi(info.periapsis - radius), roundi(info.apoapsis - radius)]
+			status = "In orbit around %s: Pe %d  Ap %d" % [body_name, roundi((info.periapsis - radius) / SpaceScale.MAP_SCALE),
+				roundi((info.apoapsis - radius) / SpaceScale.MAP_SCALE)]
 		Mode.INTERCEPT:
 			var info: Dictionary = orbital_system.GetOrbitInfo(ship.get_state_position(), ship.get_state_velocity(), _target)
-			status = "Intercepted %s (closest approach %d px)" % [body_name, roundi(info.periapsis)]
+			status = "Intercepted %s (closest approach %d px)" % [body_name, roundi(info.periapsis / SpaceScale.MAP_SCALE)]
 	course_completed.emit(_target)
 
 

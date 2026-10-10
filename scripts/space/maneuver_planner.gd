@@ -12,9 +12,10 @@ signal nodes_changed
 signal maneuver_started(node: Dictionary)
 signal maneuver_completed(node: Dictionary)
 
-## Time warp is stepped down so the ship starts turning for a burn at least this many real seconds ahead, and is
-## capped at 1x until the burn completes.
-@export var warp_stop_lead: float = 4.0
+## Time warp eases down ahead of a burn, one level at a time, spending this many real seconds at each level.
+@export var warp_ramp_step: float = 1.0
+## Real seconds at 1x before the ship starts turning for a burn. Warp stays at 1x until the burn completes.
+@export var warp_stop_lead: float = 3.0
 ## Start turning toward the burn direction this many simulation seconds before the turn is strictly needed.
 @export var align_margin: float = 2.0
 ## Nodes whose burn start is further in the past than this are discarded instead of executed.
@@ -195,7 +196,8 @@ func _physics_process(_delta: float) -> void:
 		maneuver_started.emit(node)
 
 
-## Caps time warp as the next burn approaches (stepping down a level at a time) and holds 1x while it runs.
+## Caps time warp as the next burn approaches, easing it down a level at a time (see warp_ramp_step), and holds 1x
+## while the burn runs.
 func _update_warp_cap() -> void:
 	var cap := -1
 	if not _executing.is_empty() or ship.is_burning():
@@ -207,7 +209,7 @@ func _update_warp_cap() -> void:
 			var turn_start := get_burn_start(node)
 			if not is_translation(node):
 				turn_start -= ship.get_turn_time(current_delta_v(node)) + align_margin
-			cap = orbital_system.WarpIndexForLead(turn_start - orbital_system.SimTime, warp_stop_lead)
+			cap = orbital_system.WarpIndexForRamp(turn_start - orbital_system.SimTime, warp_ramp_step, warp_stop_lead)
 			break
 	if cap >= orbital_system.WarpLevels.size() - 1:
 		cap = -1

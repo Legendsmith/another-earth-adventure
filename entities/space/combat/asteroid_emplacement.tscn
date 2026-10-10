@@ -2,14 +2,12 @@
 
 [ext_resource type="Script" uid="uid://b2xqmfvpp3lsa" path="res://scripts/space/combat/asteroid_emplacement.gd" id="1_rock"]
 [ext_resource type="Script" uid="uid://b1m8bchjbxn2j" path="res://scripts/space/combat/combat_hull.gd" id="2_hull"]
-[ext_resource type="Script" uid="uid://b26stp8afe7wd" path="res://scripts/space/combat/railgun.gd" id="3_railgun"]
 [ext_resource type="Script" uid="uid://4l7rh470ahb5" path="res://scripts/space/combat/torpedo_launcher.gd" id="4_launcher"]
 [ext_resource type="Script" uid="uid://b4quxlo3fymv1" path="res://scripts/space/combat/combat_ai.gd" id="5_ai"]
 [ext_resource type="Script" uid="uid://5yu4xlegvbdy" path="res://data/ship_component.gd" id="6_component"]
 [ext_resource type="Resource" path="res://data/armor/asteroid_rock.tres" id="7_armor"]
 [ext_resource type="Resource" path="res://data/components/rock_core.tres" id="c1_rock_core"]
 [ext_resource type="Resource" path="res://data/components/reactor.tres" id="c2_reactor"]
-[ext_resource type="Resource" path="res://data/components/railgun.tres" id="c3_railgun"]
 [ext_resource type="Resource" path="res://data/components/torpedo_tubes.tres" id="c4_torpedo_tubes"]
 [ext_resource type="Resource" path="res://data/components/torpedo_magazine.tres" id="c5_torpedo_magazine"]
 [ext_resource type="Resource" path="res://data/components/sensors.tres" id="c6_sensors"]
@@ -26,12 +24,8 @@ hide_host_when_undetected = false
 armor = ExtResource("7_armor")
 armor_mass = 40.0
 armor_columns = 20
-components = Array[ExtResource("6_component")]([ExtResource("c1_rock_core"), ExtResource("c2_reactor"), ExtResource("c3_railgun"), ExtResource("c4_torpedo_tubes"), ExtResource("c5_torpedo_magazine"), ExtResource("c6_sensors")])
+components = Array[ExtResource("6_component")]([ExtResource("c1_rock_core"), ExtResource("c2_reactor"), ExtResource("c4_torpedo_tubes"), ExtResource("c5_torpedo_magazine"), ExtResource("c6_sensors")])
 hit_radius = 30.0
-
-[node name="Railgun" type="Node2D" parent="CombatHull"]
-script = ExtResource("3_railgun")
-component_name = "Railgun"
 
 [node name="TorpedoLauncher" type="Node2D" parent="CombatHull"]
 script = ExtResource("4_launcher")
