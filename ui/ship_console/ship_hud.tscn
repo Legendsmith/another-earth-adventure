@@ -258,29 +258,29 @@ bbcode_enabled = true
 fit_content = true
 scroll_active = false
 
-[node name="PointDefenceHeader" type="Label" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel"]
+[node name="PointDefenceHeader" type="Label" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel" unique_id=966038443]
 layout_mode = 2
 theme_override_font_sizes/font_size = 17
 text = "Point defence"
 
-[node name="PointDefenceReadout" type="RichTextLabel" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel"]
+[node name="PointDefenceReadout" type="RichTextLabel" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel" unique_id=827171493]
 unique_name_in_owner = true
 layout_mode = 2
 bbcode_enabled = true
 fit_content = true
 scroll_active = false
 
-[node name="PointDefenceButtons" type="HBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel"]
+[node name="PointDefenceButtons" type="HBoxContainer" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel" unique_id=1472241411]
 layout_mode = 2
 
-[node name="LockInboundButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel/PointDefenceButtons"]
+[node name="LockInboundButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel/PointDefenceButtons" unique_id=105888555]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 focus_mode = 0
 text = "Lock inbound"
 
-[node name="ClearLocksButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel/PointDefenceButtons"]
+[node name="ClearLocksButton" type="Button" parent="MainLayout/SplitContainer/HudTabContainer/CombatPanel/PointDefenceButtons" unique_id=417424234]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -395,7 +395,19 @@ handle_input_locally = false
 size = Vector2i(1920, 1023)
 render_target_update_mode = 4
 
-[node name="PlanetOrbitSpace" parent="MainLayout/SplitContainer/SpaceView/SubViewport" instance=ExtResource("10_ocjjs")]
+[node name="PlanetOrbitSpace" parent="MainLayout/SplitContainer/SpaceView/SubViewport" unique_id=1397885741 instance=ExtResource("10_ocjjs")]
+
+[node name="GunPlatform1" parent="MainLayout/SplitContainer/SpaceView/SubViewport/PlanetOrbitSpace" index="5"]
+panel_color = Color(0.35, 0.45, 0.75, 1)
+
+[node name="GunPlatform2" parent="MainLayout/SplitContainer/SpaceView/SubViewport/PlanetOrbitSpace" index="6"]
+panel_color = Color(0.35, 0.45, 0.75, 1)
+
+[node name="GunPlatform3" parent="MainLayout/SplitContainer/SpaceView/SubViewport/PlanetOrbitSpace" index="7"]
+panel_color = Color(0.35, 0.45, 0.75, 1)
+
+[node name="GunPlatform4" parent="MainLayout/SplitContainer/SpaceView/SubViewport/PlanetOrbitSpace" index="8"]
+panel_color = Color(0.35, 0.45, 0.75, 1)
 
 [node name="PanelContainer" type="PanelContainer" parent="MainLayout" unique_id=802306571]
 layout_mode = 2
@@ -422,7 +434,7 @@ layout_mode = 2
 tooltip_text = "Disable Engines and all Active Sensors"
 text = "Silent Running"
 
-[node name="PauseLabel" type="Label" parent="MainLayout/PanelContainer/HudBar/LeftBar"]
+[node name="PauseLabel" type="Label" parent="MainLayout/PanelContainer/HudBar/LeftBar" unique_id=760945528]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
