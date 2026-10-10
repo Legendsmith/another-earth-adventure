@@ -1,42 +1,52 @@
 class_name ShipInternals
 extends Node
-## The inside of a ship: its armor surface, its deck plan and the modules on it, and the damage done to them.
+## The inside of a ship: its armor surface, its decks and the modules on them, and the damage done to them.
 ##
-## The hull is a cylindrical tube. Hits strike the armor surface (HullArmorSurface, the tube unrolled into armor
-## columns) and dig a crater; points that get through carry on inside. A kinetic round flies straight on through the
-## tube: it holes the hull where it enters, every wall it crosses, damages each module in its path (one point each, which
-## it spends) and, if it still has points left, digs its way out the far side. An explosive hit bursts just inside the
-## hole it blew. So rounds through the crew quarters and corridors only leave holes for the crew to patch, and a ship
-## is crippled long before it is destroyed: it only breaks up once nearly all of its frame is holed.
+## The hull is a cylindrical tube, cut into decks stacked from the top down. Hits strike the armor surface
+## (HullArmorSurface, the tube unrolled into armor columns) and dig a crater; points that get through carry on inside.
+## A kinetic penetrator flies straight on through the tube and spends a point on everything it hits: every wall cell,
+## every floor between decks and every module cell on its path (so it may clip a module or bore down its whole
+## length). It holes the hull where it enters, and if it still has points left at the far side it digs its way out.
+## An explosive hit bursts just inside the hole it blew, hitting every cell around it. So rounds through cargo holds,
+## crew quarters and corridors only leave holes for the crew to patch, and a ship is crippled long before it is
+## destroyed: it only breaks up once nearly all of its frame is holed.
 ##
-## Two systems are spread through the ship rather than knocked out: fuel tanks are compartmentalised and self-sealing,
-## so hits on them only lose a little fuel; and thrusters have no module at all, but weaken as the frame they are
-## mounted on is holed (see get_thruster_performance).
+## Some systems are spread through the ship rather than knocked out at once: fuel tanks are compartmentalised and
+## self-sealing, so hits on them only lose a little fuel; thrusters have no module at all, but weaken as the frame they
+## are mounted on is holed (see get_thruster_performance); and a system built from several modules (a main drive of
+## four engines) loses an equal share of its performance with each module wrecked (see get_component_effectiveness).
 ##
 ## Add it as a child of a CombatHull to take over the hull's armor and internal damage (see CombatHull.internals):
 ## modules then stand for the hull's components of the same name. On its own it works as a standalone model (tests,
-## demo scenes). Show it with a ShipInternalsView and an ArmorSurfaceRect.
+## demo scenes). Show it with a ShipInternalsView and an ArmorSurfaceRect; crew live in a ShipCrew.
+##
+## Cells are addressed as Vector3i(x, y, deck).
 
 signal armor_changed
-signal breach_opened(cell: Vector2i, kind: BreachKind)
-signal breach_patched(cell: Vector2i)
+signal breach_opened(cell: Vector3i, kind: BreachKind)
+signal breach_patched(cell: Vector3i)
 signal module_damaged(index: int)
 signal module_destroyed(index: int)
 signal module_repaired(index: int)
-## A round's path across the deck, in cells (from where it entered to where it exited or stopped).
-signal round_tracked(from: Vector2, to: Vector2)
+## A round's path across one deck, in cells (where it entered the deck to where it left it or stopped).
+signal round_tracked(deck: int, from: Vector2, to: Vector2)
 ## A hit on a fuel tank module lost `fraction` of the ship's fuel capacity before the tank sealed.
 signal fuel_leaked(index: int, fraction: float)
 signal thrusters_changed(performance: float)
+signal main_engine_changed(performance: float)
 ## A new layout was set (set_layout): everything was rebuilt and all damage cleared.
 signal layout_changed
 
-enum Cell { DECK, HULL, WALL, DOOR }
-## Where a hole is. HULL and DECK breaches are open to space: through the hull wall at the side of the deck, or through
-## the hull above or below the deck. WALL breaches are in internal walls.
-enum BreachKind { HULL, WALL, DECK }
+enum Cell { DECK, HULL, WALL, DOOR, ELEVATOR }
+## Where a hole is. HULL and DECK breaches are open to space: through the hull wall at the side of a deck, or through
+## the hull above the top deck or below the bottom one. WALL breaches are in internal walls, FLOOR breaches in the
+## floor between two decks (on the deck below the hole).
+enum BreachKind { HULL, WALL, DECK, FLOOR }
 
 const NO_MODULE := -1
+const NO_POINT := Vector3(-1.0, -1.0, -1.0)
+## Path cost of riding an elevator one deck, in cells walked.
+const ELEVATOR_COST := 2.0
 
 @export var layout: ShipLayout
 ## Share of the frame (hull and wall cells) that must stay intact; when more is holed the ship breaks up.
@@ -60,30 +70,37 @@ var armor: HullArmorSurface
 var length: int
 var diameter: int
 var radius: float
-## Cell type of each deck cell, row-major (y * length + x).
-var cells: PackedByteArray
-## Module covering each deck cell (NO_MODULE for none).
-var module_at: PackedInt32Array
-## Damage taken by each module (same order as layout.modules).
+var decks: int
+## Every module of every deck, in deck order.
+var modules: Array[ShipModule] = []
+## Deck of each module.
+var module_decks: PackedInt32Array
+## Damage taken by each module.
 var module_damage: PackedInt32Array
-## Open holes: cell -> BreachKind.
+## Open holes: Vector3i cell -> BreachKind.
 var breaches: Dictionary = {}
-## Paths over open deck (cell units): hull, walls and modules are solid, doors are open.
-var astar: AStarGrid2D
+## Paths over open deck and between decks by elevator: hull, walls and modules are solid, doors are open.
+var nav: AStar3D
 var rng := RandomNumberGenerator.new()
 ## Fuel lost to hits on fuel tanks, as a share of the fuel capacity.
 var fuel_lost := 0.0
 var thruster_performance := 1.0
+var main_engine_performance := 1.0
 
+## Cell type of each cell, deck by deck, row-major.
+var _cells: PackedByteArray
+## Module covering each cell (NO_MODULE for none).
+var _module_at: PackedInt32Array
 var _frame_cells := 0
 ## Frame cells ever holed: patching seals a hole but does not restore the frame's strength.
 var _damaged_frame: Dictionary = {}
 ## CombatHull component index of each module (-1 for none).
 var _component_index: PackedInt32Array
-## Deck point that internal blasts start from (the module that just blew up), or x < 0 for a random point.
-var _blast_origin := Vector2(-1.0, -1.0)
-## The ship's undamaged thrusters: the ship gets its own copy, scaled by thruster_performance.
+## Point (x, y, deck) that internal blasts start from (the module that just blew up), or NO_POINT for a random one.
+var _blast_origin := NO_POINT
+## The ship's undamaged engines: the ship gets its own copies, scaled by the performance of their modules.
 var _base_thrusters: EngineDefinition
+var _base_main_engine: EngineDefinition
 
 
 func _ready() -> void:
@@ -98,7 +115,7 @@ func _ready() -> void:
 
 #region Setup
 
-## Replaces the layout (the layout editor's live preview): rebuilds the deck and armor and clears all damage.
+## Replaces the layout (the layout editor's live preview): rebuilds the decks and armor and clears all damage.
 func set_layout(new_layout: ShipLayout) -> void:
 	layout = new_layout if new_layout else ShipLayout.create_default()
 	_build()
@@ -112,88 +129,121 @@ func _build() -> void:
 	length = maxi(layout.length, 3)
 	diameter = maxi(layout.diameter, 3)
 	radius = diameter / 2.0
+	decks = layout.get_deck_count()
 	var thickness := layout.armor_thickness
 	if hull:
 		# The same depth as the hull's armor grid: armor mass spread over its columns.
 		thickness = hull.armor.layers_for(hull.armor_mass, maxi(hull.armor_columns, 1)) if hull.armor else 0
 	armor = HullArmorSurface.new(length, layout.get_circumference(), thickness)
-	cells = PackedByteArray()
-	cells.resize(length * diameter)
-	cells.fill(Cell.DECK)
-	module_at = PackedInt32Array()
-	module_at.resize(length * diameter)
-	module_at.fill(NO_MODULE)
-	for y in diameter:
-		for x in length:
-			if x == 0 or y == 0 or x == length - 1 or y == diameter - 1:
-				cells[_index(Vector2i(x, y))] = Cell.HULL
-	for rect in layout.walls:
-		_fill(rect, Cell.WALL)
-	for door in layout.doors:
-		if _in_bounds(door) and get_cell(door) == Cell.WALL:
-			cells[_index(door)] = Cell.DOOR
+	var count := length * diameter * decks
+	_cells = PackedByteArray()
+	_cells.resize(count)
+	_cells.fill(Cell.DECK)
+	_module_at = PackedInt32Array()
+	_module_at.resize(count)
+	_module_at.fill(NO_MODULE)
+	modules.clear()
+	module_decks = PackedInt32Array()
+	for deck in decks:
+		var plan := layout.get_deck(deck)
+		for y in diameter:
+			for x in length:
+				if x == 0 or y == 0 or x == length - 1 or y == diameter - 1:
+					_cells[_index(Vector3i(x, y, deck))] = Cell.HULL
+		for rect in plan.walls:
+			for cell in _cells_in(rect, deck):
+				if get_cell(cell) == Cell.DECK:
+					_cells[_index(cell)] = Cell.WALL
+		for door in plan.doors:
+			var cell := Vector3i(door.x, door.y, deck)
+			if _in_bounds(cell) and get_cell(cell) == Cell.WALL:
+				_cells[_index(cell)] = Cell.DOOR
+		for elevator in plan.elevators:
+			var cell := Vector3i(elevator.x, elevator.y, deck)
+			if _in_bounds(cell) and get_cell(cell) == Cell.DECK:
+				_cells[_index(cell)] = Cell.ELEVATOR
+		for module in plan.modules:
+			var index := modules.size()
+			modules.append(module)
+			module_decks.append(deck)
+			for cell in _cells_in(module.rect, deck):
+				if get_cell(cell) == Cell.DECK:
+					_module_at[_index(cell)] = index
 	module_damage = PackedInt32Array()
-	module_damage.resize(layout.modules.size())
+	module_damage.resize(modules.size())
 	_component_index = PackedInt32Array()
-	_component_index.resize(layout.modules.size())
-	for i in layout.modules.size():
-		var module := layout.modules[i]
-		_component_index[i] = hull.find_component(module.component_name) if hull and module.component_name else -1
-		for cell in _cells_in(module.rect):
-			if get_cell(cell) == Cell.DECK:
-				module_at[_index(cell)] = i
+	_component_index.resize(modules.size())
+	for i in modules.size():
+		var component_name := modules[i].component_name
+		_component_index[i] = hull.find_component(component_name) if hull and component_name else -1
 	_frame_cells = 0
-	for value in cells:
+	for value in _cells:
 		if value == Cell.HULL or value == Cell.WALL:
 			_frame_cells += 1
-	_build_astar()
-	_update_thrusters()
+	_build_nav()
+	_update_engines()
 
 
-func _build_astar() -> void:
-	astar = AStarGrid2D.new()
-	astar.region = Rect2i(0, 0, length, diameter)
-	astar.cell_size = Vector2.ONE
-	astar.offset = Vector2(0.5, 0.5)
-	astar.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
-	astar.update()
-	for y in diameter:
-		for x in length:
-			var cell := Vector2i(x, y)
-			astar.set_point_solid(cell, not is_walkable(cell))
-
-
-func _fill(rect: Rect2i, value: Cell) -> void:
-	for cell in _cells_in(rect):
-		if get_cell(cell) == Cell.DECK:
-			cells[_index(cell)] = value
+func _build_nav() -> void:
+	nav = AStar3D.new()
+	nav.reserve_space(length * diameter * decks)
+	for deck in decks:
+		for y in diameter:
+			for x in length:
+				var cell := Vector3i(x, y, deck)
+				if is_walkable(cell):
+					nav.add_point(_index(cell), Vector3(x + 0.5, y + 0.5, deck * ELEVATOR_COST))
+	for deck in decks:
+		for y in diameter:
+			for x in length:
+				var cell := Vector3i(x, y, deck)
+				if not is_walkable(cell):
+					continue
+				# Right, down and the two diagonals below: every pair once. Diagonals only past open corners.
+				for offset: Vector3i in [Vector3i(1, 0, 0), Vector3i(0, 1, 0), Vector3i(1, 1, 0), Vector3i(-1, 1, 0)]:
+					var other := cell + offset
+					if not is_walkable(other):
+						continue
+					if offset.x != 0 and offset.y != 0 and not (is_walkable(cell + Vector3i(offset.x, 0, 0))
+							and is_walkable(cell + Vector3i(0, offset.y, 0))):
+						continue
+					nav.connect_points(_index(cell), _index(other))
+				if get_cell(cell) == Cell.ELEVATOR and get_cell(cell + Vector3i(0, 0, 1)) == Cell.ELEVATOR:
+					nav.connect_points(_index(cell), _index(cell + Vector3i(0, 0, 1)))
 
 #endregion
 
 
 #region Queries
 
-func get_cell(cell: Vector2i) -> Cell:
-	return cells[_index(cell)] as Cell if _in_bounds(cell) else Cell.HULL
+func get_cell(cell: Vector3i) -> Cell:
+	return _cells[_index(cell)] as Cell if _in_bounds(cell) else Cell.HULL
 
 
-func get_module_at(cell: Vector2i) -> int:
-	return module_at[_index(cell)] if _in_bounds(cell) else NO_MODULE
+func get_module_at(cell: Vector3i) -> int:
+	return _module_at[_index(cell)] if _in_bounds(cell) else NO_MODULE
 
 
-## Open deck or a door, with no module on it.
-func is_walkable(cell: Vector2i) -> bool:
+## Open deck, a door or an elevator, with no module on it.
+func is_walkable(cell: Vector3i) -> bool:
 	var value := get_cell(cell)
-	return (value == Cell.DECK or value == Cell.DOOR) and get_module_at(cell) == NO_MODULE
+	return (value == Cell.DECK or value == Cell.DOOR or value == Cell.ELEVATOR) and get_module_at(cell) == NO_MODULE
 
 
 func get_module(index: int) -> ShipModule:
-	return layout.modules[index]
+	return modules[index]
+
+
+func get_module_count() -> int:
+	return modules.size()
+
+
+func get_module_deck(index: int) -> int:
+	return module_decks[index]
 
 
 func get_module_hit_points(index: int) -> int:
-	var component := _component_index[index]
-	return hull.components[component].hit_to_kill if component >= 0 else maxi(layout.modules[index].hit_points, 1)
+	return maxi(modules[index].hit_points, 1)
 
 
 ## Fuel tanks are never knocked out.
@@ -202,7 +252,7 @@ func is_module_operational(index: int) -> bool:
 
 
 func is_fuel_tank(index: int) -> bool:
-	return layout.modules[index].type == ShipModule.Type.FUEL_TANK
+	return modules[index].type == ShipModule.Type.FUEL_TANK
 
 
 ## 0 (wrecked) .. 1 (undamaged).
@@ -212,38 +262,84 @@ func get_module_condition(index: int) -> float:
 	return 1.0 - float(module_damage[index]) / get_module_hit_points(index)
 
 
+## Share of a hull component's performance its modules still give (1 when it has no modules): each module carries an
+## equal share, so a main drive of four engine modules runs at 75% with one of them wrecked.
+func get_component_effectiveness(component_index: int) -> float:
+	var total := 0
+	var working := 0
+	for i in modules.size():
+		if _component_index[i] == component_index:
+			total += 1
+			if is_module_operational(i):
+				working += 1
+	return float(working) / total if total > 0 else 1.0
+
+
 ## Walkable cells next to a module, where crew stand to touch it.
-func get_access_cells(index: int) -> Array[Vector2i]:
-	var access: Array[Vector2i] = []
-	var rect := layout.modules[index].rect.grow(1)
-	for cell in _cells_in(rect):
-		if is_walkable(cell) and not layout.modules[index].rect.has_point(cell):
+func get_access_cells(index: int) -> Array[Vector3i]:
+	var access: Array[Vector3i] = []
+	var rect := modules[index].rect
+	for cell in _cells_in(rect.grow(1), module_decks[index]):
+		if is_walkable(cell) and not rect.has_point(Vector2i(cell.x, cell.y)):
 			access.append(cell)
 	return access
 
 
-## Path over open deck between two cells (empty when there is none).
-func find_path(from: Vector2i, to: Vector2i) -> Array[Vector2i]:
-	if not _in_bounds(from) or not _in_bounds(to):
-		return []
-	return astar.get_id_path(from, to, true)
+## Every walkable cell of a deck (all decks when `deck` < 0).
+func get_walkable_cells(deck: int = -1) -> Array[Vector3i]:
+	var result: Array[Vector3i] = []
+	for d in decks:
+		if deck >= 0 and d != deck:
+			continue
+		for y in diameter:
+			for x in length:
+				if is_walkable(Vector3i(x, y, d)):
+					result.append(Vector3i(x, y, d))
+	return result
 
 
-func is_breached(cell: Vector2i) -> bool:
+## Walkable cells of every room of `zone`.
+func get_zone_cells(zone: ShipRoom.Zone) -> Array[Vector3i]:
+	var result: Array[Vector3i] = []
+	for deck in decks:
+		for room in layout.get_deck(deck).rooms:
+			if room.zone != zone:
+				continue
+			for cell in _cells_in(room.rect, deck):
+				if is_walkable(cell):
+					result.append(cell)
+	return result
+
+
+## Path over open deck between two cells, riding elevators between decks (empty when there is none).
+func find_path(from: Vector3i, to: Vector3i) -> Array[Vector3i]:
+	var result: Array[Vector3i] = []
+	if not is_walkable(from) or not is_walkable(to):
+		return result
+	for id in nav.get_id_path(_index(from), _index(to)):
+		result.append(_cell_of(id))
+	return result
+
+
+func is_breached(cell: Vector3i) -> bool:
 	return breaches.has(cell)
+
+
+static func is_open_to_space(kind: BreachKind) -> bool:
+	return kind == BreachKind.HULL or kind == BreachKind.DECK
 
 
 ## Holes open to space (hull and deck breaches).
 func get_hull_breach_count() -> int:
 	var count := 0
 	for kind in breaches.values():
-		if kind != BreachKind.WALL:
+		if is_open_to_space(kind):
 			count += 1
 	return count
 
 
-## Share of the frame never holed: hull and wall cells, counting holes through the hull above and below the deck as
-## frame too. The ship breaks up below breakup_integrity.
+## Share of the frame never holed: hull and wall cells, counting holes through the hull above and below the decks and
+## the floors between them as frame too. The ship breaks up below breakup_integrity.
 func get_frame_integrity() -> float:
 	return 1.0 - minf(float(_damaged_frame.size()) / maxi(_frame_cells, 1), 1.0)
 
@@ -254,6 +350,23 @@ func get_frame_integrity() -> float:
 func get_thruster_performance() -> float:
 	var t := inverse_lerp(thruster_dead_integrity, thruster_full_integrity, get_frame_integrity())
 	return ease(clampf(t, 0.0, 1.0), thruster_ease)
+
+
+## Thrust of the main drive, 0..1: the share of its engine modules still working.
+func get_main_engine_performance() -> float:
+	if hull:
+		for i in hull.components.size():
+			if hull.components[i].kind == ShipComponent.Kind.MAIN_ENGINE:
+				return get_component_effectiveness(i)
+		return 1.0
+	# Standalone: the modules named like the default layout's engines.
+	var total := 0
+	var working := 0
+	for i in modules.size():
+		if modules[i].component_name == "Main Engine":
+			total += 1
+			working += 1 if is_module_operational(i) else 0
+	return float(working) / total if total > 0 else 1.0
 
 #endregion
 
@@ -277,7 +390,8 @@ func resolve_hit(damage: int, profile: ArmorGrid.DamageProfile = ArmorGrid.Damag
 		if profile == ArmorGrid.DamageProfile.KINETIC:
 			_trace_round(entry, exit, points)
 		else:
-			_blast(_deck_point(entry), points)
+			var point := _deck_point(entry)
+			_blast(Vector3(point.x, point.y, _deck_of(entry)), points)
 	armor.update_texture()
 	armor_changed.emit()
 	_check_breakup()
@@ -288,9 +402,9 @@ func resolve_hit(damage: int, profile: ArmorGrid.DamageProfile = ArmorGrid.Damag
 ## spot of open deck.
 func apply_internal_damage(points: int) -> void:
 	var origin := _blast_origin
-	if origin.x < 0.0:
-		var cell := Vector2i(rng.randi_range(1, length - 2), rng.randi_range(1, diameter - 2))
-		origin = Vector2(cell) + Vector2(0.5, 0.5)
+	if origin == NO_POINT:
+		origin = Vector3(rng.randi_range(1, length - 2) + 0.5, rng.randi_range(1, diameter - 2) + 0.5,
+			rng.randi_range(0, decks - 1))
 	_blast(origin, points)
 	_check_breakup()
 
@@ -307,72 +421,105 @@ func damage_module(index: int, points: int = 1) -> void:
 	module_damage[index] = mini(module_damage[index] + points, get_module_hit_points(index))
 	module_damaged.emit(index)
 	if is_module_operational(index):
-		_sync_component(index)
 		return
 	module_destroyed.emit(index)
-	var rect := layout.modules[index].rect
-	_blast_origin = Vector2(rect.position) + Vector2(rect.size) / 2.0
+	var rect := modules[index].rect
+	var centre := Vector2(rect.position) + Vector2(rect.size) / 2.0
+	_blast_origin = Vector3(centre.x, centre.y, module_decks[index])
 	_sync_component(index)
-	_blast_origin = Vector2(-1.0, -1.0)
+	_blast_origin = NO_POINT
 
 
+## Flies a kinetic penetrator with `points` left from `entry` to `exit` (hull space), spending a point on every wall,
+## floor and module cell it hits on the way.
 func _trace_round(entry: Vector3, exit: Vector3, points: int) -> void:
-	var from := _deck_point(entry)
-	var to := _deck_point(exit)
-	var hit_modules := {}
-	var end := to
-	for cell in _cells_on_segment(from, to):
-		if get_cell(cell) == Cell.WALL:
-			_open_breach(cell, BreachKind.WALL)
-		var module := get_module_at(cell)
-		if module != NO_MODULE and not hit_modules.has(module):
-			hit_modules[module] = true
-			damage_module(module)
+	var steps := maxi(ceili(entry.distance_to(exit) * 4.0), 1)
+	var last := Vector3i(-1, -1, -1)
+	var track_deck := _deck_of(entry)
+	var track_from := _deck_point(entry)
+	var track_to := track_from
+	var stopped := false
+	for i in steps + 1:
+		var point := entry.lerp(exit, float(i) / steps)
+		var flat := _deck_point(point)
+		var cell := Vector3i(floori(flat.x), floori(flat.y), _deck_of(point))
+		if cell == last:
+			track_to = flat
+			continue
+		if last.z >= 0 and cell.z != last.z:
+			# Through the floor between two decks: the hole is in the floor of the upper deck's lower neighbour.
+			_round_track(track_deck, track_from, flat)
+			track_deck = cell.z
+			track_from = flat
+			_open_breach(Vector3i(cell.x, cell.y, maxi(cell.z, last.z)), BreachKind.FLOOR)
 			points -= 1
-			if points <= 0:
-				# The round stops in the module.
-				end = Vector2(cell) + Vector2(0.5, 0.5)
-				break
-	if points > 0:
+		last = cell
+		track_to = flat
+		if points <= 0:
+			stopped = true
+			break
+		match get_cell(cell):
+			Cell.WALL:
+				_open_breach(cell, BreachKind.WALL)
+				points -= 1
+			Cell.HULL:
+				pass
+			_:
+				var module := get_module_at(cell)
+				if module != NO_MODULE:
+					damage_module(module)
+					points -= 1
+		if points <= 0:
+			# The round stops here.
+			stopped = true
+			track_to = Vector2(cell.x, cell.y) + Vector2(0.5, 0.5)
+			break
+	_round_track(track_deck, track_from, track_to)
+	if not stopped:
 		# Out through the far side: the round digs the armor from the inside.
 		var exit_column := _armor_column(exit)
 		if armor.dig(exit_column.x, exit_column.y, points) > 0 or armor.is_holed(exit_column.x, exit_column.y):
 			_breach_hull_at(exit)
-	round_tracked.emit(from, end)
 
 
-func _blast(origin: Vector2, points: int) -> void:
+func _round_track(deck: int, from: Vector2, to: Vector2) -> void:
+	round_tracked.emit(deck, from, to)
+
+
+## A blast at `origin` (x, y in cells, z the deck) that hits every wall and module cell within its radius.
+func _blast(origin: Vector3, points: int) -> void:
+	var deck := int(origin.z)
+	var centre := Vector2(origin.x, origin.y)
 	var blast_radius := minf(1.5 + points * 0.25, 4.0)
-	var module_hits := 1 + floori(points / 4.0)
-	var hit_modules := {}
-	var area := Rect2i(Vector2i(origin - Vector2.ONE * blast_radius), Vector2i.ONE * ceili(blast_radius * 2.0 + 1.0))
-	for cell in _cells_in(area):
-		if (Vector2(cell) + Vector2(0.5, 0.5)).distance_to(origin) > blast_radius:
+	var hits_per_cell := 1 + floori(points / 8.0)
+	var area := Rect2i(Vector2i(centre - Vector2.ONE * blast_radius), Vector2i.ONE * ceili(blast_radius * 2.0 + 1.0))
+	for cell in _cells_in(area, deck):
+		if (Vector2(cell.x, cell.y) + Vector2(0.5, 0.5)).distance_to(centre) > blast_radius:
 			continue
 		if get_cell(cell) == Cell.WALL:
 			_open_breach(cell, BreachKind.WALL)
 		var module := get_module_at(cell)
-		if module != NO_MODULE and not hit_modules.has(module):
-			hit_modules[module] = true
-	for module in hit_modules:
-		damage_module(module, module_hits)
+		if module != NO_MODULE:
+			damage_module(module, hits_per_cell)
 
 
 ## Holes the hull where a round crossed the tube's surface at `point`: through the hull wall when it crossed the side
-## or an end of the tube, else through the hull above or below the deck.
+## or an end of the tube, else through the hull above the top deck or below the bottom one.
 func _breach_hull_at(point: Vector3) -> void:
-	var cell := _deck_cell(point)
+	var deck := _deck_of(point)
+	var flat := _deck_point(point)
+	var cell := Vector3i(floori(flat.x), floori(flat.y), deck)
 	if point.x <= 0.01 or point.x >= length - 0.01:
 		cell.x = 0 if point.x < length / 2.0 else length - 1
 		_open_breach(cell, BreachKind.HULL)
-	elif absf(point.z) < radius * 0.5:
+	elif (deck == 0 and point.z > radius * 0.5) or (deck == decks - 1 and point.z < -radius * 0.5):
+		_open_breach(cell, BreachKind.DECK)
+	else:
 		cell.y = 0 if point.y < 0.0 else diameter - 1
 		_open_breach(cell, BreachKind.HULL)
-	else:
-		_open_breach(cell, BreachKind.DECK)
 
 
-func _open_breach(cell: Vector2i, kind: BreachKind) -> void:
+func _open_breach(cell: Vector3i, kind: BreachKind) -> void:
 	if not _in_bounds(cell):
 		return
 	_damaged_frame[cell] = true
@@ -383,7 +530,7 @@ func _open_breach(cell: Vector2i, kind: BreachKind) -> void:
 
 
 func _check_breakup() -> void:
-	_update_thrusters()
+	_update_engines()
 	if hull and not hull.is_destroyed and get_frame_integrity() < breakup_integrity:
 		hull.break_up()
 
@@ -397,19 +544,29 @@ func _leak_fuel(index: int, points: int) -> void:
 	fuel_leaked.emit(index, fraction)
 
 
-func _update_thrusters() -> void:
-	var performance := get_thruster_performance()
+## Scales the ship's own copies of its engines: thrusters by the frame, the main drive by its working modules.
+func _update_engines() -> void:
+	var thrusters := get_thruster_performance()
+	var main := get_main_engine_performance()
 	var ship := hull.host as Spaceship if hull else null
 	if ship and ship.thrusters:
 		if _base_thrusters == null:
 			# Engine definitions are shared resources: scale a copy of this ship's own.
 			_base_thrusters = ship.thrusters
 			ship.thrusters = _base_thrusters.duplicate()
-		ship.thrusters.max_thrust = _base_thrusters.max_thrust * performance
-		ship.thrusters.turn_torque = _base_thrusters.turn_torque * performance
-	if not is_equal_approx(performance, thruster_performance):
-		thruster_performance = performance
-		thrusters_changed.emit(performance)
+		ship.thrusters.max_thrust = _base_thrusters.max_thrust * thrusters
+		ship.thrusters.turn_torque = _base_thrusters.turn_torque * thrusters
+	if ship and ship.main_engine:
+		if _base_main_engine == null:
+			_base_main_engine = ship.main_engine
+			ship.main_engine = _base_main_engine.duplicate()
+		ship.main_engine.max_thrust = _base_main_engine.max_thrust * main
+	if not is_equal_approx(thrusters, thruster_performance):
+		thruster_performance = thrusters
+		thrusters_changed.emit(thrusters)
+	if not is_equal_approx(main, main_engine_performance):
+		main_engine_performance = main
+		main_engine_changed.emit(main)
 
 #endregion
 
@@ -417,7 +574,7 @@ func _update_thrusters() -> void:
 #region Repairs
 
 ## Crew patch a hole. Returns false when there was none. Patching seals the hole but the armor column stays holed.
-func patch_breach(cell: Vector2i) -> bool:
+func patch_breach(cell: Vector3i) -> bool:
 	if not breaches.has(cell):
 		return false
 	breaches.erase(cell)
@@ -429,31 +586,45 @@ func patch_breach(cell: Vector2i) -> bool:
 func repair_module(index: int, points: int = 1) -> bool:
 	if module_damage[index] <= 0 or points <= 0:
 		return false
+	var was_operational := is_module_operational(index)
 	module_damage[index] = maxi(module_damage[index] - points, 0)
-	_sync_component(index)
+	if not was_operational:
+		_sync_component(index)
+		_update_engines()
 	module_repaired.emit(index)
 	return true
 
 
+## A hull component stays online while any of its modules works.
 func _sync_component(index: int) -> void:
 	var component := _component_index[index]
-	if hull and component >= 0:
-		hull.set_component_damage(component, module_damage[index])
+	if hull == null or component < 0:
+		return
+	var working := get_component_effectiveness(component) > 0.0
+	hull.set_component_damage(component, 0 if working else hull.components[component].hit_to_kill)
 
 #endregion
 
 
 #region Geometry
 
-## Hull space: x along the tube from the stern (0) to the bow (length), y across the deck (-radius..radius), z up from
-## the deck plane.
+## Hull space: x along the tube from the stern (0) to the bow (length), y across the decks (-radius..radius), z up
+## (-radius..radius, the top deck highest).
 func _to_hull_direction(direction: Vector2) -> Vector3:
 	if direction.length_squared() < 1e-12:
 		var random := Vector3(rng.randfn(), rng.randfn(), rng.randfn())
 		return random.normalized() if random.length_squared() > 1e-12 else Vector3.RIGHT
-	var local := direction.rotated(-hull.global_rotation) if hull else direction
-	local = local.normalized()
+	var local := direction.rotated(-get_hull_facing()).normalized()
 	return Vector3(local.x, local.y, rng.randfn(0.0, vertical_spread)).normalized()
+
+
+## The direction the hull's bow points in world space (radians).
+func get_hull_facing() -> float:
+	if hull == null:
+		return 0.0
+	var ship := hull.host as Spaceship
+	# Ships keep their facing in local space; their body does not rotate on the orbital map.
+	return ship.facing if ship else hull.global_rotation
 
 
 ## Where a round travelling along `direction` enters and leaves the tube: [entry, exit] in hull space. The line passes
@@ -490,35 +661,30 @@ func _deck_point(point: Vector3) -> Vector2:
 	return Vector2(clampf(point.x, 0.0, length - 0.001), clampf(point.y + radius, 0.0, diameter - 0.001))
 
 
-func _deck_cell(point: Vector3) -> Vector2i:
-	return Vector2i(_deck_point(point).floor())
+## The deck a hull-space point is on: the tube's height is split evenly between the decks, top deck first.
+func _deck_of(point: Vector3) -> int:
+	return clampi(floori((radius - point.z) / (diameter / float(decks))), 0, decks - 1)
 
 
-## Every cell the segment passes through, in order.
-func _cells_on_segment(from: Vector2, to: Vector2) -> Array[Vector2i]:
-	var result: Array[Vector2i] = []
-	var steps := maxi(ceili(from.distance_to(to) * 4.0), 1)
-	for i in steps + 1:
-		var cell := Vector2i(from.lerp(to, float(i) / steps).floor())
-		if result.is_empty() or result[-1] != cell:
-			result.append(cell)
-	return result
-
-
-func _cells_in(rect: Rect2i) -> Array[Vector2i]:
-	var result: Array[Vector2i] = []
+func _cells_in(rect: Rect2i, deck: int) -> Array[Vector3i]:
+	var result: Array[Vector3i] = []
 	var area := rect.intersection(Rect2i(0, 0, length, diameter))
 	for y in range(area.position.y, area.end.y):
 		for x in range(area.position.x, area.end.x):
-			result.append(Vector2i(x, y))
+			result.append(Vector3i(x, y, deck))
 	return result
 
 
-func _in_bounds(cell: Vector2i) -> bool:
-	return cell.x >= 0 and cell.y >= 0 and cell.x < length and cell.y < diameter
+func _in_bounds(cell: Vector3i) -> bool:
+	return cell.x >= 0 and cell.y >= 0 and cell.z >= 0 and cell.x < length and cell.y < diameter and cell.z < decks
 
 
-func _index(cell: Vector2i) -> int:
-	return cell.y * length + cell.x
+func _index(cell: Vector3i) -> int:
+	return (cell.z * diameter + cell.y) * length + cell.x
+
+
+@warning_ignore("integer_division")
+func _cell_of(index: int) -> Vector3i:
+	return Vector3i(index % length, (index / length) % diameter, index / (length * diameter))
 
 #endregion

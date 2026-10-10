@@ -1,16 +1,20 @@
 class_name ShipInternalsView
 extends Node2D
-## Top-down view of a ShipInternals deck plan: hull, walls and doors, the modules (darkening as they are damaged),
-## holes for the crew to patch and the tracks of rounds that bored through. It is a plain 2D scene, so it can be
-## embedded in a SubViewport inside any other scene.
+## Top-down view of one deck of a ShipInternals (`deck`): hull, walls, doors and elevators, the modules (darkening as
+## they are damaged), holes for the crew to patch and the tracks of rounds that bored through. It is a plain 2D scene,
+## so it can be embedded in a SubViewport inside any other scene.
 ##
-## It also gives crew a world to move in: hull, walls and modules are solid (a StaticBody2D on `wall_layer`), each module
-## and each hole has an Area2D that reports bodies on `crew_mask` touching it, and ShipInternals.find_path finds routes
-## over open deck (convert with cell_to_local / local_to_cell).
+## It also gives crew a world to move in, for every deck at once. All decks share these coordinates, and each deck has
+## its own physics layers, one for its walls (get_deck_layer) and one for its crew (get_crew_layer), so crew only meet
+## the walls (and, if they collide with each other, the crew) of their own deck: hull, walls and modules are solid (a
+## StaticBody2D per deck), each module and each hole has an Area2D that reports crew touching it,
+## and ShipInternals.find_path finds routes over open deck and by elevator between decks (convert with cell_to_local
+## and local_to_cell). Crew (ShipCrew) are drawn only on the deck shown.
 
 signal module_touched(index: int, body: Node2D)
 signal module_untouched(index: int, body: Node2D)
-signal breach_touched(cell: Vector2i, body: Node2D)
+signal breach_touched(cell: Vector3i, body: Node2D)
+signal deck_shown(deck: int)
 
 ## Seconds a round's track stays drawn.
 const TRACK_FADE := 6.0
@@ -19,6 +23,7 @@ const FLOOR_LINE_COLOR := Color(0.18, 0.2, 0.24)
 const HULL_COLOR := Color(0.55, 0.58, 0.62)
 const WALL_COLOR := Color(0.36, 0.39, 0.44)
 const DOOR_COLOR := Color(0.25, 0.45, 0.5)
+const ELEVATOR_COLOR := Color(0.55, 0.45, 0.85)
 const SPACE_BREACH_COLOR := Color(1.0, 0.25, 0.2)
 const WALL_BREACH_COLOR := Color(1.0, 0.6, 0.2)
 const TRACK_COLOR := Color(1.0, 0.85, 0.5)
@@ -26,12 +31,15 @@ const TRACK_COLOR := Color(1.0, 0.85, 0.5)
 ## The internals shown. Left empty, the view makes its own with the default layout (handy for testing the scene).
 @export var internals: ShipInternals
 @export var cell_size: float = 16.0
-@export_flags_2d_physics var wall_layer: int = 1
-## Bodies on these layers trigger module_touched and breach_touched.
-@export_flags_2d_physics var crew_mask: int = 1
+## The deck shown.
+@export var deck: int = 0:
+	set = show_deck
+## Physics layer (1-based) of the top deck's walls; each deck below takes the next layer, and the crew of each deck
+## take the layers after those (first_deck_layer + ShipLayout.MAX_DECKS onwards). The default uses layers 9 to 24.
+@export_range(1, 32) var first_deck_layer: int = 9
 @export var show_room_names: bool = true
 
-var _walls: StaticBody2D
+var _walls: Array[StaticBody2D] = []
 var _module_areas: Array[Area2D] = []
 var _breach_areas: Dictionary = {}
 ## Recent round tracks: [from (cells), to (cells), age (s)].
@@ -59,7 +67,26 @@ func bind(new_internals: ShipInternals) -> void:
 	_connect(internals)
 	_tracks.clear()
 	_rebuild_bodies()
+	show_deck(deck)
+
+
+## Shows another deck.
+func show_deck(new_deck: int) -> void:
+	deck = new_deck
+	if internals and internals.is_node_ready():
+		deck = clampi(new_deck, 0, internals.decks - 1)
 	queue_redraw()
+	deck_shown.emit(deck)
+
+
+## Physics layer bit of a deck's walls and modules: crew on the deck collide with it.
+func get_deck_layer(on_deck: int) -> int:
+	return 1 << clampi(first_deck_layer - 1 + on_deck, 0, 31)
+
+
+## Physics layer bit of the crew on a deck: the deck's module and hole areas watch it.
+func get_crew_layer(on_deck: int) -> int:
+	return 1 << clampi(first_deck_layer - 1 + ShipLayout.MAX_DECKS + on_deck, 0, 31)
 
 
 func get_size() -> Vector2:
@@ -68,21 +95,23 @@ func get_size() -> Vector2:
 	return Vector2(internals.length, internals.diameter) * cell_size
 
 
-## Centre of a deck cell, in this node's coordinates.
-func cell_to_local(cell: Vector2i) -> Vector2:
-	return (Vector2(cell) + Vector2(0.5, 0.5)) * cell_size
+## Centre of a cell (any deck), in this node's coordinates.
+func cell_to_local(cell: Vector3i) -> Vector2:
+	return (Vector2(cell.x, cell.y) + Vector2(0.5, 0.5)) * cell_size
 
 
-func local_to_cell(point: Vector2) -> Vector2i:
-	return Vector2i((point / cell_size).floor())
+## The cell under a point on `on_deck` (the deck shown when < 0).
+func local_to_cell(point: Vector2, on_deck: int = -1) -> Vector3i:
+	var flat := Vector2i((point / cell_size).floor())
+	return Vector3i(flat.x, flat.y, deck if on_deck < 0 else on_deck)
 
 
 func _process(delta: float) -> void:
 	if _tracks.is_empty():
 		return
 	for track in _tracks:
-		track[2] += delta
-	_tracks = _tracks.filter(func(track: Array) -> bool: return track[2] < TRACK_FADE)
+		track[3] += delta
+	_tracks = _tracks.filter(func(track: Array) -> bool: return track[3] < TRACK_FADE)
 	queue_redraw()
 
 
@@ -107,12 +136,12 @@ func _disconnect(target: ShipInternals) -> void:
 			(connection[0] as Signal).disconnect(connection[1])
 
 
-func _on_breach_opened(cell: Vector2i, _kind: ShipInternals.BreachKind) -> void:
+func _on_breach_opened(cell: Vector3i, _kind: ShipInternals.BreachKind) -> void:
 	_add_breach_area(cell)
 	queue_redraw()
 
 
-func _on_breach_patched(cell: Vector2i) -> void:
+func _on_breach_patched(cell: Vector3i) -> void:
 	if _breach_areas.has(cell):
 		_breach_areas[cell].queue_free()
 		_breach_areas.erase(cell)
@@ -126,11 +155,11 @@ func _on_module_changed(_index: int) -> void:
 func _on_layout_changed() -> void:
 	_tracks.clear()
 	_rebuild_bodies()
-	queue_redraw()
+	show_deck(deck)
 
 
-func _on_round_tracked(from: Vector2, to: Vector2) -> void:
-	_tracks.append([from, to, 0.0])
+func _on_round_tracked(on_deck: int, from: Vector2, to: Vector2) -> void:
+	_tracks.append([on_deck, from, to, 0.0])
 	queue_redraw()
 
 #endregion
@@ -139,32 +168,35 @@ func _on_round_tracked(from: Vector2, to: Vector2) -> void:
 #region Bodies
 
 func _rebuild_bodies() -> void:
-	if _walls:
-		_walls.queue_free()
+	for body in _walls:
+		body.queue_free()
+	_walls.clear()
 	for area in _module_areas:
 		area.queue_free()
 	_module_areas.clear()
 	for area in _breach_areas.values():
 		area.queue_free()
 	_breach_areas.clear()
-	# Solid cells, merged into one box per horizontal run.
-	_walls = StaticBody2D.new()
-	_walls.name = "Walls"
-	_walls.collision_layer = wall_layer
-	_walls.collision_mask = 0
-	add_child(_walls)
-	for y in internals.diameter:
-		var start := -1
-		for x in internals.length + 1:
-			var solid := x < internals.length and not internals.is_walkable(Vector2i(x, y))
-			if solid and start < 0:
-				start = x
-			elif not solid and start >= 0:
-				_add_box(_walls, Rect2(Vector2(start, y) * cell_size, Vector2(x - start, 1) * cell_size))
-				start = -1
-	for i in internals.layout.modules.size():
-		var rect := internals.layout.modules[i].rect
-		var area := _make_area("Module%d" % i,
+	for on_deck in internals.decks:
+		# Solid cells, merged into one box per horizontal run.
+		var walls := StaticBody2D.new()
+		walls.name = "Walls%d" % on_deck
+		walls.collision_layer = get_deck_layer(on_deck)
+		walls.collision_mask = 0
+		add_child(walls)
+		_walls.append(walls)
+		for y in internals.diameter:
+			var start := -1
+			for x in internals.length + 1:
+				var solid := x < internals.length and not internals.is_walkable(Vector3i(x, y, on_deck))
+				if solid and start < 0:
+					start = x
+				elif not solid and start >= 0:
+					_add_box(walls, Rect2(Vector2(start, y) * cell_size, Vector2(x - start, 1) * cell_size))
+					start = -1
+	for i in internals.get_module_count():
+		var rect := internals.get_module(i).rect
+		var area := _make_area("Module%d" % i, internals.get_module_deck(i),
 			Rect2(Vector2(rect.position) * cell_size, Vector2(rect.size) * cell_size).grow(cell_size * 0.25))
 		area.body_entered.connect(func(body: Node2D) -> void: module_touched.emit(i, body))
 		area.body_exited.connect(func(body: Node2D) -> void: module_untouched.emit(i, body))
@@ -173,20 +205,20 @@ func _rebuild_bodies() -> void:
 		_add_breach_area(cell)
 
 
-func _add_breach_area(cell: Vector2i) -> void:
+func _add_breach_area(cell: Vector3i) -> void:
 	if _breach_areas.has(cell):
 		return
-	var area := _make_area("Breach_%d_%d" % [cell.x, cell.y],
-		Rect2(Vector2(cell) * cell_size, Vector2.ONE * cell_size).grow(cell_size * 0.25))
+	var area := _make_area("Breach_%d_%d_%d" % [cell.x, cell.y, cell.z], cell.z,
+		Rect2(Vector2(cell.x, cell.y) * cell_size, Vector2.ONE * cell_size).grow(cell_size * 0.25))
 	area.body_entered.connect(func(body: Node2D) -> void: breach_touched.emit(cell, body))
 	_breach_areas[cell] = area
 
 
-func _make_area(area_name: String, rect: Rect2) -> Area2D:
+func _make_area(area_name: String, on_deck: int, rect: Rect2) -> Area2D:
 	var area := Area2D.new()
 	area.name = area_name
 	area.collision_layer = 0
-	area.collision_mask = crew_mask
+	area.collision_mask = get_crew_layer(on_deck)
 	area.monitorable = false
 	_add_box(area, rect)
 	add_child(area)
@@ -212,8 +244,8 @@ func _draw() -> void:
 	var font := ThemeDB.fallback_font
 	for y in internals.diameter:
 		for x in internals.length:
-			var cell := Vector2i(x, y)
-			var rect := Rect2(Vector2(cell) * cell_size, Vector2.ONE * cell_size)
+			var cell := Vector3i(x, y, deck)
+			var rect := Rect2(Vector2(x, y) * cell_size, Vector2.ONE * cell_size)
 			match internals.get_cell(cell):
 				ShipInternals.Cell.HULL:
 					draw_rect(rect, HULL_COLOR)
@@ -222,31 +254,48 @@ func _draw() -> void:
 				ShipInternals.Cell.DOOR:
 					draw_rect(rect, FLOOR_COLOR)
 					draw_rect(rect.grow(-cell_size * 0.3), DOOR_COLOR)
+				ShipInternals.Cell.ELEVATOR:
+					draw_rect(rect, FLOOR_COLOR)
+					draw_rect(rect.grow(-cell_size * 0.1), ELEVATOR_COLOR, false, 2.0)
+					var up := internals.get_cell(cell - Vector3i(0, 0, 1)) == ShipInternals.Cell.ELEVATOR
+					var down := internals.get_cell(cell + Vector3i(0, 0, 1)) == ShipInternals.Cell.ELEVATOR
+					var c := rect.get_center()
+					var h := cell_size * 0.25
+					if up:
+						draw_colored_polygon(PackedVector2Array([c + Vector2(0, -h * 1.4), c + Vector2(h, -h * 0.2),
+							c + Vector2(-h, -h * 0.2)]), ELEVATOR_COLOR)
+					if down:
+						draw_colored_polygon(PackedVector2Array([c + Vector2(0, h * 1.4), c + Vector2(h, h * 0.2),
+							c + Vector2(-h, h * 0.2)]), ELEVATOR_COLOR)
 				_:
 					draw_rect(rect, FLOOR_COLOR)
 					draw_rect(rect, FLOOR_LINE_COLOR, false, 1.0)
-	for room in internals.layout.rooms:
+	var rooms := internals.layout.get_deck(deck).rooms
+	for room in rooms:
 		var tint: Color = ShipRoom.ZONE_COLORS[room.zone]
 		if tint.a > 0.0:
 			draw_rect(Rect2(Vector2(room.rect.position) * cell_size, Vector2(room.rect.size) * cell_size), tint)
 	if show_room_names:
-		for room in internals.layout.rooms:
+		for room in rooms:
 			# On the room's row nearest the middle of the hull, clear of the systems against the hull walls.
 			var row := room.rect.end.y - 1 if room.rect.get_center().y < internals.diameter / 2.0 else room.rect.position.y
 			var at := Vector2(room.rect.position.x, row) * cell_size + Vector2(3.0, cell_size * 0.7)
 			draw_string(font, at, room.name, HORIZONTAL_ALIGNMENT_LEFT, room.rect.size.x * cell_size - 6.0,
 				int(cell_size * 0.6), Color(0.6, 0.65, 0.7, 0.7))
-	for i in internals.layout.modules.size():
-		_draw_module(i, font)
-	for cell in internals.breaches:
-		_draw_breach(cell, internals.breaches[cell])
+	for i in internals.get_module_count():
+		if internals.get_module_deck(i) == deck:
+			_draw_module(i, font)
+	for cell: Vector3i in internals.breaches:
+		if cell.z == deck:
+			_draw_breach(cell, internals.breaches[cell])
 	for track in _tracks:
-		var alpha: float = 1.0 - track[2] / TRACK_FADE
-		draw_line(track[0] * cell_size, track[1] * cell_size, Color(TRACK_COLOR, alpha), 2.0)
+		if track[0] == deck:
+			var alpha: float = 1.0 - track[3] / TRACK_FADE
+			draw_line(track[1] * cell_size, track[2] * cell_size, Color(TRACK_COLOR, alpha), 2.0)
 
 
 func _draw_module(index: int, font: Font) -> void:
-	var module := internals.layout.modules[index]
+	var module := internals.get_module(index)
 	var rect := Rect2(Vector2(module.rect.position) * cell_size, Vector2(module.rect.size) * cell_size).grow(-1.0)
 	var condition := internals.get_module_condition(index)
 	var color := module.color.darkened(0.6 * (1.0 - condition))
@@ -267,11 +316,12 @@ func _draw_module(index: int, font: Font) -> void:
 		rect.size.x - 4.0, int(cell_size * 0.5), Color(0.05, 0.05, 0.08))
 
 
-func _draw_breach(cell: Vector2i, kind: ShipInternals.BreachKind) -> void:
+func _draw_breach(cell: Vector3i, kind: ShipInternals.BreachKind) -> void:
 	var centre := cell_to_local(cell)
-	var color := WALL_BREACH_COLOR if kind == ShipInternals.BreachKind.WALL else SPACE_BREACH_COLOR
-	# Holes open to space are black inside; holes in walls show the deck through them.
-	draw_circle(centre, cell_size * 0.38, Color.BLACK if kind != ShipInternals.BreachKind.WALL else FLOOR_COLOR)
+	var to_space := ShipInternals.is_open_to_space(kind)
+	var color := SPACE_BREACH_COLOR if to_space else WALL_BREACH_COLOR
+	# Holes open to space are black inside; holes in walls and floors show the deck through them.
+	draw_circle(centre, cell_size * 0.38, Color.BLACK if to_space else FLOOR_COLOR)
 	draw_arc(centre, cell_size * 0.38, 0.0, TAU, 12, color, 2.0)
 
 #endregion

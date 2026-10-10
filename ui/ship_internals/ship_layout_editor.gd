@@ -1,20 +1,25 @@
 class_name ShipLayoutEditor
 extends Control
-## Editor for ShipLayout resources: paint walls, place doors, drag out modules and zones, and save the result as a
-## .tres. The deck is shown live by a ShipInternalsView in a SubViewport, so what you build is what the game uses.
+## Editor for ShipLayout resources: add decks, paint walls, place doors and elevators, drag out modules and zones, and
+## save the result as a .tres. The deck being edited is shown live by a ShipInternalsView in a SubViewport, so what you
+## build is what the game uses.
 ##
-## Tools (keys 1-6):
+## Tools (keys 1-7):
 ## - Select: click a module or zone to edit its properties in the side panel, drag it to move it.
 ## - Wall: drag to paint walls, right-drag to erase them.
 ## - Door: click a wall to turn it into a door (or a door back into a wall).
+## - Elevator: click open deck to place or remove an elevator. Crew ride it to the same cell on the deck above or below,
+##   so put one on the same cell of each deck it should link.
 ## - Module: drag a rectangle over open deck to place a module with the panel's settings.
 ## - Zone: drag a rectangle to mark a zone (cargo, crew quarters, mess...).
-## - Erase: click to remove the module, door, wall or zone under the cursor, in that order.
-## Ctrl+Z undoes, Delete removes the selection.
+## - Erase: click to remove the module, elevator, door, wall or zone under the cursor, in that order.
+## Ctrl+Z undoes, Delete removes the selection, Page Up / Page Down switch decks.
 
-enum Tool { SELECT, WALL, DOOR, MODULE, ZONE, ERASE }
+enum Tool { SELECT, WALL, DOOR, ELEVATOR, MODULE, ZONE, ERASE }
 
-const TOOL_NAMES := ["Select", "Wall", "Door", "Module", "Zone", "Erase"]
+const TOOL_NAMES := ["Select", "Wall", "Door", "Elevator", "Module", "Zone", "Erase"]
+## Module hit points per point of a component's hit_to_kill: every cell a round crosses is a hit.
+const PRESET_HIT_SCALE := 6
 const COMPONENTS_DIR := "res://data/components/"
 const DEFAULT_PATH := "res://data/ship_internals/layouts/gunship.tres"
 const UNDO_LIMIT := 50
@@ -30,6 +35,8 @@ const MODULE_COLORS := {
 
 var layout: ShipLayout
 var tool: Tool = Tool.SELECT
+## The deck being edited.
+var deck_index := 0
 ## Selected module or zone (ShipModule or ShipRoom), or null.
 var selected: Resource
 
@@ -60,6 +67,8 @@ var _module_color: ColorPickerButton
 var _zone_type: OptionButton
 var _zone_name: LineEdit
 var _path: LineEdit
+var _deck_select: OptionButton
+var _deck_name: LineEdit
 var _status: Label
 var _selection_label: Label
 
@@ -79,7 +88,9 @@ func _ready() -> void:
 
 func _set_layout(new_layout: ShipLayout) -> void:
 	layout = new_layout
+	layout.get_deck(0)
 	selected = null
+	deck_index = 0
 	_refresh()
 	_sync_hull_fields()
 	_fit_view.call_deferred()
@@ -101,17 +112,25 @@ func undo() -> void:
 	layout = _undo.pop_back()
 	selected = null
 	if index >= 0:
-		var list: Array = layout.modules if was_module else layout.rooms
+		var list: Array = _deck().modules if was_module else _deck().rooms
 		if index < list.size():
 			selected = list[index]
+	deck_index = mini(deck_index, layout.get_deck_count() - 1)
 	_sync_hull_fields()
 	_refresh()
+
+
+## The deck being edited.
+func _deck() -> ShipDeck:
+	return layout.get_deck(deck_index)
 
 
 ## Rebuilds the preview from the layout.
 func _refresh() -> void:
 	if _view and _view.internals:
 		_view.internals.set_layout(layout)
+		_view.show_deck(deck_index)
+	_update_deck_list()
 	_update_selection_panel()
 	if _overlay:
 		_overlay.queue_redraw()
@@ -120,29 +139,45 @@ func _refresh() -> void:
 func _paint_wall(cell: Vector2i, erase: bool) -> void:
 	if not _is_interior(cell):
 		return
-	var walls := layout.get_wall_cells()
+	var walls := _deck().get_wall_cells()
 	if erase:
 		if not walls.has(cell):
 			return
 		walls.erase(cell)
-		layout.doors.erase(cell)
+		_deck().doors.erase(cell)
 	else:
 		if walls.has(cell) or _module_at(cell) != null:
 			return
 		walls[cell] = true
-	layout.set_wall_cells(walls)
+		_deck().elevators.erase(cell)
+	_deck().set_wall_cells(walls)
 	_refresh()
 
 
 func _toggle_door(cell: Vector2i) -> void:
-	if not layout.get_wall_cells().has(cell):
+	if not _deck().get_wall_cells().has(cell):
 		_set_status("Doors go in walls")
 		return
 	_push_undo()
-	if layout.doors.has(cell):
-		layout.doors.erase(cell)
+	if _deck().doors.has(cell):
+		_deck().doors.erase(cell)
 	else:
-		layout.doors.append(cell)
+		_deck().doors.append(cell)
+	_refresh()
+
+
+func _toggle_elevator(cell: Vector2i) -> void:
+	if not _is_interior(cell) or _deck().get_wall_cells().has(cell) or _module_at(cell) != null:
+		_set_status("Elevators go on open deck")
+		return
+	_push_undo()
+	if _deck().elevators.has(cell):
+		_deck().elevators.erase(cell)
+	else:
+		_deck().elevators.append(cell)
+		var linked := cell in layout.get_deck(deck_index - 1).elevators if deck_index > 0 else false
+		linked = linked or (deck_index + 1 < layout.get_deck_count() and cell in layout.get_deck(deck_index + 1).elevators)
+		_set_status("Elevator linked" if linked else "Elevator placed: add one on the same cell of the next deck to link it")
 	_refresh()
 
 
@@ -155,7 +190,7 @@ func _place_module(rect: Rect2i) -> void:
 	var module := ShipModule.new()
 	_apply_module_fields(module)
 	module.rect = rect
-	layout.modules.append(module)
+	_deck().modules.append(module)
 	selected = module
 	_refresh()
 
@@ -169,7 +204,7 @@ func _place_zone(rect: Rect2i) -> void:
 	room.zone = _zone_type.selected as ShipRoom.Zone
 	room.name = _zone_name.text if _zone_name.text else ShipRoom.ZONE_NAMES[room.zone]
 	room.rect = rect
-	layout.rooms.append(room)
+	_deck().rooms.append(room)
 	selected = room
 	_refresh()
 
@@ -178,11 +213,14 @@ func _erase_at(cell: Vector2i) -> void:
 	var module := _module_at(cell)
 	if module:
 		_push_undo()
-		layout.modules.erase(module)
-	elif layout.doors.has(cell):
+		_deck().modules.erase(module)
+	elif _deck().elevators.has(cell):
 		_push_undo()
-		layout.doors.erase(cell)
-	elif layout.get_wall_cells().has(cell):
+		_deck().elevators.erase(cell)
+	elif _deck().doors.has(cell):
+		_push_undo()
+		_deck().doors.erase(cell)
+	elif _deck().get_wall_cells().has(cell):
 		_push_undo()
 		_paint_wall(cell, true)
 	else:
@@ -190,8 +228,8 @@ func _erase_at(cell: Vector2i) -> void:
 		if room == null:
 			return
 		_push_undo()
-		layout.rooms.erase(room)
-	if selected and not (selected in layout.modules or selected in layout.rooms):
+		_deck().rooms.erase(room)
+	if selected and not (selected in _deck().modules or selected in _deck().rooms):
 		selected = null
 	_refresh()
 
@@ -201,9 +239,9 @@ func delete_selected() -> void:
 		return
 	_push_undo()
 	if selected is ShipModule:
-		layout.modules.erase(selected)
+		_deck().modules.erase(selected)
 	else:
-		layout.rooms.erase(selected)
+		_deck().rooms.erase(selected)
 	selected = null
 	_refresh()
 
@@ -227,19 +265,21 @@ func _resize_hull() -> void:
 	layout.length = int(_length.value)
 	layout.diameter = int(_diameter.value)
 	layout.armor_thickness = int(_thickness.value)
-	# Drop whatever no longer fits inside the hull.
+	# Drop whatever no longer fits inside the hull, on every deck.
 	var interior := _interior()
-	var walls := layout.get_wall_cells()
-	for cell in walls.keys():
-		if not interior.has_point(cell):
-			walls.erase(cell)
-	layout.set_wall_cells(walls)
-	layout.doors = layout.doors.filter(func(cell: Vector2i) -> bool: return interior.has_point(cell))
-	layout.modules = layout.modules.filter(func(m: ShipModule) -> bool: return interior.encloses(m.rect))
-	for room in layout.rooms:
-		room.rect = room.rect.intersection(interior)
-	layout.rooms = layout.rooms.filter(func(r: ShipRoom) -> bool: return r.rect.size.x > 0 and r.rect.size.y > 0)
-	if selected and not (selected in layout.modules or selected in layout.rooms):
+	for plan in layout.decks:
+		var walls := plan.get_wall_cells()
+		for cell in walls.keys():
+			if not interior.has_point(cell):
+				walls.erase(cell)
+		plan.set_wall_cells(walls)
+		plan.doors = plan.doors.filter(func(cell: Vector2i) -> bool: return interior.has_point(cell))
+		plan.elevators = plan.elevators.filter(func(cell: Vector2i) -> bool: return interior.has_point(cell))
+		plan.modules = plan.modules.filter(func(m: ShipModule) -> bool: return interior.encloses(m.rect))
+		for room in plan.rooms:
+			room.rect = room.rect.intersection(interior)
+		plan.rooms = plan.rooms.filter(func(r: ShipRoom) -> bool: return r.rect.size.x > 0 and r.rect.size.y > 0)
+	if selected and not (selected in _deck().modules or selected in _deck().rooms):
 		selected = null
 	_refresh()
 	_fit_view()
@@ -249,12 +289,14 @@ func _resize_hull() -> void:
 func _module_rect_problem(rect: Rect2i, ignore: ShipModule) -> String:
 	if not _interior().encloses(rect):
 		return "Modules go inside the hull"
-	var walls := layout.get_wall_cells()
+	var walls := _deck().get_wall_cells()
 	for y in range(rect.position.y, rect.end.y):
 		for x in range(rect.position.x, rect.end.x):
 			if walls.has(Vector2i(x, y)):
 				return "Modules can't cover walls or doors"
-	for module in layout.modules:
+			if _deck().elevators.has(Vector2i(x, y)):
+				return "Modules can't cover elevators"
+	for module in _deck().modules:
 		if module != ignore and module.rect.intersects(rect):
 			return "Modules can't overlap"
 	return ""
@@ -273,7 +315,7 @@ func _is_interior(cell: Vector2i) -> bool:
 
 
 func _module_at(cell: Vector2i) -> ShipModule:
-	for module in layout.modules:
+	for module in _deck().modules:
 		if module.rect.has_point(cell):
 			return module
 	return null
@@ -282,7 +324,7 @@ func _module_at(cell: Vector2i) -> ShipModule:
 ## The smallest zone under the cell (zones may nest).
 func _room_at(cell: Vector2i) -> ShipRoom:
 	var best: ShipRoom = null
-	for room in layout.rooms:
+	for room in _deck().rooms:
 		if room.rect.has_point(cell) and (best == null or room.rect.get_area() < best.rect.get_area()):
 			best = room
 	return best
@@ -290,14 +332,15 @@ func _room_at(cell: Vector2i) -> ShipRoom:
 
 func _selected_index() -> int:
 	if selected is ShipModule:
-		return layout.modules.find(selected)
+		return _deck().modules.find(selected)
 	if selected is ShipRoom:
-		return layout.rooms.find(selected)
+		return _deck().rooms.find(selected)
 	return -1
 
 
 func _cell_under_mouse(position_in_container: Vector2) -> Vector2i:
-	return _view.local_to_cell(_view.get_global_transform().affine_inverse() * position_in_container)
+	var cell := _view.local_to_cell(_view.get_global_transform().affine_inverse() * position_in_container)
+	return Vector2i(cell.x, cell.y)
 
 
 func _drag_rect(a: Vector2i, b: Vector2i) -> Rect2i:
@@ -317,6 +360,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		undo()
 	elif key.keycode == KEY_DELETE or key.keycode == KEY_BACKSPACE:
 		delete_selected()
+	elif key.keycode == KEY_PAGEUP:
+		select_deck(deck_index - 1)
+	elif key.keycode == KEY_PAGEDOWN:
+		select_deck(deck_index + 1)
 	elif key.keycode >= KEY_1 and key.keycode < KEY_1 + Tool.size():
 		_set_tool((key.keycode - KEY_1) as Tool)
 	else:
@@ -365,6 +412,9 @@ func _on_press(cell: Vector2i, right: bool) -> void:
 		Tool.DOOR:
 			_dragging = false
 			_toggle_door(cell)
+		Tool.ELEVATOR:
+			_dragging = false
+			_toggle_elevator(cell)
 		Tool.ERASE:
 			_dragging = false
 			_erase_at(cell)
@@ -403,7 +453,7 @@ func _set_tool(new_tool: Tool) -> void:
 	for i in _tool_buttons.size():
 		_tool_buttons[i].set_pressed_no_signal(i == tool)
 	_set_status(["Click to select, drag to move", "Drag to paint walls, right-drag to erase",
-		"Click a wall to make a door", "Drag a rectangle over open deck", "Drag a rectangle to mark a zone",
+		"Click a wall to make a door", "Click open deck to place an elevator", "Drag a rectangle over open deck", "Drag a rectangle to mark a zone",
 		"Click to remove what's under the cursor"][tool])
 	if _overlay:
 		_overlay.queue_redraw()
@@ -444,7 +494,7 @@ func _on_preset_selected(index: int) -> void:
 	_updating_panel = true
 	_module_name.text = component.name
 	_module_component.text = component.name
-	_module_hit_points.value = component.hit_to_kill
+	_module_hit_points.value = component.hit_to_kill * PRESET_HIT_SCALE
 	_module_type.select(ShipModule.Type.FUEL_TANK if component.kind == ShipComponent.Kind.FUEL_TANK
 		else ShipModule.Type.SYSTEM)
 	_module_color.color = MODULE_COLORS.get(component.kind, Color(0.45, 0.6, 0.75))
@@ -530,11 +580,57 @@ func _new_layout(empty: bool) -> void:
 	_push_undo()
 	var fresh := ShipLayout.create_default()
 	if empty:
-		fresh.walls.clear()
-		fresh.doors.clear()
-		fresh.modules.clear()
-		fresh.rooms.clear()
+		fresh.decks.clear()
+		var plan := ShipDeck.new()
+		plan.name = "Deck 1"
+		fresh.decks.append(plan)
 	_set_layout(fresh)
+
+
+func select_deck(index: int) -> void:
+	deck_index = clampi(index, 0, layout.get_deck_count() - 1)
+	selected = null
+	_refresh()
+
+
+## Adds an empty deck below the one being edited.
+func add_deck() -> void:
+	if layout.decks.size() >= ShipLayout.MAX_DECKS:
+		_set_status("A ship has at most %d decks" % ShipLayout.MAX_DECKS)
+		return
+	_push_undo()
+	var plan := ShipDeck.new()
+	plan.name = "Deck %d" % (layout.decks.size() + 1)
+	layout.decks.insert(deck_index + 1, plan)
+	select_deck(deck_index + 1)
+
+
+func remove_deck() -> void:
+	if layout.decks.size() <= 1:
+		_set_status("A ship needs at least one deck")
+		return
+	_push_undo()
+	layout.decks.remove_at(deck_index)
+	select_deck(deck_index)
+
+
+func _update_deck_list() -> void:
+	if _deck_select == null:
+		return
+	_updating_panel = true
+	_deck_select.clear()
+	for i in layout.get_deck_count():
+		_deck_select.add_item("%d: %s" % [i + 1, layout.get_deck(i).name])
+	_deck_select.select(deck_index)
+	_deck_name.text = _deck().name
+	_updating_panel = false
+
+
+func _on_deck_name_changed(text: String) -> void:
+	if _updating_panel:
+		return
+	_deck().name = text
+	_deck_select.set_item_text(deck_index, "%d: %s" % [deck_index + 1, text])
 
 
 ## Scales the deck to fill the view area, in whole steps so cells stay crisp.
@@ -571,7 +667,7 @@ func _build_ui() -> void:
 
 	_heading(panel, "Tools")
 	var tools := GridContainer.new()
-	tools.columns = 3
+	tools.columns = 4
 	panel.add_child(tools)
 	for i in TOOL_NAMES.size():
 		var button := Button.new()
@@ -593,6 +689,16 @@ func _build_ui() -> void:
 	for spin in [_length, _diameter, _thickness]:
 		spin.value_changed.connect(func(_v: float) -> void: _resize_hull())
 
+	_heading(panel, "Decks")
+	_deck_select = _option(panel, "Deck (PgUp/PgDn)", [])
+	_deck_select.item_selected.connect(select_deck)
+	_deck_name = _line(panel, "Name", "")
+	_deck_name.text_changed.connect(_on_deck_name_changed)
+	var deck_row := HBoxContainer.new()
+	panel.add_child(deck_row)
+	_button(deck_row, "Add deck", add_deck)
+	_button(deck_row, "Remove deck", remove_deck)
+
 	_heading(panel, "Module")
 	_preset = _option(panel, "Preset", [])
 	_preset.item_selected.connect(_on_preset_selected)
@@ -602,7 +708,8 @@ func _build_ui() -> void:
 	_module_name.text_changed.connect(_on_module_fields_changed)
 	_module_component = _line(panel, "Hull component", "")
 	_module_component.text_changed.connect(_on_module_fields_changed)
-	_module_hit_points = _spin(panel, "Hit points (no component)", 1, 99)
+	_module_hit_points = _spin(panel, "Hit points (cells hit)", 1, 999)
+	_module_hit_points.value = 10
 	_module_hit_points.value_changed.connect(_on_module_fields_changed)
 	_module_color = ColorPickerButton.new()
 	_module_color.custom_minimum_size.y = 24

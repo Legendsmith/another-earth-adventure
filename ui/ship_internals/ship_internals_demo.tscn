@@ -44,7 +44,7 @@ size_flags_horizontal = 3
 
 [node name="DeckLabel" type="Label" parent="Margin/Columns/Left"]
 layout_mode = 2
-text = "Deck plan (click a hole to patch it, a module to repair it)"
+text = "Deck plan (Tab: next deck; click a hole to patch it, a module to repair it)"
 
 [node name="ViewportContainer" type="SubViewportContainer" parent="Margin/Columns/Left"]
 unique_name_in_owner = true
