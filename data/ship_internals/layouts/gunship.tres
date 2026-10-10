@@ -1,0 +1,222 @@
+[gd_resource type="Resource" script_class="ShipLayout" format=3]
+
+[ext_resource type="Script" path="res://data/ship_internals/ship_deck.gd" id="1_b5301"]
+[ext_resource type="Script" path="res://data/ship_internals/ship_module.gd" id="2_q7vy7"]
+[ext_resource type="Script" path="res://data/ship_internals/ship_room.gd" id="3_wyi7r"]
+[ext_resource type="Script" path="res://data/ship_internals/ship_layout.gd" id="4_o7md2"]
+
+[sub_resource type="Resource" id="Resource_1dn2n"]
+script = ExtResource("2_q7vy7")
+name = "Main Engine"
+rect = Rect2i(1, 1, 4, 2)
+component_name = "Main Engine"
+hit_points = 12
+color = Color(0.85, 0.55, 0.3, 1)
+
+[sub_resource type="Resource" id="Resource_3rq05"]
+script = ExtResource("2_q7vy7")
+name = "Reactor"
+rect = Rect2i(10, 1, 3, 2)
+component_name = "Reactor"
+hit_points = 16
+color = Color(0.4, 0.85, 0.5, 1)
+
+[sub_resource type="Resource" id="Resource_l8law"]
+script = ExtResource("2_q7vy7")
+name = "Fuel Tank"
+type = 1
+rect = Rect2i(9, 9, 7, 2)
+component_name = "Fuel Tank"
+color = Color(0.75, 0.7, 0.3, 1)
+
+[sub_resource type="Resource" id="Resource_qllq0"]
+script = ExtResource("2_q7vy7")
+name = "Torpedo Magazine"
+rect = Rect2i(17, 1, 3, 2)
+component_name = "Torpedo Magazine"
+hit_points = 8
+color = Color(0.85, 0.35, 0.35, 1)
+
+[sub_resource type="Resource" id="Resource_7lfxe"]
+script = ExtResource("2_q7vy7")
+name = "Torpedo Tubes"
+rect = Rect2i(22, 1, 2, 2)
+component_name = "Torpedo Tubes"
+hit_points = 8
+color = Color(0.75, 0.45, 0.4, 1)
+
+[sub_resource type="Resource" id="Resource_4o03e"]
+script = ExtResource("2_q7vy7")
+name = "Railgun"
+rect = Rect2i(17, 9, 5, 2)
+component_name = "Railgun"
+hit_points = 12
+color = Color(0.5, 0.6, 0.9, 1)
+
+[sub_resource type="Resource" id="Resource_s41pl"]
+script = ExtResource("2_q7vy7")
+name = "Bridge"
+rect = Rect2i(37, 1, 2, 2)
+component_name = "Bridge"
+color = Color(0.55, 0.8, 0.95, 1)
+
+[sub_resource type="Resource" id="Resource_6f5ns"]
+script = ExtResource("2_q7vy7")
+name = "Sensors"
+rect = Rect2i(37, 9, 2, 2)
+component_name = "Sensors"
+hit_points = 6
+color = Color(0.6, 0.5, 0.9, 1)
+
+[sub_resource type="Resource" id="Resource_igj0q"]
+script = ExtResource("3_wyi7r")
+name = "Engineering"
+rect = Rect2i(1, 1, 7, 3)
+
+[sub_resource type="Resource" id="Resource_75lfb"]
+script = ExtResource("3_wyi7r")
+name = "Aft Cargo Hold"
+zone = 1
+rect = Rect2i(1, 8, 7, 3)
+
+[sub_resource type="Resource" id="Resource_t5xdu"]
+script = ExtResource("3_wyi7r")
+name = "Reactor Room"
+rect = Rect2i(9, 1, 7, 3)
+
+[sub_resource type="Resource" id="Resource_tnxdn"]
+script = ExtResource("3_wyi7r")
+name = "Fuel Store"
+rect = Rect2i(9, 8, 7, 3)
+
+[sub_resource type="Resource" id="Resource_yc27m"]
+script = ExtResource("3_wyi7r")
+name = "Magazine"
+rect = Rect2i(17, 1, 7, 3)
+
+[sub_resource type="Resource" id="Resource_knt6d"]
+script = ExtResource("3_wyi7r")
+name = "Gun Deck"
+rect = Rect2i(17, 8, 7, 3)
+
+[sub_resource type="Resource" id="Resource_wbg8f"]
+script = ExtResource("3_wyi7r")
+name = "Crew Quarters"
+zone = 2
+rect = Rect2i(25, 1, 7, 3)
+
+[sub_resource type="Resource" id="Resource_5qyew"]
+script = ExtResource("3_wyi7r")
+name = "Mess"
+zone = 3
+rect = Rect2i(25, 8, 7, 3)
+
+[sub_resource type="Resource" id="Resource_4mpmn"]
+script = ExtResource("3_wyi7r")
+name = "Bridge"
+rect = Rect2i(33, 1, 6, 3)
+
+[sub_resource type="Resource" id="Resource_7bk4a"]
+script = ExtResource("3_wyi7r")
+name = "Sensor Bay"
+rect = Rect2i(33, 8, 6, 3)
+
+[sub_resource type="Resource" id="Resource_1b5pf"]
+script = ExtResource("3_wyi7r")
+name = "Corridor"
+zone = 4
+rect = Rect2i(1, 5, 38, 2)
+
+[sub_resource type="Resource" id="Resource_t82sd"]
+script = ExtResource("1_b5301")
+name = "Main deck"
+walls = Array[Rect2i]([Rect2i(1, 4, 38, 1), Rect2i(1, 7, 38, 1), Rect2i(8, 1, 1, 10), Rect2i(16, 1, 1, 10), Rect2i(24, 1, 1, 10), Rect2i(32, 1, 1, 10)])
+doors = Array[Vector2i]([Vector2i(8, 5), Vector2i(8, 6), Vector2i(16, 5), Vector2i(16, 6), Vector2i(24, 5), Vector2i(24, 6), Vector2i(32, 5), Vector2i(32, 6), Vector2i(6, 4), Vector2i(6, 7), Vector2i(14, 4), Vector2i(14, 7), Vector2i(21, 4), Vector2i(21, 7), Vector2i(28, 4), Vector2i(28, 7), Vector2i(35, 4), Vector2i(35, 7)])
+elevators = Array[Vector2i]([Vector2i(3, 5), Vector2i(36, 6)])
+modules = Array[ExtResource("2_q7vy7")]([SubResource("Resource_1dn2n"), SubResource("Resource_3rq05"), SubResource("Resource_l8law"), SubResource("Resource_qllq0"), SubResource("Resource_7lfxe"), SubResource("Resource_4o03e"), SubResource("Resource_s41pl"), SubResource("Resource_6f5ns")])
+rooms = Array[ExtResource("3_wyi7r")]([SubResource("Resource_igj0q"), SubResource("Resource_75lfb"), SubResource("Resource_t5xdu"), SubResource("Resource_tnxdn"), SubResource("Resource_yc27m"), SubResource("Resource_knt6d"), SubResource("Resource_wbg8f"), SubResource("Resource_5qyew"), SubResource("Resource_4mpmn"), SubResource("Resource_7bk4a"), SubResource("Resource_1b5pf")])
+
+[sub_resource type="Resource" id="Resource_j6ucn"]
+script = ExtResource("2_q7vy7")
+name = "Main Engine"
+rect = Rect2i(1, 1, 4, 2)
+component_name = "Main Engine"
+hit_points = 12
+color = Color(0.85, 0.55, 0.3, 1)
+
+[sub_resource type="Resource" id="Resource_kjjsx"]
+script = ExtResource("3_wyi7r")
+name = "Lower Engineering"
+rect = Rect2i(1, 1, 7, 3)
+
+[sub_resource type="Resource" id="Resource_7y2cs"]
+script = ExtResource("3_wyi7r")
+name = "Aft Hold"
+zone = 1
+rect = Rect2i(1, 8, 7, 3)
+
+[sub_resource type="Resource" id="Resource_ocg6x"]
+script = ExtResource("3_wyi7r")
+name = "Cargo Hold"
+zone = 1
+rect = Rect2i(9, 1, 7, 3)
+
+[sub_resource type="Resource" id="Resource_wcxf2"]
+script = ExtResource("3_wyi7r")
+name = "Cargo Hold"
+zone = 1
+rect = Rect2i(9, 8, 7, 3)
+
+[sub_resource type="Resource" id="Resource_6qskl"]
+script = ExtResource("3_wyi7r")
+name = "Bunks"
+zone = 2
+rect = Rect2i(17, 1, 7, 3)
+
+[sub_resource type="Resource" id="Resource_51nqx"]
+script = ExtResource("3_wyi7r")
+name = "Bunks"
+zone = 2
+rect = Rect2i(17, 8, 7, 3)
+
+[sub_resource type="Resource" id="Resource_foqxd"]
+script = ExtResource("3_wyi7r")
+name = "Stores"
+zone = 1
+rect = Rect2i(25, 1, 7, 3)
+
+[sub_resource type="Resource" id="Resource_v6vfn"]
+script = ExtResource("3_wyi7r")
+name = "Galley"
+zone = 3
+rect = Rect2i(25, 8, 7, 3)
+
+[sub_resource type="Resource" id="Resource_3215v"]
+script = ExtResource("3_wyi7r")
+name = "Workshop"
+rect = Rect2i(33, 1, 6, 3)
+
+[sub_resource type="Resource" id="Resource_bqgba"]
+script = ExtResource("3_wyi7r")
+name = "Forward Hold"
+zone = 1
+rect = Rect2i(33, 8, 6, 3)
+
+[sub_resource type="Resource" id="Resource_mp8ah"]
+script = ExtResource("3_wyi7r")
+name = "Corridor"
+zone = 4
+rect = Rect2i(1, 5, 38, 2)
+
+[sub_resource type="Resource" id="Resource_irqx8"]
+script = ExtResource("1_b5301")
+name = "Lower deck"
+walls = Array[Rect2i]([Rect2i(1, 4, 38, 1), Rect2i(1, 7, 38, 1), Rect2i(8, 1, 1, 10), Rect2i(16, 1, 1, 10), Rect2i(24, 1, 1, 10), Rect2i(32, 1, 1, 10)])
+doors = Array[Vector2i]([Vector2i(8, 5), Vector2i(8, 6), Vector2i(16, 5), Vector2i(16, 6), Vector2i(24, 5), Vector2i(24, 6), Vector2i(32, 5), Vector2i(32, 6), Vector2i(6, 4), Vector2i(6, 7), Vector2i(14, 4), Vector2i(14, 7), Vector2i(21, 4), Vector2i(21, 7), Vector2i(28, 4), Vector2i(28, 7), Vector2i(35, 4), Vector2i(35, 7)])
+elevators = Array[Vector2i]([Vector2i(3, 5), Vector2i(36, 6)])
+modules = Array[ExtResource("2_q7vy7")]([SubResource("Resource_j6ucn")])
+rooms = Array[ExtResource("3_wyi7r")]([SubResource("Resource_kjjsx"), SubResource("Resource_7y2cs"), SubResource("Resource_ocg6x"), SubResource("Resource_wcxf2"), SubResource("Resource_6qskl"), SubResource("Resource_51nqx"), SubResource("Resource_foqxd"), SubResource("Resource_v6vfn"), SubResource("Resource_3215v"), SubResource("Resource_bqgba"), SubResource("Resource_mp8ah")])
+
+[resource]
+script = ExtResource("4_o7md2")
+decks = Array[ExtResource("1_b5301")]([SubResource("Resource_t82sd"), SubResource("Resource_irqx8")])

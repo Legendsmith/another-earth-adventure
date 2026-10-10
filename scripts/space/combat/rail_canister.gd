@@ -52,7 +52,7 @@ func _physics_process(delta: float) -> void:
 			var relative := hull.get_world_position() - _positions[i]
 			var relative_velocity := hull.get_world_velocity() - _velocities[i]
 			if closest_approach(relative, relative_velocity, delta) <= hull.hit_radius:
-				hull.take_hit(fragment_damage, ArmorGrid.DamageProfile.KINETIC)
+				hull.take_hit(fragment_damage, ArmorGrid.DamageProfile.KINETIC, -relative_velocity)
 				_alive[i] = false
 				break
 		_positions[i] += _velocities[i] * delta
