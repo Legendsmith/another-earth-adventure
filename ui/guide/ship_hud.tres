@@ -14,6 +14,7 @@
 [ext_resource type="Resource" uid="uid://b8yy06koqoy7d" path="res://ui/guide/ship_timewarp.tres" id="11_hejbj"]
 [ext_resource type="Script" uid="uid://dna8tkcuk528v" path="res://addons/guide/triggers/guide_trigger_pulse.gd" id="12_opkkr"]
 [ext_resource type="Script" uid="uid://ckggy40lm0vjc" path="res://addons/guide/modifiers/guide_modifier_negate.gd" id="13_wae8j"]
+[ext_resource type="Resource" path="res://ui/guide/pause.tres" id="20_pause"]
 
 [sub_resource type="Resource" id="Resource_no1fw"]
 script = ExtResource("3_p3imu")
@@ -113,8 +114,21 @@ script = ExtResource("1_uiicj")
 action = ExtResource("11_hejbj")
 input_mappings = Array[ExtResource("2_thgmu")]([SubResource("Resource_lktag"), SubResource("Resource_jtejr")])
 
+[sub_resource type="Resource" id="Resource_pause_key"]
+script = ExtResource("3_p3imu")
+key = 80
+
+[sub_resource type="Resource" id="Resource_pause_input"]
+script = ExtResource("2_thgmu")
+input = SubResource("Resource_pause_key")
+
+[sub_resource type="Resource" id="Resource_pause_action"]
+script = ExtResource("1_uiicj")
+action = ExtResource("20_pause")
+input_mappings = Array[ExtResource("2_thgmu")]([SubResource("Resource_pause_input")])
+
 [resource]
 script = ExtResource("2_pc6hc")
 display_name = "HUD Controls"
-mappings = Array[ExtResource("1_uiicj")]([SubResource("Resource_nk036"), SubResource("Resource_hiim4"), SubResource("Resource_jiowc"), SubResource("Resource_3m363"), SubResource("Resource_ar7yd"), SubResource("Resource_t2yxt")])
+mappings = Array[ExtResource("1_uiicj")]([SubResource("Resource_nk036"), SubResource("Resource_hiim4"), SubResource("Resource_jiowc"), SubResource("Resource_3m363"), SubResource("Resource_ar7yd"), SubResource("Resource_t2yxt"), SubResource("Resource_pause_action")])
 metadata/_custom_type_script = "uid://dsa1dnifd6w32"

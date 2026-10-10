@@ -86,7 +86,8 @@ func _physics_process(_delta: float) -> void:
 ## Combat move: while right-click is held the thrusters push toward the mouse, without turning.
 func _combat_move_direction() -> Vector2:
 	# Shift+right-click is the turn instead. Checking the context too ignores a state left over from a mode change.
-	if direct_control or not GUIDE.is_mapping_context_enabled(COMBAT_CONTEXT) or not MOVE_TO_ACTION.is_triggered() 			or COMBAT_SHIFT_ACTION.is_triggered():
+	if direct_control or not GUIDE.is_mapping_context_enabled(COMBAT_CONTEXT) or not MOVE_TO_ACTION.is_triggered() \
+			or COMBAT_SHIFT_ACTION.is_triggered():
 		return Vector2.ZERO
 	var offset := ship.get_global_mouse_position() - ship.global_position
 	return offset.normalized() if offset.length_squared() > 1e-6 else Vector2.ZERO

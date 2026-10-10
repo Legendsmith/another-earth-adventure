@@ -2,7 +2,8 @@ class_name SensorOverlay
 extends Node2D
 ## World-space sensor plot for the player's side: designations on held contacts, the active sensor reach, and ghosts
 ## of lost contacts: last known position, projected position now (with a ring of growing uncertainty) and the
-## projected course ahead.
+## projected course ahead. With `show_ranges` (the Sensors view) it also rings the player's detection ranges and how
+## far away the player's ship can itself be seen.
 
 ## Seconds of projected course drawn ahead of a ghost's projected position.
 const FUTURE_WINDOW := 120.0
@@ -18,8 +19,18 @@ const GHOST_COLOR := Color(0.7, 0.75, 0.85, 0.55)
 const ACTIVE_RING_COLOR := Color(0.4, 0.9, 1.0, 0.18)
 const EXPLOSION_COLOR := Color(1.0, 0.65, 0.3, 0.9)
 const GROUP := &"sensor_overlay"
+## Signatures the range rings are drawn for: a ship coasting quietly and one burning its drive.
+const QUIET_SIGNATURE := 1.0
+const BURNING_SIGNATURE := 40.0
+## Passive sensor strength of a typical warship, for the "you can be seen at" ring.
+const REFERENCE_SENSOR := 600.0
+const PASSIVE_RING_COLOR := Color(0.55, 0.95, 1.0, 0.35)
+const SEEN_RING_COLOR := Color(1.0, 0.45, 0.4, 0.4)
 ## Screen distance within which a click picks a contact.
 const PICK_DISTANCE := 16.0
+
+## Draw the detection range rings (set by the ShipHud in Sensors mode).
+var show_ranges := false
 
 var _network: SensorNetwork
 # Labels drawn this frame, so the next one can step clear of them.
@@ -81,6 +92,8 @@ func _draw() -> void:
 	if player and player.active:
 		var reach := player.active_range_for(1.0)
 		draw_arc(player.get_world_position(), reach, 0.0, TAU, 128, ACTIVE_RING_COLOR, 2.0 * s)
+	if player and show_ranges:
+		_draw_range_rings(player, s)
 	for track in _network.get_tracks():
 		if track.is_explosion():
 			_draw_explosion(track, now, s)
@@ -88,6 +101,35 @@ func _draw() -> void:
 			_draw_held(track, s)
 		else:
 			_draw_ghost(track, now, s)
+
+
+## Passive reach against a quiet and a burning ship, active reach (dashed while off), and the range at which a warship's
+## passive sensors pick the player up.
+func _draw_range_rings(player: SensorSuite, s: float) -> void:
+	var at := player.get_world_position()
+	_range_ring(at, player.passive_range_for(QUIET_SIGNATURE), "Passive: quiet ship", PASSIVE_RING_COLOR, s, false, 0.0)
+	_range_ring(at, player.passive_range_for(BURNING_SIGNATURE), "Passive: burning drive", PASSIVE_RING_COLOR, s, false, 0.0)
+	if player.has_active_sensors():
+		var active_reach := player.active_range_for(1.0) if player.active \
+			else player.active_strength * player.get_condition()
+		_range_ring(at, active_reach, "Active" if player.active else "Active (off)", Color(ACTIVE_RING_COLOR, 0.5), s,
+			not player.active, PI * 0.25)
+	_range_ring(at, REFERENCE_SENSOR * sqrt(player.get_signature()), "Warships see you", SEEN_RING_COLOR, s, true, PI)
+
+
+## A range ring with its label on the ring at `label_angle` (0 is to the right, clockwise).
+func _range_ring(at: Vector2, radius: float, label: String, color: Color, s: float, dashed: bool, label_angle: float) -> void:
+	if radius <= 0.0:
+		return
+	if dashed:
+		var segments := 96
+		for i in segments:
+			if i % 2 == 0:
+				draw_arc(at, radius, TAU * i / segments, TAU * (i + 1) / segments, 4, color, 1.5 * s)
+	else:
+		draw_arc(at, radius, 0.0, TAU, 128, color, 1.5 * s)
+	var on_ring := at + Vector2.from_angle(label_angle - PI * 0.5) * radius
+	_label(on_ring + Vector2(6.0, -4.0) * s, "%s %d px" % [label, roundi(radius)], Color(color, 0.9), s)
 
 
 static func color_for(track: SensorTrack, player_faction: StringName) -> Color:

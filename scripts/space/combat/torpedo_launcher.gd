@@ -71,5 +71,14 @@ func fire_at(target: CombatHull) -> bool:
 	return true
 
 
+## Inside the engagement range the torpedo lights its terminal burn straight off the rail.
+func get_range_bands() -> Array[Dictionary]:
+	var terminal := minf(engagement_range, max_range)
+	return [
+		{"inner": 0.0, "outer": terminal, "label": "Torpedo terminal burn"},
+		{"inner": terminal, "outer": max_range, "label": "Torpedo cruise"},
+	]
+
+
 func get_status() -> String:
 	return "%s [%d/%d]" % [super.get_status(), ammo, magazine]

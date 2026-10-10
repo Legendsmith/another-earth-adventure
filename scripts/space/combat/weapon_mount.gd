@@ -47,6 +47,21 @@ func fire_at(_target: CombatHull) -> bool:
 	return false
 
 
+## Range bands drawn around the ship in the Combat view, inner to outer: {inner, outer, label} (world px).
+func get_range_bands() -> Array[Dictionary]:
+	return [{"inner": 0.0, "outer": max_range, "label": "%s range" % weapon_name}]
+
+
+## Whether this mount can engage incoming munitions (point defence).
+func is_point_defence() -> bool:
+	return false
+
+
+## Chance (0..1) that this mount destroys `munition` before it arrives. Point defence mounts override this.
+func get_point_defence_kill_chance(_munition: Munition) -> float:
+	return 0.0
+
+
 ## One-line status for the HUD.
 func get_status() -> String:
 	if not is_operational():
