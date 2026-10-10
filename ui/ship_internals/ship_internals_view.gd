@@ -42,11 +42,18 @@ const TRACK_COLOR := Color(1.0, 0.85, 0.5)
 var _walls: Array[StaticBody2D] = []
 var _module_areas: Array[Area2D] = []
 var _breach_areas: Dictionary = {}
+## Draws the modules, holes and tracks (see _draw_overlay).
+var _overlay: Node2D
 ## Recent round tracks: [from (cells), to (cells), age (s)].
 var _tracks: Array = []
 
 
 func _ready() -> void:
+	_overlay = Node2D.new()
+	_overlay.name = "Overlay"
+	_overlay.draw.connect(_draw_overlay)
+	add_child(_overlay)
+	move_child(_overlay, 0)
 	if internals == null:
 		var own := ShipInternals.new()
 		own.name = "ShipInternals"
@@ -76,6 +83,8 @@ func show_deck(new_deck: int) -> void:
 	if internals and internals.is_node_ready():
 		deck = clampi(new_deck, 0, internals.decks - 1)
 	queue_redraw()
+	if _overlay:
+		_overlay.queue_redraw()
 	deck_shown.emit(deck)
 
 
@@ -112,13 +121,12 @@ func _process(delta: float) -> void:
 	for track in _tracks:
 		track[3] += delta
 	_tracks = _tracks.filter(func(track: Array) -> bool: return track[3] < TRACK_FADE)
-	queue_redraw()
+	_overlay.queue_redraw()
 
 
 #region Signals
 
 func _connect(target: ShipInternals) -> void:
-	target.armor_changed.connect(queue_redraw)
 	target.breach_opened.connect(_on_breach_opened)
 	target.breach_patched.connect(_on_breach_patched)
 	target.module_damaged.connect(_on_module_changed)
@@ -128,7 +136,7 @@ func _connect(target: ShipInternals) -> void:
 
 
 func _disconnect(target: ShipInternals) -> void:
-	for connection in [[target.armor_changed, queue_redraw], [target.breach_opened, _on_breach_opened],
+	for connection in [[target.breach_opened, _on_breach_opened],
 			[target.breach_patched, _on_breach_patched], [target.module_damaged, _on_module_changed],
 			[target.module_repaired, _on_module_changed], [target.round_tracked, _on_round_tracked],
 			[target.layout_changed, _on_layout_changed]]:
@@ -138,18 +146,18 @@ func _disconnect(target: ShipInternals) -> void:
 
 func _on_breach_opened(cell: Vector3i, _kind: ShipInternals.BreachKind) -> void:
 	_add_breach_area(cell)
-	queue_redraw()
+	_overlay.queue_redraw()
 
 
 func _on_breach_patched(cell: Vector3i) -> void:
 	if _breach_areas.has(cell):
 		_breach_areas[cell].queue_free()
 		_breach_areas.erase(cell)
-	queue_redraw()
+	_overlay.queue_redraw()
 
 
 func _on_module_changed(_index: int) -> void:
-	queue_redraw()
+	_overlay.queue_redraw()
 
 
 func _on_layout_changed() -> void:
@@ -160,7 +168,7 @@ func _on_layout_changed() -> void:
 
 func _on_round_tracked(on_deck: int, from: Vector2, to: Vector2) -> void:
 	_tracks.append([on_deck, from, to, 0.0])
-	queue_redraw()
+	_overlay.queue_redraw()
 
 #endregion
 
@@ -282,6 +290,14 @@ func _draw() -> void:
 			var at := Vector2(room.rect.position.x, row) * cell_size + Vector2(3.0, cell_size * 0.7)
 			draw_string(font, at, room.name, HORIZONTAL_ALIGNMENT_LEFT, room.rect.size.x * cell_size - 6.0,
 				int(cell_size * 0.6), Color(0.6, 0.65, 0.7, 0.7))
+
+
+## The changing part, on a child drawn over the deck and under the crew: modules, holes and round tracks. It redraws
+## on its own as they change, while the deck itself only redraws for a new deck or layout.
+func _draw_overlay() -> void:
+	if internals == null or not internals.is_node_ready():
+		return
+	var font := ThemeDB.fallback_font
 	for i in internals.get_module_count():
 		if internals.get_module_deck(i) == deck:
 			_draw_module(i, font)
@@ -291,7 +307,7 @@ func _draw() -> void:
 	for track in _tracks:
 		if track[0] == deck:
 			var alpha: float = 1.0 - track[3] / TRACK_FADE
-			draw_line(track[1] * cell_size, track[2] * cell_size, Color(TRACK_COLOR, alpha), 2.0)
+			_overlay.draw_line(track[1] * cell_size, track[2] * cell_size, Color(TRACK_COLOR, alpha), 2.0)
 
 
 func _draw_module(index: int, font: Font) -> void:
@@ -301,18 +317,19 @@ func _draw_module(index: int, font: Font) -> void:
 	var color := module.color.darkened(0.6 * (1.0 - condition))
 	if not internals.is_module_operational(index):
 		color = Color(0.3, 0.12, 0.1)
-	draw_rect(rect, color)
-	draw_rect(rect, color.lightened(0.3), false, 1.0)
+	_overlay.draw_rect(rect, color)
+	_overlay.draw_rect(rect, color.lightened(0.3), false, 1.0)
 	if internals.is_fuel_tank(index):
 		# Self-sealing compartments.
 		var x := rect.position.x + cell_size
 		while x < rect.end.x - 1.0:
-			draw_line(Vector2(x, rect.position.y), Vector2(x, rect.end.y), color.darkened(0.35), 1.0)
+			_overlay.draw_line(Vector2(x, rect.position.y), Vector2(x, rect.end.y), color.darkened(0.35), 1.0)
 			x += cell_size
 	if not internals.is_module_operational(index):
-		draw_line(rect.position, rect.end, SPACE_BREACH_COLOR, 2.0)
-		draw_line(Vector2(rect.end.x, rect.position.y), Vector2(rect.position.x, rect.end.y), SPACE_BREACH_COLOR, 2.0)
-	draw_string(font, rect.position + Vector2(2.0, cell_size * 0.6), module.name, HORIZONTAL_ALIGNMENT_LEFT,
+		_overlay.draw_line(rect.position, rect.end, SPACE_BREACH_COLOR, 2.0)
+		_overlay.draw_line(Vector2(rect.end.x, rect.position.y), Vector2(rect.position.x, rect.end.y),
+			SPACE_BREACH_COLOR, 2.0)
+	_overlay.draw_string(font, rect.position + Vector2(2.0, cell_size * 0.6), module.name, HORIZONTAL_ALIGNMENT_LEFT,
 		rect.size.x - 4.0, int(cell_size * 0.5), Color(0.05, 0.05, 0.08))
 
 
@@ -321,7 +338,7 @@ func _draw_breach(cell: Vector3i, kind: ShipInternals.BreachKind) -> void:
 	var to_space := ShipInternals.is_open_to_space(kind)
 	var color := SPACE_BREACH_COLOR if to_space else WALL_BREACH_COLOR
 	# Holes open to space are black inside; holes in walls and floors show the deck through them.
-	draw_circle(centre, cell_size * 0.38, Color.BLACK if to_space else FLOOR_COLOR)
-	draw_arc(centre, cell_size * 0.38, 0.0, TAU, 12, color, 2.0)
+	_overlay.draw_circle(centre, cell_size * 0.38, Color.BLACK if to_space else FLOOR_COLOR)
+	_overlay.draw_arc(centre, cell_size * 0.38, 0.0, TAU, 12, color, 2.0)
 
 #endregion

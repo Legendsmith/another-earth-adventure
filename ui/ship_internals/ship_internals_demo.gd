@@ -13,6 +13,7 @@ var _crew: ShipCrew
 var _test_crew_count := 0
 var _spaced_count := 0
 var _dead_count := 0
+var _status_wait := 0.0
 
 @onready var _view: ShipInternalsView = %ShipInternalsView
 @onready var _viewport_container: SubViewportContainer = %ViewportContainer
@@ -38,8 +39,12 @@ func _ready() -> void:
 	_viewport_container.gui_input.connect(_on_view_input)
 
 
-func _process(_delta: float) -> void:
-	_update_status()
+func _process(delta: float) -> void:
+	# A few times a second is plenty for a readout.
+	_status_wait -= delta
+	if _status_wait <= 0.0:
+		_status_wait = 0.25
+		_update_status()
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -134,4 +139,6 @@ func _update_status() -> void:
 		var state := "OFFLINE" if not internals.is_module_operational(i) else "%d%%" % roundi(
 			internals.get_module_condition(i) * 100.0)
 		lines.append("%s (deck %d): %s" % [module.name, internals.get_module_deck(i) + 1, state])
-	_status.text = "\n".join(lines)
+	var text := "\n".join(lines)
+	if _status.text != text:
+		_status.text = text
