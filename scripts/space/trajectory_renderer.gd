@@ -193,16 +193,16 @@ func _draw_trajectory(segments: Array, events: Array, initial_body: int, from_ti
 		match event.type:
 			"periapsis":
 				_draw_marker(p, markers, pixel)
-				_draw_label(p, "Pe %d" % roundi(event.distance - _orbital_system.GetBodyRadius(event.body)), markers, pixel)
+				_draw_label(p, "Pe %d" % roundi((event.distance - _orbital_system.GetBodyRadius(event.body)) / SpaceScale.MAP_SCALE), markers, pixel)
 			"apoapsis":
 				_draw_marker(p, markers, pixel)
-				_draw_label(p, "Ap %d" % roundi(event.distance - _orbital_system.GetBodyRadius(event.body)), markers, pixel)
+				_draw_label(p, "Ap %d" % roundi((event.distance - _orbital_system.GetBodyRadius(event.body)) / SpaceScale.MAP_SCALE), markers, pixel)
 			"collision":
 				_draw_marker(p, collision_color, pixel * 1.5)
 				_draw_label(p, "IMPACT", collision_color, pixel)
 			"closest_approach":
 				_draw_marker(p, other_color, pixel)
-				_draw_label(p, "CA %d" % roundi(event.distance), other_color, pixel)
+				_draw_label(p, "CA %d" % roundi(event.distance / SpaceScale.MAP_SCALE), other_color, pixel)
 			"sphere_enter", "sphere_exit":
 				draw_circle(p, 3.0 * pixel, color_with_alpha(color, 0.6))
 
@@ -217,7 +217,7 @@ func _draw_planned_burn(pixel: float) -> void:
 	var arrow := dv.normalized() * 40.0 * pixel
 	draw_line(ship.global_position, ship.global_position + arrow, burn_color, -1.0)
 	var eta: float = burn.time - _orbital_system.SimTime
-	_draw_label(ship.global_position + arrow, "burn %.1f px/s in %ds" % [dv.length(), roundi(eta)], burn_color, pixel)
+	_draw_label(ship.global_position + arrow, "burn %.1f px/s in %ds" % [dv.length() / SpaceScale.MAP_SCALE, roundi(eta)], burn_color, pixel)
 
 
 #region Path queries (used by the maneuver editor)

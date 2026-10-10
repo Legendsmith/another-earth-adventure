@@ -3,7 +3,8 @@ class_name AsteroidEmplacement
 extends Node2D
 ## Space hazard: an asteroid hollowed out into a weapons emplacement. The rock itself is in plain sight, but the
 ## emplacement inside (its CombatHull child) runs cold and is only picked up by sensors at short range, or when its
-## railgun fires. Place it as a child of a planet or moon so it moves with that body.
+## torpedoes launch. Place it as a child of a planet or moon so it moves with that body, or of an OrbitAnchor so it
+## orbits.
 
 @export var rock_radius: float = 40.0:
 	set(value):
@@ -36,7 +37,10 @@ func _build_outline() -> void:
 func _draw() -> void:
 	if _outline.is_empty():
 		return
+	# The rock is sized in world px; the node sits on the orbital map (see SpaceScale).
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE * SpaceScale.MAP_SCALE)
 	draw_colored_polygon(_outline, rock_color)
 	var edge := _outline.duplicate()
 	edge.append(_outline[0])
-	draw_polyline(edge, rock_color.lightened(0.25), 1.5)
+	draw_polyline(edge, rock_color.lightened(0.25), -1.0)
+	draw_set_transform(Vector2.ZERO)

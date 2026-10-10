@@ -54,7 +54,7 @@ func _ready() -> void:
 	super._ready()
 	munition_name = "Torpedo"
 	if heading == Vector2.ZERO:
-		heading = linear_velocity.normalized() if linear_velocity.length_squared() > 1e-6 else Vector2.RIGHT
+		heading = linear_velocity.normalized() if linear_velocity.length_squared() > 1e-12 else Vector2.RIGHT
 
 
 func _physics_process(delta: float) -> void:
@@ -67,8 +67,8 @@ func _physics_process(delta: float) -> void:
 			phase = Phase.SPENT
 			lifetime = minf(lifetime, _age + 30.0)
 		return
-	var relative := target.get_world_position() - global_position
-	var relative_velocity := target.get_world_velocity() - linear_velocity
+	var relative := target.get_world_position() - get_world_position()
+	var relative_velocity := target.get_world_velocity() - get_world_velocity()
 	if closest_approach(relative, relative_velocity, delta) <= target.hit_radius + fuse_radius:
 		_detonate()
 		return
@@ -101,7 +101,7 @@ func _physics_process(delta: float) -> void:
 			phase = Phase.SPENT
 			lifetime = minf(lifetime, _age + 60.0)
 	if accel != Vector2.ZERO:
-		apply_central_force(accel * mass)
+		apply_world_force(accel * mass)
 		_thrust_fraction = accel.length() / thrust_accel
 		_thrust_direction = accel.normalized()
 
@@ -124,8 +124,8 @@ func _drive(command: Vector2, delta: float) -> Vector2:
 ## Acceleration command toward the target, at most `max_accel`. Steers out the predicted miss distance
 ## (zero-effort miss over the time to go); with `keep_closing` the rest of the thrust pushes along the line of sight.
 func guidance(max_accel: float, keep_closing: bool) -> Vector2:
-	var relative := target.get_world_position() - global_position
-	var relative_velocity := target.get_world_velocity() - linear_velocity
+	var relative := target.get_world_position() - get_world_position()
+	var relative_velocity := target.get_world_velocity() - get_world_velocity()
 	var distance := relative.length()
 	if distance < 1e-6:
 		return Vector2.ZERO

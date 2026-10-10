@@ -360,15 +360,24 @@ public partial class OrbitalSystem : Node
 	public void DecreaseTimeWarp() => SetTimeWarpIndex(_warpIndex - 1);
 
 	/// <summary>
-	/// Highest warp index at which <paramref name="simSeconds"/> of simulation time still lasts at least
-	/// <paramref name="realSeconds"/> of real time (0 if none).
+	/// Highest warp index from which time warp can still step down one level at a time, spending
+	/// <paramref name="realPerLevel"/> real seconds at each level, and then hold 1x for <paramref name="realHold"/> real
+	/// seconds, all within <paramref name="simSeconds"/> of simulation time (0 if none). Capping warp at this index as
+	/// the time runs out eases warp down level by level instead of dropping it all at once.
 	/// </summary>
-	public int WarpIndexForLead(double simSeconds, double realSeconds)
+	public int WarpIndexForRamp(double simSeconds, double realPerLevel, double realHold)
 	{
+		if (WarpLevels.Length == 0)
+			return 0;
+		// Level i is allowed once there is time for the hold at 1x plus realPerLevel at each of levels 1..i-1, so it
+		// lasts realPerLevel before the next level down takes over.
+		double needed = realHold * WarpLevels[0];
 		int best = 0;
-		for (int i = 0; i < WarpLevels.Length; i++)
-			if (WarpLevels[i] * realSeconds <= simSeconds)
-				best = i;
+		for (int i = 1; i < WarpLevels.Length && needed <= simSeconds; i++)
+		{
+			best = i;
+			needed += realPerLevel * WarpLevels[i];
+		}
 		return best;
 	}
 

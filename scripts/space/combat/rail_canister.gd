@@ -60,11 +60,11 @@ func _physics_process(delta: float) -> void:
 
 func _do_burst() -> void:
 	_burst = true
-	var velocity := linear_velocity
+	var velocity := get_world_velocity()
 	var forward := velocity.normalized() if velocity.length_squared() > 1e-6 else Vector2.RIGHT
 	var side := Vector2(-forward.y, forward.x)
 	for i in fragment_count:
-		_positions.append(global_position)
+		_positions.append(get_world_position())
 		_velocities.append(velocity + side * _rng.randf_range(-spread_speed, spread_speed)
 			+ forward * _rng.randf_range(-0.1, 0.1) * spread_speed)
 		_alive.append(true)
@@ -87,7 +87,7 @@ func get_signature() -> float:
 func get_world_position() -> Vector2:
 	if _burst and not _positions.is_empty():
 		return _positions[0]
-	return global_position
+	return super.get_world_position()
 
 
 func _draw() -> void:
@@ -97,7 +97,8 @@ func _draw() -> void:
 		draw_circle(Vector2.ZERO, 1.5 * s, color)
 		return
 	# Fragments are kept in world coordinates.
-	draw_set_transform_matrix(global_transform.affine_inverse())
+	SpaceScale.begin_world_draw(self)
+	var r := s / SpaceScale.MAP_SCALE
 	for i in _positions.size():
 		if _alive[i]:
-			draw_circle(_positions[i], 1.0 * s, color)
+			draw_circle(_positions[i], r, color)

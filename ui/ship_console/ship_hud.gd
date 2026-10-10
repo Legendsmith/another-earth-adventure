@@ -38,6 +38,8 @@ const CANCEL_ACTION: GUIDEAction = preload("res://ui/guide/cancel.tres")
 @export var maneuver_editor: ManeuverEditor
 ## Kept centred on the space view rather than on the whole screen.
 @export var camera: SpaceCamera
+## Orbital map or local space: Navigation shows the map, the other modes local space.
+@export var views: SpaceViews
 
 var mode: Mode = Mode.NAVIGATION
 ## Flying the ship by hand: the direct control context replaces the mode's context.
@@ -113,13 +115,14 @@ func _update_bar() -> void:
 	var body: int = _orbital_system.FindDominantBody(ship.get_state_position())
 	if body >= 0:
 		velocity -= _orbital_system.GetBodyVelocity(body, _orbital_system.SimTime)
-	_velocity_display.text = "%.1f" % velocity.length()
+	# The map works at SpaceScale.MAP_SCALE: show world px.
+	_velocity_display.text = "%.1f" % (velocity.length() / SpaceScale.MAP_SCALE)
 	_fuel_bar.max_value = ship.fuel_capacity
 	_fuel_bar.value = ship.fuel
 	if _fuel_as_percent:
 		_fuel_total.text = "%d" % roundi(100.0 * ship.fuel / maxf(ship.fuel_capacity, 1e-6))
 	else:
-		_fuel_total.text = "%.1f" % ship.get_delta_v_remaining(Spaceship.Drive.MAIN)
+		_fuel_total.text = "%.0f" % (ship.get_delta_v_remaining(Spaceship.Drive.MAIN) / SpaceScale.MAP_SCALE)
 
 
 func _toggle_fuel_readout() -> void:
@@ -146,6 +149,8 @@ func set_mode(new_mode: Mode, show_panel := true) -> void:
 			(_mode_buttons[m] as Button).set_pressed_no_signal(m == mode)
 		_tabs.visible = show_panel
 		_tabs.current_tab = (_mode_panels[mode] as Control).get_index()
+		if views and mode != Mode.COMMAND:
+			views.set_local(mode != Mode.NAVIGATION)
 		_queue_refresh()
 		mode_changed.emit(mode)
 
