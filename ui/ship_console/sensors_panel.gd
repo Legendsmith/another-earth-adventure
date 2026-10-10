@@ -3,10 +3,10 @@ extends VBoxContainer
 ## contact list (held contacts and ghosts of lost ones) and details on the selected contact.
 
 ## Signatures the range readout is quoted against.
-const QUIET_SIGNATURE := 1.0
-const BURNING_SIGNATURE := 40.0
+const QUIET_SIGNATURE := SensorOverlay.QUIET_SIGNATURE
+const BURNING_SIGNATURE := SensorOverlay.BURNING_SIGNATURE
 ## Passive sensor strength of a typical warship, for "you can be seen at" estimates.
-const REFERENCE_SENSOR := 600.0
+const REFERENCE_SENSOR := SensorOverlay.REFERENCE_SENSOR
 const HOSTILE_HEX := "#ff6b5e"
 const FRIENDLY_HEX := "#8fe3ff"
 const UNKNOWN_HEX := "#ffd27a"
