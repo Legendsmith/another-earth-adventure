@@ -1,7 +1,8 @@
 class_name PlanetField
 extends Node
 ## Gives every orbiting CelestialBody a generated planet surface and rewards.
-## Bodies without an orbit parent (stars) are left alone.
+## Bodies without an orbit parent (stars) are left alone, unless listed in fixed_kinds (a lone planet at the centre of
+## its scene).
 
 const PLANET_SCENE:PackedScene = preload("res://world/planets/planet.tscn")
 
@@ -28,7 +29,7 @@ func _ready() -> void:
 		if fixed_body:
 			kinds[fixed_body] = fixed_kinds[path]
 	for celestial_body:Node2D in get_tree().get_nodes_in_group(Constants.CELESTIAL_BODY_GROUP):
-		if celestial_body.ResolveOrbitParent() == null:
+		if celestial_body.ResolveOrbitParent() == null and not kinds.has(celestial_body):
 			continue
 		var radius:float = celestial_body.Radius
 		var orbit_radius:float = radius * low_orbit_factor

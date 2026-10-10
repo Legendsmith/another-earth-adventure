@@ -24,6 +24,8 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if not is_current():
+		return # Another camera (map or local view, see SpaceViews) has the view.
 	var button := event as InputEventMouseButton
 	if button and button.pressed:
 		if button.button_index == MOUSE_BUTTON_WHEEL_UP:

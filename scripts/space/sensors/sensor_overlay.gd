@@ -42,8 +42,8 @@ func _ready() -> void:
 func track_under_mouse() -> SensorTrack:
 	if _network == null:
 		return null
-	var mouse := get_global_mouse_position()
-	var reach := PICK_DISTANCE / get_canvas_transform().get_scale().x
+	var mouse := SpaceScale.to_world(get_global_mouse_position())
+	var reach := PICK_DISTANCE / SpaceScale.world_zoom(self)
 	var now := _network.get_time()
 	var best: SensorTrack = null
 	for track in _network.get_tracks():
@@ -72,7 +72,9 @@ func _draw() -> void:
 		_network = SensorNetwork.find(get_tree())
 		if _network == null:
 			return
-	var s := maxf(1.0, 1.0 / get_canvas_transform().get_scale().x)
+	# Tracks are in world px: draw in world coordinates over the map (see SpaceScale).
+	SpaceScale.begin_world_draw(self)
+	var s := SpaceScale.world_pixel(self)
 	_label_rects.clear()
 	var now := _network.get_time()
 	var player := _network.get_player_suite()
@@ -165,10 +167,10 @@ func _live_position(track: SensorTrack) -> Vector2:
 
 func _label(at: Vector2, text: String, color: Color, s: float) -> void:
 	var font := ThemeDB.fallback_font
-	var size := roundi(FONT_SIZE * s)
+	var size := FONT_SIZE * s
 	# Contacts lost at the same spot would print on top of each other: stack their labels instead.
 	var line := size * 1.25
-	var rect := Rect2(at - Vector2(0.0, size), Vector2(font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x, line))
+	var rect := Rect2(at - Vector2(0.0, size), Vector2(font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x * s, line))
 	var moved := true
 	while moved:
 		moved = false
@@ -178,8 +180,7 @@ func _label(at: Vector2, text: String, color: Color, s: float) -> void:
 				moved = true
 	_label_rects.append(rect)
 	at.y = rect.position.y + size
-	draw_string_outline(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, maxi(roundi(3.0 * s), 1), Color(0, 0, 0, 0.7))
-	draw_string(font, at, text, HORIZONTAL_ALIGNMENT_LEFT, -1, size, color)
+	SpaceScale.draw_label(self, at, text, color, s, FONT_SIZE, SpaceScale.world_transform(self))
 
 
 func _brackets(at: Vector2, b: float, color: Color, s: float) -> void:

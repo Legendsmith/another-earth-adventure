@@ -47,8 +47,10 @@ func _process(_delta: float) -> void:
 	lines.append(clock)
 	if console.direct_control:
 		lines.append("DIRECT CONTROL: W thrust, A/D turn, Shift+A/D strafe   (Ctrl or Esc to release)")
-	lines.append("Fuel %.2f / %.2f   Δv left %.1f px/s (thrusters %.1f)" % [ship.fuel, ship.fuel_capacity,
-		ship.get_delta_v_remaining(Spaceship.Drive.MAIN), ship.get_delta_v_remaining(Spaceship.Drive.THRUSTERS)])
+	# Readouts are in world px: the orbital map works at SpaceScale.MAP_SCALE.
+	var to_px := 1.0 / SpaceScale.MAP_SCALE
+	lines.append("Fuel %.2f / %.2f   Δv left %.0f px/s (thrusters %.0f)" % [ship.fuel, ship.fuel_capacity,
+		ship.get_delta_v_remaining(Spaceship.Drive.MAIN) * to_px, ship.get_delta_v_remaining(Spaceship.Drive.THRUSTERS) * to_px])
 	lines.append("Engines: %s / %s" % [ship.main_engine.name if ship.main_engine else "none",
 		ship.thrusters.name if ship.thrusters else "none"])
 
@@ -56,9 +58,9 @@ func _process(_delta: float) -> void:
 	if body >= 0:
 		var info: Dictionary = _orbital_system.GetOrbitInfo(ship.get_state_position(), ship.get_state_velocity(), body)
 		var radius: float = _orbital_system.GetBodyRadius(body)
-		var apo := "escape" if not info.bound else "%d" % roundi(info.apoapsis - radius)
+		var apo := "escape" if not info.bound else "%d" % roundi((info.apoapsis - radius) * to_px)
 		lines.append("Orbiting %s   Pe %d  Ap %s  (altitude)" % [_orbital_system.GetBodyName(body),
-			roundi(info.periapsis - radius), apo])
+			roundi((info.periapsis - radius) * to_px), apo])
 
 	var target := console.controller.target_index if console.controller else -1
 	if target >= 0:
@@ -66,7 +68,7 @@ func _process(_delta: float) -> void:
 		var renderer := console.renderer
 		if renderer and renderer.closest_approach.get("found", false):
 			var ca := renderer.closest_approach
-			line += "   closest approach %d px in %s" % [roundi(ca.distance),
+			line += "   closest approach %d px in %s" % [roundi(ca.distance * to_px),
 				ShipHud.format_time(ca.time - _orbital_system.SimTime)]
 		lines.append(line)
 	else:
@@ -78,8 +80,8 @@ func _process(_delta: float) -> void:
 		var status := "executing" if maneuvers.is_executing(node) \
 			else "in %s" % ShipHud.format_time(maneuvers.get_burn_start(node) - _orbital_system.SimTime)
 		var how: String = "translate" if maneuvers.is_translation(node) else Spaceship.DRIVE_NAMES[maneuvers.get_drive(node)]
-		lines.append("Maneuver %s (%s): Δv %.2f (total %.2f over %d)" % [status, how, maneuvers.get_delta_v(node),
-			maneuvers.get_total_delta_v(), maneuvers.nodes.size()])
+		lines.append("Maneuver %s (%s): Δv %.1f (total %.1f over %d)" % [status, how, maneuvers.get_delta_v(node) * to_px,
+			maneuvers.get_total_delta_v() * to_px, maneuvers.nodes.size()])
 
 	var computer := console.navigation_computer
 	if computer:

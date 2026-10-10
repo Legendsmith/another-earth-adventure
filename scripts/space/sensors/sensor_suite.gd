@@ -97,10 +97,11 @@ func is_operational() -> bool:
 	return hull == null or not hull.is_destroyed
 
 
+## Position in world px (the host sits on the orbital map: see SpaceScale).
 func get_world_position() -> Vector2:
 	if host is Spaceship:
-		return host.get_state_position()
-	return host.global_position if host else Vector2.ZERO
+		return SpaceScale.to_world(host.get_state_position())
+	return SpaceScale.to_world(host.global_position) if host else Vector2.ZERO
 
 
 func get_world_velocity() -> Vector2:
@@ -108,7 +109,7 @@ func get_world_velocity() -> Vector2:
 	if hull:
 		return hull.get_world_velocity()
 	if host is Spaceship:
-		return host.get_state_velocity()
+		return SpaceScale.to_world(host.get_state_velocity())
 	return Vector2.ZERO
 
 

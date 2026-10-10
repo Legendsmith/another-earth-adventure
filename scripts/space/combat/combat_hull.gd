@@ -76,13 +76,13 @@ func _ready() -> void:
 			total += component.size
 		structure = maxi(ceili(total), 1)
 	structure_left = structure
-	_last_position = host.global_position if host else global_position
+	_last_position = get_world_position()
 
 
 func _physics_process(delta: float) -> void:
 	if not host:
 		return
-	var position_now := host.global_position
+	var position_now := get_world_position()
 	if delta > 0.0:
 		_velocity = (position_now - _last_position) / delta
 	_last_position = position_now
@@ -94,17 +94,19 @@ func _physics_process(delta: float) -> void:
 
 #region State
 
+## Position in world px (the host sits on the orbital map: see SpaceScale).
 func get_world_position() -> Vector2:
 	if host is Spaceship:
-		return host.get_state_position()
-	return host.global_position if host else global_position
+		return SpaceScale.to_world(host.get_state_position())
+	return SpaceScale.to_world(host.global_position if host else global_position)
 
 
+## Velocity in world px/s.
 func get_world_velocity() -> Vector2:
 	if host is Spaceship:
-		return host.get_state_velocity()
+		return SpaceScale.to_world(host.get_state_velocity())
 	if host is RigidBody2D:
-		return host.linear_velocity
+		return SpaceScale.to_world(host.linear_velocity)
 	return _velocity
 
 
@@ -286,7 +288,7 @@ func _destroy() -> void:
 		ship.thrusters_online = false
 		ship.cancel_burn()
 	# A wreck left in place keeps its sensor track; a ship that breaks up ends it with the flash.
-	CombatExplosion.spawn(host.get_parent(), host.global_position, hit_radius * 6.0, structure,
+	CombatExplosion.spawn(host.get_parent(), get_world_position(), hit_radius * 6.0, structure,
 		"Ship destroyed", get_sensor_suite() if free_on_destroyed else null)
 	if free_on_destroyed:
 		host.queue_free()
@@ -297,7 +299,7 @@ func _destroy() -> void:
 func _draw() -> void:
 	# Contact marker in screen orientation, kept the same size on screen when zoomed out. The selected contact's
 	# brackets and target line are the CombatOverlay's.
-	var scale_factor := maxf(1.0, 1.0 / get_canvas_transform().get_scale().x)
+	var scale_factor := SpaceScale.draw_scale(self)
 	draw_set_transform(Vector2.ZERO, -global_rotation)
 	var r := (hit_radius + 4.0) * scale_factor
 	var manager := SpaceCombatManager.find(get_tree())
