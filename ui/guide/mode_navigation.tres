@@ -13,13 +13,13 @@
 [ext_resource type="Script" uid="uid://dsa1dnifd6w32" path="res://addons/guide/guide_mapping_context.gd" id="11_4ue5f"]
 [ext_resource type="Resource" uid="uid://bunilkqj8nlit" path="res://ui/guide/direct_control.tres" id="20_direct"]
 
-[sub_resource type="Resource" id="Resource_oqik3"]
+[sub_resource type="Resource" id="Resource_vbnxd"]
 script = ExtResource("4_lmoqj")
-key = 4194306
+key = 84
 
 [sub_resource type="Resource" id="Resource_tdixi"]
 script = ExtResource("3_fat24")
-input = SubResource("Resource_oqik3")
+input = SubResource("Resource_vbnxd")
 
 [sub_resource type="Resource" id="Resource_pt107"]
 script = ExtResource("1_mtylc")

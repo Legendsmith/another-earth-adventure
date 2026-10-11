@@ -35,7 +35,7 @@ func _ready() -> void:
 	%RepairButton.pressed.connect(_repair_all)
 	var right: VBoxContainer = %RailgunButton.get_parent()
 	_add_button(right, "Add %d test crew" % TEST_CREW, add_test_crew, 0)
-	_add_button(right, "Next deck (Tab)", _next_deck, 0)
+	_add_button(right, "Next deck (T)", _next_deck, 0)
 	_viewport_container.gui_input.connect(_on_view_input)
 
 
@@ -49,7 +49,7 @@ func _process(delta: float) -> void:
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	var key := event as InputEventKey
-	if key and key.pressed and not key.echo and key.keycode == KEY_TAB:
+	if key and key.pressed and not key.echo and key.keycode == KEY_T:
 		_next_deck()
 		get_viewport().set_input_as_handled()
 
