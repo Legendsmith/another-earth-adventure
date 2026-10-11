@@ -168,7 +168,7 @@ func _detonate() -> void:
 func _draw() -> void:
 	var s := 4.0 * get_zoom_scale()
 	var side := Vector2(-heading.y, heading.x)
-	var color := Color(1.0, 0.45, 0.35) if CombatHull.factions_hostile(faction, Constants.PLAYER_GROUP) else Color(0.5, 0.9, 1.0)
+	var color := Color(1.0, 0.45, 0.35) if ShipHull.factions_hostile(faction, Constants.PLAYER_GROUP) else Color(0.5, 0.9, 1.0)
 	draw_colored_polygon(PackedVector2Array([heading * s, -heading * s * 0.6 + side * s * 0.35,
 		-heading * s * 0.6 - side * s * 0.35]), color)
 	if _thrust_fraction > 0.0:

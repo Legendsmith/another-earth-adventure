@@ -35,7 +35,7 @@ signal crew_died(member: CrewMember)
 ## Speed (world px/s) a spaced crew member leaves the ship at, on top of the ship's own velocity.
 @export var eject_speed: float = 3.0
 
-var internals: ShipInternals
+var internals: ModularHull
 var bodies: Array[CrewBody] = []
 var spaced: Array[SpacedCrew] = []
 var rng := RandomNumberGenerator.new()
@@ -64,6 +64,7 @@ func _ready() -> void:
 		await view.internals.ready
 	internals = view.internals
 	internals.breach_opened.connect(_on_breach_opened)
+	internals.module_offline.connect(func(_index: int) -> void: _bump_jobs())
 	internals.layout_changed.connect(_on_layout_changed)
 	view.deck_shown.connect(_on_deck_shown)
 	var roster := _roster()
@@ -132,23 +133,23 @@ func _spawn_cell() -> Vector3i:
 
 #region Jobs
 
-## Gives an idle body the nearest unclaimed job it can reach and starts it walking there. Holes open to space come
-## first, then wrecked modules, then other holes and damaged modules.
+## Gives an idle body the nearest unclaimed job it can reach and starts it walking there. Holes open to space and
+## offline modules come first, then other holes.
 func assign_job(body: CrewBody) -> bool:
 	var from := body.get_cell()
 	var jobs: Array = []
 	for cell: Vector3i in internals.breaches:
 		if _claims.has(cell) or _unreachable.has(cell):
 			continue
-		var urgent := ShipInternals.is_open_to_space(internals.breaches[cell])
+		var urgent := ModularHull.is_open_to_space(internals.breaches[cell])
 		jobs.append([_distance(from, cell) + (0.0 if urgent else 40.0), {"type": &"breach", "cell": cell, "key": cell}])
 	for index in internals.get_module_count():
-		if internals.module_damage[index] <= 0 or _claims.has(index) or _unreachable.has(index) \
-				or internals.is_fuel_tank(index):
+		if not internals.needs_repair(index) or not internals.is_module_placed(index) or _claims.has(index) \
+				or _unreachable.has(index):
 			continue
-		var rect := internals.get_module(index).rect
+		var rect := internals.get_module_rect(index)
 		var centre := Vector3i(rect.get_center().x, rect.get_center().y, internals.get_module_deck(index))
-		var score := _distance(from, centre) + (0.0 if not internals.is_module_operational(index) else 20.0)
+		var score := _distance(from, centre)
 		jobs.append([score, {"type": &"module", "index": index, "key": index}])
 	if jobs.is_empty():
 		return false
@@ -172,7 +173,7 @@ func release_job(body: CrewBody) -> void:
 		_claims.erase(body.job.key)
 		# Unfinished work goes back on the board.
 		var unfinished: bool = internals.is_breached(body.job.cell) if body.job.type == &"breach" \
-			else internals.module_damage[body.job.index] > 0
+			else internals.needs_repair(body.job.index)
 		if unfinished:
 			_bump_jobs()
 
@@ -219,9 +220,9 @@ func _distance(a: Vector3i, b: Vector3i) -> float:
 
 #region Spacing
 
-func _on_breach_opened(cell: Vector3i, kind: ShipInternals.BreachKind) -> void:
+func _on_breach_opened(cell: Vector3i, kind: ModularHull.BreachKind) -> void:
 	_bump_jobs()
-	if not ShipInternals.is_open_to_space(kind):
+	if not ModularHull.is_open_to_space(kind):
 		return
 	var hole := view.cell_to_local(cell)
 	for body in bodies.duplicate():
@@ -238,7 +239,7 @@ func _on_breach_opened(cell: Vector3i, kind: ShipInternals.BreachKind) -> void:
 
 ## Blows a crew member out through the hole at `cell`. On a ship in space they drift off beside it; on a standalone
 ## internals they are just gone from the deck. Returns the spaced crew member.
-func space_crew(body: CrewBody, cell: Vector3i, kind: ShipInternals.BreachKind) -> SpacedCrew:
+func space_crew(body: CrewBody, cell: Vector3i, kind: ModularHull.BreachKind) -> SpacedCrew:
 	body.stop()
 	body._set_state(CrewBody.State.SPACED)
 	bodies.erase(body)
@@ -252,7 +253,7 @@ func space_crew(body: CrewBody, cell: Vector3i, kind: ShipInternals.BreachKind) 
 		_off_ship[body.member.user_id] = true
 	var world := _space_world()
 	if world:
-		var hull := internals.hull
+		var hull := internals
 		var facing := internals.get_hull_facing()
 		var outward := _outward(cell, kind).rotated(facing)
 		# The hole's place on the hull: the hull's hit circle spans its length.
@@ -277,12 +278,12 @@ func space_crew(body: CrewBody, cell: Vector3i, kind: ShipInternals.BreachKind) 
 
 
 ## Direction (hull frame, +x to the bow) out of the hull through a hole.
-func _outward(cell: Vector3i, kind: ShipInternals.BreachKind) -> Vector2:
+func _outward(cell: Vector3i, kind: ModularHull.BreachKind) -> Vector2:
 	if cell.x <= 0:
 		return Vector2.LEFT
 	if cell.x >= internals.length - 1:
 		return Vector2.RIGHT
-	if kind == ShipInternals.BreachKind.HULL:
+	if kind == ModularHull.BreachKind.HULL:
 		return Vector2.UP if cell.y < internals.diameter / 2.0 else Vector2.DOWN
 	# Out through the top or bottom of the hull: straight up or down out of the plane, drifting a little sideways.
 	return Vector2.from_angle(rng.randf() * TAU) * 0.3
@@ -290,9 +291,9 @@ func _outward(cell: Vector3i, kind: ShipInternals.BreachKind) -> Vector2:
 
 ## The node space objects live in (the scene root of the hull's world), or null on a standalone internals.
 func _space_world() -> Node:
-	if internals.hull == null or not internals.hull.is_inside_tree():
+	if internals.host == null or not internals.is_inside_tree():
 		return null
-	var world: Node = internals.hull
+	var world: Node = internals
 	while world.get_parent() and not world.get_parent() is Viewport:
 		world = world.get_parent()
 	return world

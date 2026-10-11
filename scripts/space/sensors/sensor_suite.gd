@@ -1,7 +1,7 @@
 class_name SensorSuite
 extends Node
 ## A ship's (or station's) sensors and the signature it shows to everyone else's. Place it as a child of the thing it
-## belongs to: a Spaceship, an asteroid emplacement or any Node2D. A CombatHull on the same host supplies the faction,
+## belongs to: a Spaceship, an asteroid emplacement or any Node2D. A ShipHull on the same host supplies the faction,
 ## weapon flashes and sensor damage.
 ##
 ## Passive sensors listen for emissions: a contact of signature S is detected within passive_strength * sqrt(S) px.
@@ -18,7 +18,7 @@ const DAMAGED_FLOOR := 0.2
 @export var display_name: String = ""
 ## Ship class shown once the contact is identified ("Freighter", "Gunship").
 @export var classification: String = "Ship"
-## Sensor faction when there is no CombatHull on the host. Empty = civilian: seen by everyone, sees for no one.
+## Sensor faction when there is no ShipHull on the host. Empty = civilian: seen by everyone, sees for no one.
 @export var faction: StringName = &""
 
 @export_category("Passive")
@@ -39,7 +39,7 @@ const DAMAGED_FLOOR := 0.2
 
 var host: Node2D
 
-var _hull: CombatHull
+var _hull: ShipHull
 var _hull_checked := false
 
 
@@ -74,13 +74,13 @@ func has_active_sensors() -> bool:
 	return active_strength > 0.0
 
 
-func get_hull() -> CombatHull:
+func get_hull() -> ShipHull:
 	if not _hull_checked or (_hull != null and not is_instance_valid(_hull)):
 		_hull_checked = true
 		_hull = null
 		if host:
 			for child in host.get_children():
-				if child is CombatHull:
+				if child is ShipHull:
 					_hull = child
 					break
 	return _hull
@@ -91,7 +91,7 @@ func get_faction() -> StringName:
 	return hull.faction if hull else faction
 
 
-## False once the host's CombatHull is destroyed: a wreck still shows up on sensors but no longer looks.
+## False once the host's ShipHull is destroyed: a wreck still shows up on sensors but no longer looks.
 func is_operational() -> bool:
 	var hull := get_hull()
 	return hull == null or not hull.is_destroyed
@@ -126,12 +126,13 @@ func get_signature() -> float:
 	return signature
 
 
-## Share of the sensors still working after combat damage.
+## Strength of the sensors against their rating: the share still working after combat damage, times the bonus of
+## sensors installed bigger than their base size (see ShipHull.get_kind_effectiveness).
 func get_condition() -> float:
 	var hull := get_hull()
 	if hull == null:
 		return 1.0
-	return maxf(hull.get_operational_fraction(ShipComponent.Kind.SENSORS), DAMAGED_FLOOR)
+	return maxf(hull.get_kind_effectiveness(ShipModule.Kind.SENSORS), DAMAGED_FLOOR)
 
 
 func passive_range_for(signature: float) -> float:

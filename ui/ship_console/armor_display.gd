@@ -1,24 +1,25 @@
 class_name ArmorDisplay
 extends Control
-## Draws a hull's armor grid: one column per armor column, intact boxes from the outer layer (top) down. A hull with
-## ShipInternals shows its armor surface instead (see ArmorSurfaceRect), scaled up with nearest-neighbour filtering.
+## Draws a hull's armor grid: one column per armor column, intact boxes from the outer layer (top) down. A ModularHull
+## shows its armor surface instead (see ArmorSurfaceRect), scaled up with nearest-neighbour filtering.
 
 const BOX := 9.0
 const GAP := 2.0
 ## Screen pixels per armor column of an armor surface (shrunk to fit the width).
 const SURFACE_PIXEL := 4.0
 
-var hull: CombatHull
+var hull: ShipHull
 
 
 func _draw() -> void:
-	if hull and hull.internals and hull.internals.armor:
-		_draw_surface(hull.internals.armor)
+	if hull is ModularHull and hull.surface:
+		_draw_surface(hull.surface)
 		return
-	if hull == null or hull.grid == null or hull.grid.layers == 0:
+	var simple := hull as SimpleHull
+	if simple == null or simple.grid == null or simple.grid.layers == 0:
 		custom_minimum_size.y = 0.0
 		return
-	var grid := hull.grid
+	var grid := simple.grid
 	var box := minf(BOX, (size.x - GAP * grid.columns) / grid.columns)
 	custom_minimum_size.y = grid.layers * (box + GAP) + 4.0
 	var intact := hull.armor.color if hull.armor else Color.GRAY

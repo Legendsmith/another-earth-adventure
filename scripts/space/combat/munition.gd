@@ -14,8 +14,8 @@ const TERRAIN_MASK := 1
 var faction: StringName
 var munition_name: String = "Munition"
 ## Hull that fired this munition (never hit by it).
-var launcher: CombatHull
-var target: CombatHull
+var launcher: ShipHull
+var target: ShipHull
 ## Size seen by active sensors (see SensorSuite).
 var cross_section: float = 0.05
 ## Seconds before the munition is lost (out of fuel and drifting).

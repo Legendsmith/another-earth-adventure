@@ -74,12 +74,12 @@ func _fire_railgun() -> void:
 	var internals := _view.internals
 	var direction := Vector2.from_angle(internals.rng.randf() * TAU)
 	for i in 3:
-		internals.resolve_hit(RAILGUN_SLUG_DAMAGE, ArmorGrid.DamageProfile.KINETIC,
+		internals.take_hit(RAILGUN_SLUG_DAMAGE, ArmorGrid.DamageProfile.KINETIC,
 			direction.rotated(internals.rng.randfn(0.0, 0.05)))
 
 
 func _fire_torpedo() -> void:
-	_view.internals.resolve_hit(TORPEDO_DAMAGE, ArmorGrid.DamageProfile.EXPLOSIVE)
+	_view.internals.take_hit(TORPEDO_DAMAGE, ArmorGrid.DamageProfile.EXPLOSIVE)
 
 
 func _patch_all() -> void:
@@ -89,8 +89,7 @@ func _patch_all() -> void:
 
 func _repair_all() -> void:
 	for i in _view.internals.get_module_count():
-		while _view.internals.repair_module(i):
-			pass
+		_view.internals.repair_module(i)
 
 
 func _on_view_input(event: InputEvent) -> void:
@@ -101,7 +100,7 @@ func _on_view_input(event: InputEvent) -> void:
 	var cell := _view.local_to_cell(_view.get_global_transform().affine_inverse() * click.position)
 	if not internals.patch_breach(cell):
 		var module := internals.get_module_at(cell)
-		if module != ShipInternals.NO_MODULE:
+		if module != ModularHull.NO_MODULE:
 			internals.repair_module(module)
 
 
@@ -125,8 +124,8 @@ func _update_status() -> void:
 			working += 1
 	lines.append("Crew aboard %d (%d busy), spaced %d, dead %d" % [_crew.bodies.size(), working,
 		_spaced_count - _dead_count, _dead_count])
-	lines.append("Armor %d%%  (%d holes through)" % [roundi(internals.armor.get_integrity() * 100.0),
-		internals.armor.get_hole_count()])
+	lines.append("Armor %d%%  (%d holes through)" % [roundi(internals.surface.get_integrity() * 100.0),
+		internals.surface.get_hole_count()])
 	lines.append("Frame %d%%  breaches: %d to space, %d inside" % [roundi(internals.get_frame_integrity() * 100.0),
 		internals.get_hull_breach_count(), internals.breaches.size() - internals.get_hull_breach_count()])
 	lines.append("Main drive %d%%  thrusters %d%%  fuel lost %d%%" % [
@@ -136,8 +135,8 @@ func _update_status() -> void:
 		if internals.is_fuel_tank(i):
 			continue
 		var module := internals.get_module(i)
-		var state := "OFFLINE" if not internals.is_module_operational(i) else "%d%%" % roundi(
-			internals.get_module_condition(i) * 100.0)
+		var state := "online" if internals.is_module_operational(i) else "OFFLINE (repair %d%%)" % roundi(
+			internals.get_repair_progress(i) * 100.0)
 		lines.append("%s (deck %d): %s" % [module.name, internals.get_module_deck(i) + 1, state])
 	var text := "\n".join(lines)
 	if _status.text != text:

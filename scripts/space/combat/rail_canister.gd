@@ -41,12 +41,12 @@ func _physics_process(delta: float) -> void:
 	if _burst_age >= fragment_lifetime:
 		queue_free()
 		return
-	var hulls := get_tree().get_nodes_in_group(CombatHull.GROUP)
+	var hulls := get_tree().get_nodes_in_group(ShipHull.GROUP)
 	for i in _positions.size():
 		if not _alive[i]:
 			continue
 		for node in hulls:
-			var hull := node as CombatHull
+			var hull := node as ShipHull
 			if hull == null or hull == launcher or hull.is_destroyed or not hull.is_hostile_to(faction):
 				continue
 			var relative := hull.get_world_position() - _positions[i]
@@ -92,7 +92,7 @@ func get_world_position() -> Vector2:
 
 func _draw() -> void:
 	var s := get_zoom_scale()
-	var color := Color(1.0, 0.8, 0.5) if CombatHull.factions_hostile(faction, Constants.PLAYER_GROUP) else Color(0.7, 0.95, 1.0)
+	var color := Color(1.0, 0.8, 0.5) if ShipHull.factions_hostile(faction, Constants.PLAYER_GROUP) else Color(0.7, 0.95, 1.0)
 	if not _burst:
 		draw_circle(Vector2.ZERO, 1.5 * s, color)
 		return

@@ -1,5 +1,5 @@
 extends VBoxContainer
-## Combat mode of the ShipHud: the player's armor grid and internals, weapons (pick the one that fires), the selected
+## Combat mode of the ShipHud: the player's armor grid and internals, weapon groups (pick the one that fires), the selected
 ## contact, inbound munitions, railgun threats and warnings, and munitions locked for point defence with the chance
 ## each gets through the point defence net and strikes. The target line, brackets, PD locks and weapon range bands
 ## are drawn in the world by the CombatOverlay.
@@ -29,7 +29,7 @@ func _process(_delta: float) -> void:
 	if not is_visible_in_tree():
 		return
 	var manager := SpaceCombatManager.find(get_tree())
-	var hull: CombatHull = manager.get_player_hull() if manager else null
+	var hull: ShipHull = manager.get_player_hull() if manager else null
 	_armor.hull = hull
 	_armor.queue_redraw()
 	if manager == null or hull == null:
@@ -64,12 +64,13 @@ func _with_weapons(method: StringName) -> void:
 
 #region Weapons
 
-## One toggle button per weapon, numbered by its select key; the pressed one fires.
-func _update_weapons(hull: CombatHull) -> void:
-	var weapons: Array[WeaponMount] = []
+## One toggle button per weapon group, numbered by its select key, with its mode and each weapon's status; the
+## pressed one fires.
+func _update_weapons(hull: ShipHull) -> void:
+	var groups: Array[WeaponGroup] = []
 	if hull:
-		weapons = hull.get_weapons()
-	while _weapon_buttons.size() < weapons.size():
+		groups = hull.get_weapon_groups()
+	while _weapon_buttons.size() < groups.size():
 		var button := Button.new()
 		button.toggle_mode = true
 		button.button_group = _weapons_group
@@ -78,20 +79,31 @@ func _update_weapons(hull: CombatHull) -> void:
 		button.pressed.connect(_on_weapon_pressed.bind(_weapon_buttons.size()))
 		_weapon_list.add_child(button)
 		_weapon_buttons.append(button)
-	while _weapon_buttons.size() > weapons.size():
+	while _weapon_buttons.size() > groups.size():
 		_weapon_buttons.pop_back().queue_free()
 	var player_weapons := PlayerWeapons.find_on(hull)
-	var selected := player_weapons.selected_weapon if player_weapons else -1
-	for i in weapons.size():
+	var selected := player_weapons.selected_group if player_weapons else -1
+	for i in groups.size():
 		var key := "%d  " % (i + 1) if i < PlayerWeapons.WEAPON_ACTIONS.size() else ""
-		_weapon_buttons[i].text = key + weapons[i].get_status()
+		_weapon_buttons[i].text = key + _group_status(hull, groups[i])
 		_weapon_buttons[i].set_pressed_no_signal(i == selected)
+
+
+func _group_status(hull: ShipHull, group: WeaponGroup) -> String:
+	var weapons := hull.get_group_weapons(group)
+	if weapons.size() == 1 and group.mode == WeaponGroup.Mode.LINKED:
+		return weapons[0].get_status()
+	var mode := group.get_mode_name()
+	if group.mode == WeaponGroup.Mode.AUTOFIRE:
+		mode += " ON" if group.active else " off"
+	var statuses := weapons.map(func(w: WeaponModule) -> String: return w.get_status())
+	return "%s [%s]: %s" % [group.name, mode, ", ".join(statuses)]
 
 
 func _on_weapon_pressed(index: int) -> void:
 	var weapons := _player_weapons()
 	if weapons:
-		weapons.select_weapon(index)
+		weapons.select_group(index)
 
 #endregion
 
@@ -104,7 +116,7 @@ func _point_defence_text(weapons: PlayerWeapons) -> String:
 	var mounts := weapons.get_point_defence_mounts()
 	var lines: PackedStringArray = []
 	lines.append("PD mounts: %s" % ("none fitted, nothing stops a round" if mounts.is_empty() else
-		", ".join(mounts.map(func(m: WeaponMount) -> String: return m.get_status()))))
+		", ".join(mounts.map(func(m: WeaponModule) -> String: return m.get_status()))))
 	if weapons.munition_locks.is_empty():
 		lines.append("[color=#8899aa]No locks. Click an incoming munition or Lock inbound.[/color]")
 	for munition in weapons.munition_locks:
@@ -113,7 +125,7 @@ func _point_defence_text(weapons: PlayerWeapons) -> String:
 		var a := weapons.assess_munition(munition)
 		var impact := "misses (passes %d px)" % roundi(a.closest_approach) if a.time_to_impact < 0.0 \
 			else "impact %s" % ShipHud.format_time(a.time_to_impact)
-		var target: CombatHull = a.target
+		var target: ShipHull = a.target
 		lines.append("[color=#ffd84d]%s[/color] at %s  %s  closing %.0f px/s" % [_munition_name(munition),
 			target.display_name, impact, a.closing])
 		lines.append("    PD stops %d%%   [b]penetrates and strikes %d%%[/b]" % [roundi(a.pd_kill_chance * 100.0),
@@ -132,26 +144,35 @@ func _munition_name(munition: Munition) -> String:
 
 #region Readout
 
-func _hull_line(hull: CombatHull) -> String:
+func _hull_line(hull: ShipHull) -> String:
 	var armor_name := hull.armor.name if hull.armor else "no armor"
 	var status := "  [color=#ff6b5e]DESTROYED[/color]" if hull.is_destroyed else ""
-	return "[b]%s[/b]  structure %d/%d   %s %d%% (%d layers x %d)%s" % [hull.display_name, maxi(hull.structure_left, 0),
-		hull.structure, armor_name, roundi(hull.get_armor_integrity() * 100.0), hull.grid.layers, hull.grid.columns, status]
+	var simple := hull as SimpleHull
+	if simple:
+		return "[b]%s[/b]  structure %d/%d   %s %d%% (%d layers x %d)%s" % [hull.display_name,
+			maxi(simple.structure_left, 0), simple.structure, armor_name, roundi(hull.get_armor_integrity() * 100.0),
+			simple.grid.layers, simple.grid.columns, status]
+	var modular := hull as ModularHull
+	var frame := "  frame %d%%" % roundi(modular.get_frame_integrity() * 100.0) if modular else ""
+	return "[b]%s[/b]%s   %s %d%%%s" % [hull.display_name, frame, armor_name,
+		roundi(hull.get_armor_integrity() * 100.0), status]
 
 
-func _internals_line(hull: CombatHull) -> String:
+func _internals_line(hull: ShipHull) -> String:
 	var parts: PackedStringArray = []
-	for i in hull.components.size():
-		var component := hull.components[i]
-		if hull.is_component_operational(i):
-			var damaged := hull.component_damage[i] > 0
-			parts.append("[color=%s]%s[/color]" % ["#ffd27a" if damaged else "#9fdf9f", component.name])
+	for i in hull.get_module_count():
+		var module := hull.get_module(i)
+		if module == null:
+			continue
+		if hull.is_module_operational(i):
+			var weakened := hull.get_module_performance(i) < 1.0 or (module.is_fuel_tank() and hull.fuel_lost > 0.0)
+			parts.append("[color=%s]%s[/color]" % ["#ffd27a" if weakened else "#9fdf9f", module.name])
 		else:
-			parts.append("[color=#ff6b5e][s]%s[/s][/color]" % component.name)
+			parts.append("[color=#ff6b5e][s]%s[/s][/color]" % module.name)
 	return "Internals: " + ", ".join(parts)
 
 
-func _target_line(manager: SpaceCombatManager, hull: CombatHull, origin: Vector2) -> String:
+func _target_line(manager: SpaceCombatManager, hull: ShipHull, origin: Vector2) -> String:
 	var target := manager.selected_contact
 	if not is_instance_valid(target):
 		var count := manager.get_contacts(hull.faction, origin).size()
@@ -166,7 +187,7 @@ func _target_line(manager: SpaceCombatManager, hull: CombatHull, origin: Vector2
 
 
 ## The contact's sensor designation, plus its name once identified.
-func _contact_name(target: CombatHull) -> String:
+func _contact_name(target: ShipHull) -> String:
 	var network := SensorNetwork.find(get_tree())
 	var track: SensorTrack = network.get_track_for(target.get_sensor_suite()) if network else null
 	if track == null:

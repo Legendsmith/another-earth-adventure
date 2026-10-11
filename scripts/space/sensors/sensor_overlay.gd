@@ -137,7 +137,7 @@ static func color_for(track: SensorTrack, player_faction: StringName) -> Color:
 		return GHOST_COLOR
 	if not track.identified:
 		return UNKNOWN_COLOR
-	return HOSTILE_COLOR if CombatHull.factions_hostile(track.get_faction(), player_faction) else HELD_COLOR
+	return HOSTILE_COLOR if ShipHull.factions_hostile(track.get_faction(), player_faction) else HELD_COLOR
 
 
 func _draw_held(track: SensorTrack, s: float) -> void:

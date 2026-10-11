@@ -1,10 +1,13 @@
-[gd_resource type="Resource" script_class="EngineDefinition" format=3]
+[gd_resource type="Resource" script_class="EngineModule" format=3]
 
-[ext_resource type="Script" uid="uid://ddejdm73conwp" path="res://data/engine_definition.gd" id="1_engine"]
+[ext_resource type="Script" uid="uid://ddejdm73conwp" path="res://data/modules/engine_module.gd" id="1_engine"]
 
 [resource]
 script = ExtResource("1_engine")
 name = "Chemical Rocket"
+kind = 1
+size = 3.0
+hits_to_kill = 2
 max_thrust = 120.0
 exhaust_velocity = 300.0
 mass = 1.5

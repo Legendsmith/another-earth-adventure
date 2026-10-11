@@ -10,7 +10,8 @@ extends Control
 ## - Door: click a wall to turn it into a door (or a door back into a wall).
 ## - Elevator: click open deck to place or remove an elevator. Crew ride it to the same cell on the deck above or below,
 ##   so put one on the same cell of each deck it should link.
-## - Module: drag a rectangle over open deck to place a module with the panel's settings.
+## - Module: drag a rectangle over open deck to place a module with the panel's settings. It needs at least its size
+##   in cells; a bigger rectangle gives it its size bonus (ShipModule.size_bonus).
 ## - Zone: drag a rectangle to mark a zone (cargo, crew quarters, mess...).
 ## - Erase: click to remove the module, elevator, door, wall or zone under the cursor, in that order.
 ## Ctrl+Z undoes, Delete removes the selection, Page Up / Page Down switch decks.
@@ -18,33 +19,33 @@ extends Control
 enum Tool { SELECT, WALL, DOOR, ELEVATOR, MODULE, ZONE, ERASE }
 
 const TOOL_NAMES := ["Select", "Wall", "Door", "Elevator", "Module", "Zone", "Erase"]
-## Module hit points per point of a component's hit_to_kill: every cell a round crosses is a hit.
-const PRESET_HIT_SCALE := 6
+## Module designs offered as presets (main engines from ENGINES_DIR; thrusters need no place).
 const COMPONENTS_DIR := "res://data/components/"
+const ENGINES_DIR := "res://data/engines/"
 const DEFAULT_PATH := "res://data/ship_internals/layouts/gunship.tres"
 const UNDO_LIMIT := 50
 const MODULE_COLORS := {
-	ShipComponent.Kind.MAIN_ENGINE: Color(0.85, 0.55, 0.3),
-	ShipComponent.Kind.REACTOR: Color(0.4, 0.85, 0.5),
-	ShipComponent.Kind.FUEL_TANK: Color(0.75, 0.7, 0.3),
-	ShipComponent.Kind.SENSORS: Color(0.6, 0.5, 0.9),
-	ShipComponent.Kind.WEAPON: Color(0.5, 0.6, 0.9),
-	ShipComponent.Kind.MAGAZINE: Color(0.85, 0.35, 0.35),
-	ShipComponent.Kind.BRIDGE: Color(0.55, 0.8, 0.95),
+	ShipModule.Kind.MAIN_ENGINE: Color(0.85, 0.55, 0.3),
+	ShipModule.Kind.REACTOR: Color(0.4, 0.85, 0.5),
+	ShipModule.Kind.FUEL_TANK: Color(0.75, 0.7, 0.3),
+	ShipModule.Kind.SENSORS: Color(0.6, 0.5, 0.9),
+	ShipModule.Kind.WEAPON: Color(0.5, 0.6, 0.9),
+	ShipModule.Kind.MAGAZINE: Color(0.85, 0.35, 0.35),
+	ShipModule.Kind.BRIDGE: Color(0.55, 0.8, 0.95),
 }
 
 var layout: ShipLayout
 var tool: Tool = Tool.SELECT
 ## The deck being edited.
 var deck_index := 0
-## Selected module or zone (ShipModule or ShipRoom), or null.
+## Selected module or zone (ModulePlacement or ShipRoom), or null.
 var selected: Resource
 
 var _view: ShipInternalsView
 var _viewport_container: SubViewportContainer
 var _overlay: Node2D
 var _tool_buttons: Array[Button] = []
-var _presets: Array[ShipComponent] = []
+var _presets: Array[ShipModule] = []
 var _undo: Array[ShipLayout] = []
 var _hover := Vector2i(-1, -1)
 var _drag_start := Vector2i(-1, -1)
@@ -59,10 +60,11 @@ var _length: SpinBox
 var _diameter: SpinBox
 var _thickness: SpinBox
 var _preset: OptionButton
-var _module_type: OptionButton
+var _module_kind: OptionButton
 var _module_name: LineEdit
-var _module_component: LineEdit
-var _module_hit_points: SpinBox
+var _module_size: SpinBox
+var _module_hits: SpinBox
+var _module_cost: SpinBox
 var _module_color: ColorPickerButton
 var _zone_type: OptionButton
 var _zone_name: LineEdit
@@ -108,7 +110,7 @@ func undo() -> void:
 		_set_status("Nothing to undo")
 		return
 	var index := _selected_index()
-	var was_module := selected is ShipModule
+	var was_module := selected is ModulePlacement
 	layout = _undo.pop_back()
 	selected = null
 	if index >= 0:
@@ -182,17 +184,27 @@ func _toggle_elevator(cell: Vector2i) -> void:
 
 
 func _place_module(rect: Rect2i) -> void:
-	var problem := _module_rect_problem(rect, null)
+	var module := _new_module()
+	var problem := _module_rect_problem(rect, null, module.size)
 	if problem:
 		_set_status(problem)
 		return
 	_push_undo()
-	var module := ShipModule.new()
-	_apply_module_fields(module)
-	module.rect = rect
-	_deck().modules.append(module)
-	selected = module
+	var placement := ModulePlacement.new()
+	placement.module = module
+	placement.rect = rect
+	_deck().modules.append(placement)
+	selected = placement
 	_refresh()
+
+
+## A module for the next placement: a copy of the chosen preset (keeping its type, such as a weapon or an engine) or a
+## plain module, with the panel's settings.
+func _new_module() -> ShipModule:
+	var preset := _preset.selected
+	var module: ShipModule = _presets[preset - 1].duplicate() as ShipModule if preset > 0 else ShipModule.new()
+	_apply_module_fields(module)
+	return module
 
 
 func _place_zone(rect: Rect2i) -> void:
@@ -238,7 +250,7 @@ func delete_selected() -> void:
 	if selected == null:
 		return
 	_push_undo()
-	if selected is ShipModule:
+	if selected is ModulePlacement:
 		_deck().modules.erase(selected)
 	else:
 		_deck().rooms.erase(selected)
@@ -249,7 +261,7 @@ func delete_selected() -> void:
 ## Moves the selection so its corner is at `corner`, if it fits there.
 func _move_selected(corner: Vector2i) -> void:
 	var rect := Rect2i(corner, selected.rect.size)
-	if selected is ShipModule:
+	if selected is ModulePlacement:
 		if _module_rect_problem(rect, selected):
 			return
 	elif not _interior().encloses(rect):
@@ -275,7 +287,7 @@ func _resize_hull() -> void:
 		plan.set_wall_cells(walls)
 		plan.doors = plan.doors.filter(func(cell: Vector2i) -> bool: return interior.has_point(cell))
 		plan.elevators = plan.elevators.filter(func(cell: Vector2i) -> bool: return interior.has_point(cell))
-		plan.modules = plan.modules.filter(func(m: ShipModule) -> bool: return interior.encloses(m.rect))
+		plan.modules = plan.modules.filter(func(m: ModulePlacement) -> bool: return interior.encloses(m.rect))
 		for room in plan.rooms:
 			room.rect = room.rect.intersection(interior)
 		plan.rooms = plan.rooms.filter(func(r: ShipRoom) -> bool: return r.rect.size.x > 0 and r.rect.size.y > 0)
@@ -285,10 +297,12 @@ func _resize_hull() -> void:
 	_fit_view()
 
 
-## Why a module cannot go at `rect` (empty when it can). `ignore` is a module being moved.
-func _module_rect_problem(rect: Rect2i, ignore: ShipModule) -> String:
+## Why a module of `size` cannot go at `rect` (empty when it can). `ignore` is a module being moved.
+func _module_rect_problem(rect: Rect2i, ignore: ModulePlacement, size: float = 0.0) -> String:
 	if not _interior().encloses(rect):
 		return "Modules go inside the hull"
+	if rect.get_area() < ceili(size):
+		return "This module needs at least %d cells" % ceili(size)
 	var walls := _deck().get_wall_cells()
 	for y in range(rect.position.y, rect.end.y):
 		for x in range(rect.position.x, rect.end.x):
@@ -314,7 +328,7 @@ func _is_interior(cell: Vector2i) -> bool:
 	return _interior().has_point(cell)
 
 
-func _module_at(cell: Vector2i) -> ShipModule:
+func _module_at(cell: Vector2i) -> ModulePlacement:
 	for module in _deck().modules:
 		if module.rect.has_point(cell):
 			return module
@@ -331,7 +345,7 @@ func _room_at(cell: Vector2i) -> ShipRoom:
 
 
 func _selected_index() -> int:
-	if selected is ShipModule:
+	if selected is ModulePlacement:
 		return _deck().modules.find(selected)
 	if selected is ShipRoom:
 		return _deck().rooms.find(selected)
@@ -468,54 +482,57 @@ func _load_presets() -> void:
 	_presets.clear()
 	_preset.clear()
 	_preset.add_item("Custom")
-	var dir := DirAccess.open(COMPONENTS_DIR)
-	if dir == null:
-		return
-	var files := Array(dir.get_files())
-	files.sort()
-	for listed: String in files:
-		# Exported builds list resources as .remap files.
-		var file := listed.trim_suffix(".remap")
-		if not file.ends_with(".tres"):
+	for folder in [COMPONENTS_DIR, ENGINES_DIR]:
+		var dir := DirAccess.open(folder)
+		if dir == null:
 			continue
-		var component := load(COMPONENTS_DIR + file) as ShipComponent
-		# Thrusters are spread through the hull, and crew spaces are zones: neither is a module.
-		if component == null or component.kind in [ShipComponent.Kind.THRUSTERS, ShipComponent.Kind.CREW,
-				ShipComponent.Kind.STRUCTURE]:
-			continue
-		_presets.append(component)
-		_preset.add_item(component.name)
+		var files := Array(dir.get_files())
+		files.sort()
+		for listed: String in files:
+			# Exported builds list resources as .remap files.
+			var file := listed.trim_suffix(".remap")
+			if not file.ends_with(".tres"):
+				continue
+			var module := load(folder + file) as ShipModule
+			# Thrusters are spread through the hull, and crew spaces are zones: neither is placed.
+			if module == null or module.kind in [ShipModule.Kind.THRUSTERS, ShipModule.Kind.CREW,
+					ShipModule.Kind.STRUCTURE]:
+				continue
+			_presets.append(module)
+			_preset.add_item(module.name)
 
 
 func _on_preset_selected(index: int) -> void:
 	if index <= 0:
 		return
-	var component := _presets[index - 1]
+	var module := _presets[index - 1]
 	_updating_panel = true
-	_module_name.text = component.name
-	_module_component.text = component.name
-	_module_hit_points.value = component.hit_to_kill * PRESET_HIT_SCALE
-	_module_type.select(ShipModule.Type.FUEL_TANK if component.kind == ShipComponent.Kind.FUEL_TANK
-		else ShipModule.Type.SYSTEM)
-	_module_color.color = MODULE_COLORS.get(component.kind, Color(0.45, 0.6, 0.75))
+	_preset.select(index)
+	_module_name.text = module.name
+	_module_kind.select(module.kind)
+	_module_size.value = module.size
+	_module_hits.value = module.hits_to_kill
+	_module_cost.value = module.maintenance_cost
+	_module_color.color = MODULE_COLORS.get(module.kind, module.color)
 	_updating_panel = false
 	_on_module_fields_changed()
 
 
 func _apply_module_fields(module: ShipModule) -> void:
 	module.name = _module_name.text if _module_name.text else "Module"
-	module.component_name = _module_component.text
-	module.type = _module_type.selected as ShipModule.Type
-	module.hit_points = int(_module_hit_points.value)
+	module.kind = _module_kind.selected as ShipModule.Kind
+	module.size = _module_size.value
+	module.hits_to_kill = int(_module_hits.value)
+	module.maintenance_cost = _module_cost.value
 	module.color = _module_color.color
 
 
 ## Panel edits apply to the selected module (and set up the next one placed).
 func _on_module_fields_changed(_value: Variant = null) -> void:
-	if _updating_panel or not selected is ShipModule:
+	if _updating_panel or not selected is ModulePlacement:
 		return
 	_push_undo()
-	_apply_module_fields(selected)
+	_apply_module_fields(selected.module)
 	_refresh()
 
 
@@ -532,13 +549,18 @@ func _update_selection_panel() -> void:
 	if _selection_label == null:
 		return
 	_updating_panel = true
-	if selected is ShipModule:
-		var module: ShipModule = selected
-		_selection_label.text = "Selected module: %s  (%d x %d)" % [module.name, module.rect.size.x, module.rect.size.y]
+	if selected is ModulePlacement:
+		var placement: ModulePlacement = selected
+		var module := placement.module
+		var cells := placement.get_cell_count()
+		_selection_label.text = "Selected module: %s  (%d x %d = %d cells, size %.0f, bonus %d%%)" % [module.name,
+			placement.rect.size.x, placement.rect.size.y, cells, module.size,
+			roundi(ShipModule.size_bonus(module.size, cells) * 100.0)]
 		_module_name.text = module.name
-		_module_component.text = module.component_name
-		_module_type.select(module.type)
-		_module_hit_points.value = module.hit_points
+		_module_kind.select(module.kind)
+		_module_size.value = module.size
+		_module_hits.value = module.hits_to_kill
+		_module_cost.value = module.maintenance_cost
 		_module_color.color = module.color
 	elif selected is ShipRoom:
 		var room: ShipRoom = selected
@@ -702,15 +724,19 @@ func _build_ui() -> void:
 	_heading(panel, "Module")
 	_preset = _option(panel, "Preset", [])
 	_preset.item_selected.connect(_on_preset_selected)
-	_module_type = _option(panel, "Type", ShipModule.TYPE_NAMES)
-	_module_type.item_selected.connect(_on_module_fields_changed)
+	_module_kind = _option(panel, "Kind", ShipModule.KIND_NAMES)
+	_module_kind.item_selected.connect(_on_module_fields_changed)
 	_module_name = _line(panel, "Name", "Module")
 	_module_name.text_changed.connect(_on_module_fields_changed)
-	_module_component = _line(panel, "Hull component", "")
-	_module_component.text_changed.connect(_on_module_fields_changed)
-	_module_hit_points = _spin(panel, "Hit points (cells hit)", 1, 999)
-	_module_hit_points.value = 10
-	_module_hit_points.value_changed.connect(_on_module_fields_changed)
+	_module_size = _spin(panel, "Size (fewest cells)", 1, 999)
+	_module_size.value = 4
+	_module_size.value_changed.connect(_on_module_fields_changed)
+	_module_hits = _spin(panel, "Hits to kill", 1, 999)
+	_module_hits.value = 10
+	_module_hits.value_changed.connect(_on_module_fields_changed)
+	_module_cost = _spin(panel, "Maintenance cost", 0, 9999)
+	_module_cost.value = 10
+	_module_cost.value_changed.connect(_on_module_fields_changed)
 	_module_color = ColorPickerButton.new()
 	_module_color.custom_minimum_size.y = 24
 	_module_color.color = Color(0.45, 0.6, 0.75)
@@ -824,7 +850,7 @@ func _draw_overlay() -> void:
 			Color(1.0, 0.9, 0.3), false, 2.0)
 	if _dragging and (tool == Tool.MODULE or tool == Tool.ZONE):
 		var rect := _drag_rect(_drag_start, _hover)
-		var valid := tool == Tool.ZONE or _module_rect_problem(rect, null).is_empty()
+		var valid := tool == Tool.ZONE or _module_rect_problem(rect, null, _module_size.value).is_empty()
 		var color := Color(0.4, 1.0, 0.5) if valid else Color(1.0, 0.35, 0.3)
 		_overlay.draw_rect(Rect2(Vector2(rect.position) * cell, Vector2(rect.size) * cell), Color(color, 0.2))
 		_overlay.draw_rect(Rect2(Vector2(rect.position) * cell, Vector2(rect.size) * cell), color, false, 2.0)

@@ -198,7 +198,7 @@ func _color_hex(track: SensorTrack) -> String:
 		return EXPLOSION_HEX
 	if not track.identified:
 		return UNKNOWN_HEX
-	return HOSTILE_HEX if CombatHull.factions_hostile(track.get_faction(), _network.player_faction) else FRIENDLY_HEX
+	return HOSTILE_HEX if ShipHull.factions_hostile(track.get_faction(), _network.player_faction) else FRIENDLY_HEX
 
 #endregion
 
@@ -207,7 +207,7 @@ func _color_hex(track: SensorTrack) -> String:
 
 func _update_details() -> void:
 	var track := _network.selected_track
-	var hull: CombatHull = track.get_hull() if track else null
+	var hull: ShipHull = track.get_hull() if track else null
 	var manager := SpaceCombatManager.find(get_tree())
 	_target_button.disabled = not (track and track.is_held() and hull and manager
 		and hull.is_hostile_to(manager.player_faction) and manager.is_detected_by(manager.player_faction, hull))
@@ -273,19 +273,20 @@ func _iff_text(track: SensorTrack) -> String:
 
 
 ## What an identified hull shows: an active lock reads its armor and damage, passive only what it carries.
-func _hull_lines(hull: CombatHull, active_lock: bool) -> PackedStringArray:
+func _hull_lines(hull: ShipHull, active_lock: bool) -> PackedStringArray:
 	var lines: PackedStringArray = []
 	var weapons: PackedStringArray = []
 	for weapon in hull.get_weapons():
-		weapons.append(weapon.component_name)
+		weapons.append(weapon.name)
 	lines.append("Weapons: %s" % (", ".join(weapons) if not weapons.is_empty() else "none seen"))
 	if active_lock:
 		var lost: PackedStringArray = []
-		for i in hull.components.size():
-			if not hull.is_component_operational(i):
-				lost.append(hull.components[i].name)
-		lines.append("Armor %d%%   structure %d/%d%s" % [roundi(hull.grid.get_integrity() * 100.0), maxi(hull.structure_left, 0),
-			hull.structure, "   DESTROYED" if hull.is_destroyed else ""])
+		for i in hull.get_offline_modules():
+			lost.append(hull.get_module(i).name)
+		var simple := hull as SimpleHull
+		var structure := "   structure %d/%d" % [maxi(simple.structure_left, 0), simple.structure] if simple else ""
+		lines.append("Armor %d%%%s%s" % [roundi(hull.get_armor_integrity() * 100.0), structure,
+			"   DESTROYED" if hull.is_destroyed else ""])
 		if not lost.is_empty():
 			lines.append("Knocked out: %s" % ", ".join(lost))
 	else:
