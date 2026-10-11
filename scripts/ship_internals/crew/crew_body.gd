@@ -22,7 +22,15 @@ const ARRIVE_DISTANCE := 3.0
 ## Thinks without getting closer to the waypoint before the body gives up on its path.
 const STUCK_THINKS := 6
 
-static var _placeholder: Texture2D
+## Directions the Sprite has
+const SPRITE_DIR:int = 4
+## Optimization precalculation, coefficient for calculating sprite facing from 2D vector.
+const SPRITE_DIR_COEF:float = PI/(SPRITE_DIR/2.0)
+## Bias direction vector fed to the sprite direction.
+const SPRITE_H_BIAS:float = 0.84
+
+const ANIM_MOVE:String = "move_"
+const ANIM_IDLE:String = "idle_"
 
 ## Walking speed in deck cells per second.
 @export var speed_cells: float = 3.0
@@ -50,8 +58,9 @@ var _waypoint := Vector2.ZERO
 var _idle_version := -1
 var _best_distance := INF
 var _stuck := 0
-var _sprite: Sprite2D
+@onready var crew_sprite: Sprite2D = %CrewSprite
 
+var facing_direction:int = 0 
 
 func _init() -> void:
 	gravity_scale = 0.0
@@ -70,12 +79,9 @@ func _ready() -> void:
 	circle.radius = cell_size * RADIUS_CELLS
 	shape.shape = circle
 	add_child(shape)
-	_sprite = Sprite2D.new()
-	_sprite.texture = _get_placeholder()
-	_sprite.scale = Vector2.ONE * (cell_size * RADIUS_CELLS * 2.0) / _sprite.texture.get_width()
+	crew_sprite.scale = Vector2.ONE * (cell_size * RADIUS_CELLS * 2.0) / crew_sprite.texture.get_width()
 	if member and member.color_hex:
-		_sprite.modulate = Color.from_string(member.color_hex, Color.WHITE)
-	add_child(_sprite)
+		crew_sprite.modulate = Color.from_string(member.color_hex, Color.WHITE)
 	set_deck(deck)
 
 
@@ -157,12 +163,16 @@ func _steer(tick: bool) -> void:
 		_waypoint = crew.view.cell_to_local(waypoint)
 		tick = true
 	if tick:
-		linear_velocity = position.direction_to(_waypoint) * speed_cells * crew.view.cell_size
+		var direction:Vector2 = position.direction_to(_waypoint)
+		facing_direction = get_direction_index(direction)
+		linear_velocity = direction * speed_cells * crew.view.cell_size
+	%AnimationPlayer.play(ANIM_MOVE+str(facing_direction))
 
 
 func _arrive() -> void:
 	linear_velocity = Vector2.ZERO
 	path.clear()
+	%AnimationPlayer.play(ANIM_IDLE+str(facing_direction))
 	if job.is_empty():
 		_set_state(State.IDLE)
 	else:
@@ -221,13 +231,9 @@ func _set_state(new_state: State) -> void:
 	state_changed.emit(state)
 
 
-## A shared stand-in sprite (a white disc) until the crew art is in.
-static func _get_placeholder() -> Texture2D:
-	if _placeholder == null:
-		var image := Image.create_empty(16, 16, false, Image.FORMAT_RGBA8)
-		for y in 16:
-			for x in 16:
-				var inside := Vector2(x + 0.5, y + 0.5).distance_to(Vector2(8, 8)) <= 7.5
-				image.set_pixel(x, y, Color.WHITE if inside else Color.TRANSPARENT)
-		_placeholder = ImageTexture.create_from_image(image)
-	return _placeholder
+static func get_direction_index(input_vector: Vector2) -> int:
+	var biased_vector:Vector2 = Vector2(input_vector.x, input_vector.y * SPRITE_H_BIAS) #bias to horizontal by reducing the vertical slightly.
+	var angle:float = biased_vector.angle()
+	if angle < 0:
+		angle += 2 * PI
+	return int((angle + PI/SPRITE_DIR) / SPRITE_DIR_COEF) % SPRITE_DIR

@@ -11,6 +11,8 @@ signal crew_boarded(body: CrewBody)
 signal crew_spaced(body: CrewBody, spaced: SpacedCrew)
 signal crew_died(member: CrewMember)
 
+## Path or uid to the Godot scene to instantiate as crew bodies.
+@export_custom(0,"scene") var crew_body_scene:String = "uid://d1tpemq20xfe7"
 ## The view whose decks the crew walk (the parent when left empty).
 @export var view: ShipInternalsView
 ## Follow the crew manifest: a body for every filled crew slot, removed when the member leaves the crew.
@@ -95,7 +97,7 @@ func add_crew(member: CrewMember, at: Vector3i = Vector3i(-1, -1, -1)) -> CrewBo
 		return null
 	if at.x < 0:
 		at = _spawn_cell()
-	var body := CrewBody.new()
+	var body:CrewBody = load(crew_body_scene).instantiate()
 	body.name = "Crew_%s" % (member.login if member and member.login else str(bodies.size()))
 	body.member = member
 	body.crew = self
