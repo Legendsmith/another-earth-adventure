@@ -1,8 +1,8 @@
-[gd_scene format=3]
+[gd_scene format=3 uid="uid://bw6exktag83o5"]
 
-[ext_resource type="Script" path="res://ui/ship_internals/ship_layout_editor.gd" id="1_editor"]
+[ext_resource type="Script" uid="uid://crpow7uyss46a" path="res://ui/ship_internals/ship_layout_editor.gd" id="1_editor"]
 
-[node name="ShipLayoutEditor" type="Control"]
+[node name="ShipLayoutEditor" type="Control" unique_id=1162711452]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
