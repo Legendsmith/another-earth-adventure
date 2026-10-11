@@ -1,9 +1,9 @@
-[gd_resource type="Resource" script_class="ShipLayout" format=3]
+[gd_resource type="Resource" script_class="ShipLayout" format=3 uid="uid://dguc7l6vginpo"]
 
-[ext_resource type="Script" path="res://data/ship_internals/ship_deck.gd" id="1_b5301"]
-[ext_resource type="Script" path="res://data/ship_internals/ship_module.gd" id="2_q7vy7"]
-[ext_resource type="Script" path="res://data/ship_internals/ship_room.gd" id="3_wyi7r"]
-[ext_resource type="Script" path="res://data/ship_internals/ship_layout.gd" id="4_o7md2"]
+[ext_resource type="Script" uid="uid://3rbq27st6blg" path="res://data/ship_internals/ship_deck.gd" id="1_b5301"]
+[ext_resource type="Script" uid="uid://p38hvoriupjv" path="res://data/ship_internals/ship_module.gd" id="2_q7vy7"]
+[ext_resource type="Script" uid="uid://0ww6lq06bqh5" path="res://data/ship_internals/ship_room.gd" id="3_wyi7r"]
+[ext_resource type="Script" uid="uid://bw1isnbxi30j6" path="res://data/ship_internals/ship_layout.gd" id="4_o7md2"]
 
 [sub_resource type="Resource" id="Resource_1dn2n"]
 script = ExtResource("2_q7vy7")
@@ -219,4 +219,5 @@ rooms = Array[ExtResource("3_wyi7r")]([SubResource("Resource_kjjsx"), SubResourc
 
 [resource]
 script = ExtResource("4_o7md2")
+armor_thickness = 4
 decks = Array[ExtResource("1_b5301")]([SubResource("Resource_t82sd"), SubResource("Resource_irqx8")])
