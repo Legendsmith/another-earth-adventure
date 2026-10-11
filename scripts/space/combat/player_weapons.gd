@@ -54,7 +54,7 @@ func _physics_process(_delta: float) -> void:
 	var target: ShipHull = manager.selected_contact if manager else null
 	if not is_instance_valid(target):
 		return
-	for group in get_groups():
+	for group in get_weapon_groups():
 		if group.mode != WeaponGroup.Mode.AUTOFIRE or not group.active:
 			continue
 		for weapon in hull.get_group_weapons(group):
@@ -68,14 +68,14 @@ func get_weapons() -> Array[WeaponModule]:
 	return hull.get_weapons()
 
 
-func get_groups() -> Array[WeaponGroup]:
+func get_weapon_groups() -> Array[WeaponGroup]:
 	if hull == null:
 		return []
 	return hull.get_weapon_groups()
 
 
 func get_selected_group() -> WeaponGroup:
-	var groups := get_groups()
+	var groups := get_weapon_groups()
 	return groups[selected_group] if selected_group < groups.size() else null
 
 
@@ -96,7 +96,7 @@ func get_selected_weapon() -> WeaponModule:
 
 
 func select_group(index: int) -> void:
-	if index >= get_groups().size():
+	if index >= get_weapon_groups().size():
 		_warn("No weapon group in slot %d" % (index + 1))
 		return
 	selected_group = index

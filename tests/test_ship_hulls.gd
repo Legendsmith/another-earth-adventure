@@ -3,6 +3,9 @@ extends SceneTree
 ## damage, engines as modules and weapon groups. Run: godot --headless --path . --script res://tests/test_ship_hulls.gd
 
 var _failures := 0
+## Test functions that ran to the end: one that dies on a script error leaves this short.
+var _finished := 0
+const TEST_COUNT := 6
 
 
 ## A weapon that fires whenever it is operational, counting its shots.
@@ -32,6 +35,7 @@ func _initialize() -> void:
 	_test_bitmask()
 	await _test_engines()
 	await _test_weapon_groups()
+	_check(_finished == TEST_COUNT, "every test ran to the end (%d of %d)" % [_finished, TEST_COUNT])
 	print("ship hulls: %s" % ("OK" if _failures == 0 else "%d FAILED" % _failures))
 	quit(1 if _failures else 0)
 
@@ -98,6 +102,7 @@ func _test_size_bonus() -> void:
 		"electronics get up to 1.5x the effectiveness")
 	var quarters := _module("Quarters", ShipModule.Kind.CREW, 2.0, 1)
 	_check(quarters.get_hits_to_kill(8.0) == 1.0 and quarters.get_effectiveness(8.0) == 1.0, "crew quarters get nothing")
+	_finished += 1
 
 
 func _test_kill_chance() -> void:
@@ -115,6 +120,7 @@ func _test_kill_chance() -> void:
 	var share := float(knocked) / trials
 	_check(absf(share - 0.25) < 0.03, "a 1-point hit on 4 hits to kill knocks it out a quarter of the time (%.3f)" % share)
 	hull.free()
+	_finished += 1
 
 
 func _test_simple_hull() -> void:
@@ -156,6 +162,7 @@ func _test_simple_hull() -> void:
 	hull.set_module_operational(0, false)
 	_check(hull.structure_left == before - ShipHull.MAGAZINE_EXPLOSION, "a magazine cooks off inside the hull")
 	hull.free()
+	_finished += 1
 
 
 func _test_bitmask() -> void:
@@ -176,6 +183,7 @@ func _test_bitmask() -> void:
 	hull.set_module_operational(64, true)
 	_check(hull.offline_mask == 1 << 1, "repairs clear the bit")
 	hull.free()
+	_finished += 1
 
 
 func _test_engines() -> void:
@@ -208,6 +216,7 @@ func _test_engines() -> void:
 	hull.repair_module(0)
 	_check(ship.main_engine_online and is_equal_approx(ship.main_engine.max_thrust, 100.0), "repairs bring it back")
 	ship.free()
+	_finished += 1
 
 
 func _test_weapon_groups() -> void:
@@ -270,3 +279,4 @@ func _test_weapon_groups() -> void:
 	hull.free()
 	target.free()
 	manager.free()
+	_finished += 1

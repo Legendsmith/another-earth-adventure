@@ -11,13 +11,6 @@
 [ext_resource type="Resource" path="res://data/components/sensors.tres" id="c1_sensors"]
 [ext_resource type="Resource" path="res://data/components/torpedo_magazine.tres" id="c3_torpedo_magazine"]
 
-[node name="Drone" instance=ExtResource("1_ship")]
-dry_mass = 1.5
-fuel_capacity = 1.0
-fuel = 1.0
-hull_color = Color(1, 0.6, 0.35, 1)
-hull_size = 5.0
-
 [sub_resource type="Resource" id="Resource_tubes"]
 script = ExtResource("4_launcher")
 name = "Torpedo Tubes"
@@ -30,6 +23,13 @@ thrust_accel = 40.0
 burn_time = 25.0
 engagement_range = 1000.0
 damage = 8
+
+[node name="Drone" instance=ExtResource("1_ship")]
+dry_mass = 1.5
+fuel_capacity = 1.0
+fuel = 1.0
+hull_color = Color(1, 0.6, 0.35, 1)
+hull_size = 5.0
 
 [node name="SimpleHull" type="Node2D" parent="."]
 script = ExtResource("3_hull")

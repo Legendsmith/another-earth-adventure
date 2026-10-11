@@ -17,18 +17,18 @@
 [ext_resource type="Resource" path="res://data/components/torpedo_magazine.tres" id="c10_torpedo_magazine"]
 [ext_resource type="Resource" path="res://data/components/structure.tres" id="c11_structure"]
 
+[sub_resource type="Resource" id="Resource_tubes"]
+script = ExtResource("6_launcher")
+name = "Torpedo Tubes"
+kind = 6
+size = 2.0
+
 [node name="Gunship" unique_id=1561842384 instance=ExtResource("1_ship")]
 dry_mass = 14.0
 fuel_capacity = 8.0
 fuel = 8.0
 hull_color = Color(1, 0.45, 0.4, 1)
 hull_size = 12.0
-
-[sub_resource type="Resource" id="Resource_tubes"]
-script = ExtResource("6_launcher")
-name = "Torpedo Tubes"
-kind = 6
-size = 2.0
 
 [node name="SimpleHull" type="Node2D" parent="." index="1" unique_id=1483579689]
 script = ExtResource("4_hull")
