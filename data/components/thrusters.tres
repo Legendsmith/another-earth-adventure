@@ -1,9 +1,0 @@
-[gd_resource type="Resource" script_class="ShipComponent" format=3 uid="uid://tx3gcc8pkuo7"]
-
-[ext_resource type="Script" uid="uid://5yu4xlegvbdy" path="res://data/ship_component.gd" id="1_component"]
-
-[resource]
-script = ExtResource("1_component")
-name = "Thrusters"
-kind = 2
-hit_to_kill = 8

@@ -1,5 +1,5 @@
 extends SceneTree
-## Headless checks for the ship internals. Run: godot --headless --path . --script res://tests/test_ship_internals.gd
+## Headless checks for the ship internals (ModularHull). Run: godot --headless --path . --script res://tests/test_ship_internals.gd
 ## The last check times 200 crew (CPU per physics frame, Linux only); change that with `-- --crew-perf=N`, 0 to skip.
 
 var _failures := 0
@@ -32,15 +32,15 @@ func _check(condition: bool, message: String) -> void:
 		push_error("FAIL: " + message)
 
 
-func _make_internals(layout: ShipLayout = null) -> ShipInternals:
-	var internals := ShipInternals.new()
+func _make_internals(layout: ShipLayout = null) -> ModularHull:
+	var internals := ModularHull.new()
 	internals.layout = layout
 	root.add_child(internals)
 	internals.rng.seed = 1234
 	return internals
 
 
-func _find_module(internals: ShipInternals, module_name: String, nth: int = 0) -> int:
+func _find_module(internals: ShipHull, module_name: String, nth: int = 0) -> int:
 	for i in internals.get_module_count():
 		if internals.get_module(i).name == module_name:
 			if nth == 0:
@@ -70,15 +70,15 @@ func _test_armor_surface() -> void:
 
 func _test_layout() -> void:
 	var internals := _make_internals()
-	_check(internals.get_cell(Vector3i(0, 5, 0)) == ShipInternals.Cell.HULL, "the border is hull")
-	_check(internals.get_cell(Vector3i(8, 5, 0)) == ShipInternals.Cell.DOOR, "bulkheads have corridor doors")
+	_check(internals.get_cell(Vector3i(0, 5, 0)) == ModularHull.Cell.HULL, "the border is hull")
+	_check(internals.get_cell(Vector3i(8, 5, 0)) == ModularHull.Cell.DOOR, "bulkheads have corridor doors")
 	_check(internals.find_path(Vector3i(2, 6, 0), Vector3i(37, 5, 0)).size() > 30, "the corridor runs stern to bow")
 	for i in internals.get_module_count():
 		var access := internals.get_access_cells(i)
 		_check(not access.is_empty(), "%s can be reached" % internals.get_module(i).name)
 		_check(not access.is_empty() and internals.find_path(Vector3i(20, 5, 0), access[0]).size() > 0,
 			"crew can walk to %s" % internals.get_module(i).name)
-	_check(internals.armor.width == 40 and internals.armor.height == 38, "armor image is length x circumference")
+	_check(internals.surface.width == 40 and internals.surface.height == 38, "armor image is length x circumference")
 	_check(_find_module(internals, "Thrusters") < 0, "thrusters have no module")
 	internals.free()
 
@@ -86,22 +86,22 @@ func _test_layout() -> void:
 func _test_decks_and_elevators() -> void:
 	var internals := _make_internals()
 	_check(internals.decks == 2, "the default ship has two decks")
-	_check(internals.get_cell(Vector3i(3, 5, 0)) == ShipInternals.Cell.ELEVATOR
-		and internals.get_cell(Vector3i(3, 5, 1)) == ShipInternals.Cell.ELEVATOR, "elevators link the decks")
+	_check(internals.get_cell(Vector3i(3, 5, 0)) == ModularHull.Cell.ELEVATOR
+		and internals.get_cell(Vector3i(3, 5, 1)) == ModularHull.Cell.ELEVATOR, "elevators link the decks")
 	var path := internals.find_path(Vector3i(20, 5, 0), Vector3i(20, 9, 1))
 	_check(not path.is_empty() and path[0].z == 0 and path[-1].z == 1, "paths ride elevators between decks")
 	var rides := 0
 	for i in range(1, path.size()):
 		if path[i].z != path[i - 1].z:
 			rides += 1
-			_check(internals.get_cell(path[i]) == ShipInternals.Cell.ELEVATOR, "decks change only on elevators")
+			_check(internals.get_cell(path[i]) == ModularHull.Cell.ELEVATOR, "decks change only on elevators")
 	_check(rides == 1, "one elevator ride from deck to deck")
 	_check(internals.get_zone_cells(ShipRoom.Zone.CARGO).size() > 50, "the lower deck has cargo holds")
 	# A round straight down through the ship holes the floor between the decks.
 	internals.rng.seed = 5
 	var floors: Array[Vector3i] = []
-	internals.breach_opened.connect(func(cell: Vector3i, kind: ShipInternals.BreachKind) -> void:
-		if kind == ShipInternals.BreachKind.FLOOR:
+	internals.breach_opened.connect(func(cell: Vector3i, kind: ModularHull.BreachKind) -> void:
+		if kind == ModularHull.BreachKind.FLOOR:
 			floors.append(cell))
 	for i in 30:
 		internals._trace_round(Vector3(10.5 + i * 0.5, 1.0, 5.9), Vector3(10.5 + i * 0.5, 1.0, -5.9), 99)
@@ -113,68 +113,82 @@ func _test_decks_and_elevators() -> void:
 func _test_railgun_bores_through() -> void:
 	var internals := _make_internals()
 	var tracks: Array = []
+	var struck := {}
+	internals.module_hit.connect(func(index: int, _damage: int) -> void: struck[index] = true)
 	internals.round_tracked.connect(func(deck: int, from: Vector2, to: Vector2) -> void: tracks.append([deck, from, to]))
 	var hits := 0
 	for i in 40:
 		# Broadside slugs across the hull.
-		if internals.resolve_hit(64, ArmorGrid.DamageProfile.KINETIC, Vector2.DOWN) > 0:
+		if internals.take_hit(64, ArmorGrid.DamageProfile.KINETIC, Vector2.DOWN) > 0:
 			hits += 1
 	_check(hits > 0, "slugs get through the armor")
 	_check(tracks.size() >= hits, "every penetrating slug leaves a track")
 	var space := internals.get_hull_breach_count()
 	var inside := internals.breaches.size() - space
 	print("  broadside: %d penetrating, %d holes to space, %d inside, armor %d%%, frame %d%%" % [hits, space, inside,
-		roundi(internals.armor.get_integrity() * 100.0), roundi(internals.get_frame_integrity() * 100.0)])
+		roundi(internals.surface.get_integrity() * 100.0), roundi(internals.get_frame_integrity() * 100.0)])
 	_check(space >= hits, "each penetrating slug holes the hull where it enters")
 	_check(inside > 0, "slugs hole the internal walls they cross")
-	var damaged := 0
-	for i in internals.get_module_count():
-		if internals.module_damage[i] > 0:
-			damaged += 1
-	_check(damaged > 0, "modules on the slugs' paths are damaged")
-	_check(internals.armor.get_hole_count() > 0, "the armor image shows holes")
+	_check(struck.size() > 0, "modules on the slugs' paths are hit")
+	print("  %d modules hit, %d knocked out" % [struck.size(), internals.get_offline_modules().size()])
+	_check(internals.surface.get_hole_count() > 0, "the armor image shows holes")
 	internals.free()
 
 
 func _test_penetrator_spends_points() -> void:
 	var internals := _make_internals()
+	var hits := {}
+	internals.module_hit.connect(func(index: int, damage: int) -> void: hits[index] = hits.get(index, 0) + damage)
 	var railgun := _find_module(internals, "Railgun")
-	var rect := internals.get_module(railgun).rect
-	# Straight along the railgun's row (5 cells long) on the main deck, z inside the top deck: every cell is a hit.
+	var rect := internals.get_module_rect(railgun)
+	# Straight along the railgun's row (5 cells long) on the main deck, z inside the top deck: one hit of 5.
 	var row := rect.position.y + 0.5 - internals.radius
 	internals._trace_round(Vector3(rect.position.x - 0.5, row, 3.0), Vector3(rect.end.x + 0.5, row, 3.0), 99)
-	_check(internals.module_damage[railgun] == rect.size.x, "a round along a module hits every cell (%d of %d)" % [
-		internals.module_damage[railgun], rect.size.x])
-	# A round that only clips a corner hits once.
+	_check(hits.get(railgun, 0) == rect.size.x, "a round along a module hits it once with its whole path (%d of %d)" % [
+		hits.get(railgun, 0), rect.size.x])
+	# A round that only grazes a corner does nothing to it: fractions of a cell are dropped.
 	var reactor := _find_module(internals, "Reactor")
-	var corner := internals.get_module(reactor).rect.position
-	internals._trace_round(Vector3(corner.x + 0.5, corner.y + 0.5 - internals.radius, 5.9),
-		Vector3(corner.x + 0.5, corner.y + 0.5 - internals.radius, 3.1), 99)
-	_check(internals.module_damage[reactor] == 1, "a round clipping a module hits it once")
-	# Walls spend points too: three points cross the corridor wall and stop in the first module cell after it.
+	var corner := Vector2(internals.get_module_rect(reactor).position)
+	var from := corner + Vector2(-0.2, 0.5)
+	var to := corner + Vector2(0.5, -0.2)
+	internals._trace_round(Vector3(from.x, from.y - internals.radius, 3.0), Vector3(to.x, to.y - internals.radius, 3.0),
+		99)
+	_check(not hits.has(reactor), "a round grazing a module does nothing to it")
+	# Walls spend points too: three points cross the corridor wall and spend the other two in the first module.
 	internals.set_layout(internals.layout)
+	hits.clear()
 	var stops: Array[Vector2] = []
-	internals.round_tracked.connect(func(_deck: int, _from: Vector2, to: Vector2) -> void: stops.append(to))
+	internals.round_tracked.connect(func(_deck: int, _from: Vector2, at: Vector2) -> void: stops.append(at))
 	internals._trace_round(Vector3(19.5, 6.5 - internals.radius, 3.0), Vector3(19.5, 0.0 - internals.radius, 3.0), 3)
 	_check(internals.is_breached(Vector3i(19, 4, 0)), "the corridor wall is holed")
-	_check(internals.module_damage[_find_module(internals, "Torpedo Magazine")] == 2,
-		"the wall takes a point, the rest goes into the module")
+	_check(hits.get(_find_module(internals, "Torpedo Magazine"), 0) == 2,
+		"the wall takes a point, the rest goes into the module (%s)" % hits)
 	_check(stops.size() == 1 and stops[0].y > 0.5, "the round stops inside the ship")
+	# An explosion inside sums its falloff over each module's cells, whole points only.
+	internals.set_layout(internals.layout)
+	hits.clear()
+	var bridge := _find_module(internals, "Bridge")
+	var centre := internals.get_module_rect(bridge).get_center()
+	internals._blast(Vector3(centre.x, centre.y, 0), 16)
+	_check(hits.get(bridge, 0) > 3, "a blast on a module hits it hard (%d)" % hits.get(bridge, 0))
+	_check(not hits.has(railgun), "a blast does not reach across the ship")
 	internals.free()
 
 
 func _test_split_main_engine() -> void:
 	var internals := _make_internals()
-	var first := _find_module(internals, "Main Engine")
-	var second := _find_module(internals, "Main Engine", 1)
+	var first := _find_module(internals, "Fusion Drive")
+	var second := _find_module(internals, "Fusion Drive", 1)
 	_check(first >= 0 and second >= 0 and internals.get_module_deck(first) != internals.get_module_deck(second),
 		"the main drive is an engine module on each deck")
 	_check(internals.get_main_engine_performance() == 1.0, "both engines give full thrust")
-	internals.damage_module(first, 999)
+	_check(internals.damage_module(first, 999), "damage over the hits to kill always knocks a module out")
 	_check(is_equal_approx(internals.get_main_engine_performance(), 0.5), "one engine down halves the main drive")
+	_check(is_equal_approx(internals.get_main_drive().max_thrust, internals.get_module(second).max_thrust),
+		"the main drive is the working engine's thrust")
 	internals.damage_module(second, 999)
 	_check(internals.get_main_engine_performance() == 0.0, "both down stop it")
-	internals.repair_module(first, 999)
+	internals.repair_module(first)
 	_check(is_equal_approx(internals.get_main_engine_performance(), 0.5), "repairs bring a share back")
 	internals.free()
 
@@ -183,13 +197,19 @@ func _test_repairs() -> void:
 	var internals := _make_internals()
 	var reactor := _find_module(internals, "Reactor")
 	internals.damage_module(reactor, 999)
-	_check(not internals.is_module_operational(reactor), "a wrecked module is offline")
-	_check(internals.get_module_hit_points(reactor) >= 10, "modules take many hits")
-	_check(internals.repair_module(reactor), "a damaged module can be repaired")
-	_check(internals.is_module_operational(reactor), "one repair brings it back online")
-	_check(internals.repair_module(reactor, 999) and not internals.repair_module(reactor), "repairs finish")
-	internals.resolve_hit(64, ArmorGrid.DamageProfile.KINETIC, Vector2.DOWN)
-	internals.resolve_hit(64, ArmorGrid.DamageProfile.KINETIC, Vector2.DOWN)
+	_check(not internals.is_module_operational(reactor), "a knocked out module is offline")
+	_check(internals.offline_mask == 1 << internals.get_module_bit(reactor), "its bit is set in the offline mask")
+	_check(internals.get_module_hits_to_kill(reactor) >= 10, "modules take heavy hits")
+	var time := internals.get_repair_time(reactor)
+	_check(is_equal_approx(time, internals.get_module(reactor).get_maintenance_cost(6.0) * internals.repair_time_per_cost),
+		"repairs take the maintenance cost in time")
+	_check(not internals.add_repair_work(reactor, time * 0.5), "half the work is not enough")
+	_check(is_equal_approx(internals.get_repair_progress(reactor), 0.5), "repair progress shows")
+	_check(internals.add_repair_work(reactor, time * 0.5), "the rest of the work brings it back")
+	_check(internals.is_module_operational(reactor) and internals.offline_mask == 0, "and clears its bit")
+	_check(not internals.repair_module(reactor), "a working module needs no repair")
+	internals.take_hit(64, ArmorGrid.DamageProfile.KINETIC, Vector2.DOWN)
+	internals.take_hit(64, ArmorGrid.DamageProfile.KINETIC, Vector2.DOWN)
 	for cell in internals.breaches.keys():
 		_check(internals.patch_breach(cell), "holes can be patched")
 	_check(internals.breaches.is_empty(), "patched holes are gone")
@@ -203,6 +223,7 @@ func _test_fuel_tank() -> void:
 	_check(internals.is_fuel_tank(tank), "the default layout has a fuel tank")
 	internals.damage_module(tank, 50)
 	_check(internals.is_module_operational(tank), "a fuel tank cannot be knocked out")
+	_check(internals.get_module_bit(tank) == ShipHull.NO_BIT, "a fuel tank takes no bit")
 	_check(is_equal_approx(internals.fuel_lost, 50 * internals.fuel_loss_per_hit), "hits on the tank lose fuel")
 	internals.free()
 
@@ -229,42 +250,41 @@ func _test_layout_editing() -> void:
 	layout.get_deck(0).set_wall_cells(walls)
 	_check(layout.get_deck(0).get_wall_cells().size() == walls.size(), "wall cells survive the round trip")
 	_check(layout.get_deck(0).walls.size() < walls.size(), "walls are stored as runs")
-	internals.resolve_hit(64, ArmorGrid.DamageProfile.KINETIC, Vector2.DOWN)
+	internals.take_hit(64, ArmorGrid.DamageProfile.KINETIC, Vector2.DOWN)
 	internals.set_layout(layout)
 	_check(internals.breaches.is_empty() and internals.get_frame_integrity() == 1.0, "a new layout clears the damage")
-	_check(internals.get_cell(Vector3i(10, 4, 0)) == ShipInternals.Cell.DECK, "the new layout is used")
+	_check(internals.get_cell(Vector3i(10, 4, 0)) == ModularHull.Cell.DECK, "the new layout is used")
 	internals.free()
 
 
 func _test_breakup_is_hard() -> void:
-	# A CombatHull with internals: railgun fragments until it breaks up.
+	# A ModularHull on a host, with armor and thrusters: railgun fragments until it breaks up.
 	var host := Node2D.new()
-	var hull := CombatHull.new()
+	var hull := ModularHull.new()
 	hull.armor = load("res://data/armor/ceramic_laminate.tres")
 	hull.armor_mass = 3.0
 	hull.armor_columns = 16
-	for path in ["bridge", "reactor", "main_engine", "railgun", "torpedo_magazine", "sensors"]:
-		hull.components.append(load("res://data/components/%s.tres" % path))
+	hull.modules.append(load("res://data/engines/chemical_thrusters.tres"))
 	hull.free_on_destroyed = false
-	var internals := ShipInternals.new()
-	hull.add_child(internals)
 	host.add_child(hull)
 	root.add_child(host)
-	_check(hull.internals == internals, "internals attach to their hull")
-	var engine := hull.find_component("Main Engine")
-	internals.damage_module(_find_module(internals, "Main Engine"), 999)
-	_check(hull.is_component_operational(engine), "the main drive stays online while an engine module works")
-	internals.damage_module(_find_module(internals, "Main Engine", 1), 999)
-	_check(not hull.is_component_operational(engine), "and goes offline with the last one")
+	var thrusters := _find_module(hull, "Chemical Thrusters")
+	_check(not hull.is_module_placed(thrusters) and hull.get_module_bit(thrusters) == ShipHull.NO_BIT,
+		"thrusters have no place and are never knocked out")
+	hull.damage_module(_find_module(hull, "Fusion Drive"), 999)
+	_check(hull.get_main_drive().max_thrust > 0.0, "the main drive keeps going while an engine works")
+	hull.damage_module(_find_module(hull, "Fusion Drive", 1), 999)
+	_check(hull.get_main_drive().max_thrust == 0.0, "and stops with the last one")
 	var hits := 0
 	var thrust_gone := -1
 	while not hull.is_destroyed and hits < 40000:
-		if thrust_gone < 0 and internals.get_thruster_performance() == 0.0:
+		if thrust_gone < 0 and hull.get_thrusters().max_thrust == 0.0:
 			thrust_gone = hits
 		hull.take_hit(2, ArmorGrid.DamageProfile.KINETIC, Vector2.from_angle(randf() * TAU))
 		hits += 1
 	print("  hull with %d-deep armor: thrusters dead after %d fragment hits, broke up after %d" % [
-		internals.armor.thickness, thrust_gone, hits])
+		hull.surface.thickness, thrust_gone, hits])
+	_check(thrust_gone > 0, "thrusters fade as the frame is holed")
 	_check(hits > 200, "a ship takes many hits before it breaks up (%d)" % hits)
 	_check(hull.is_destroyed, "it does break up in the end")
 	host.free()
@@ -282,23 +302,30 @@ func _test_editor() -> void:
 	for y in range(9, 11):
 		editor._on_drag_to(Vector2i(28, y))
 	editor._on_release(Vector2i(28, 10))
-	_check(internals.get_cell(Vector3i(28, 10, 0)) == ShipInternals.Cell.WALL, "walls can be painted")
+	_check(internals.get_cell(Vector3i(28, 10, 0)) == ModularHull.Cell.WALL, "walls can be painted")
 	editor._set_tool(ShipLayoutEditor.Tool.DOOR)
 	editor._on_press(Vector2i(28, 9), false)
-	_check(internals.get_cell(Vector3i(28, 9, 0)) == ShipInternals.Cell.DOOR, "doors go in walls")
+	_check(internals.get_cell(Vector3i(28, 9, 0)) == ModularHull.Cell.DOOR, "doors go in walls")
 	# A module in the crew quarters, and one that would overlap it.
 	editor._set_tool(ShipLayoutEditor.Tool.MODULE)
-	editor._on_preset_selected(editor._presets.find_custom(func(c: ShipComponent) -> bool:
+	editor._on_preset_selected(editor._presets.find_custom(func(c: ShipModule) -> bool:
 		return c.name == "Reactor") + 1)
 	var count := editor._deck().modules.size()
 	editor._on_press(Vector2i(26, 1), false)
 	editor._on_release(Vector2i(27, 2))
 	_check(editor._deck().modules.size() == count + 1, "modules can be placed")
-	_check(editor._deck().modules[-1].hit_points >= 10, "presets give modules many hit points")
-	_check(internals.get_module_at(Vector3i(27, 2, 0)) != ShipInternals.NO_MODULE, "placed modules are live")
+	var placed: ModulePlacement = editor._deck().modules[-1]
+	_check(placed.module.name == "Reactor" and placed.module.size == 3.0 and placed.module.power_output > 0.0,
+		"presets give the module their design")
+	_check(internals.get_module_installed_size(internals.get_module_at(Vector3i(27, 2, 0))) == 4.0,
+		"the placement sets its installed size")
+	_check(internals.get_module_at(Vector3i(27, 2, 0)) != ModularHull.NO_MODULE, "placed modules are live")
 	editor._on_press(Vector2i(27, 2), false)
 	editor._on_release(Vector2i(29, 3))
 	_check(editor._deck().modules.size() == count + 1, "modules cannot overlap")
+	editor._on_press(Vector2i(29, 1), false)
+	editor._on_release(Vector2i(29, 2))
+	_check(editor._deck().modules.size() == count + 1, "modules need their size in cells")
 	# A cargo zone, then undo it.
 	editor._set_tool(ShipLayoutEditor.Tool.ZONE)
 	editor._zone_type.select(ShipRoom.Zone.CARGO)
@@ -321,7 +348,7 @@ func _test_editor() -> void:
 	_check(editor.layout.get_deck_count() == 3 and editor.deck_index == 2, "decks can be added")
 	editor._set_tool(ShipLayoutEditor.Tool.ELEVATOR)
 	editor._on_press(Vector2i(3, 5), false)
-	_check(internals.get_cell(Vector3i(3, 5, 2)) == ShipInternals.Cell.ELEVATOR, "elevators can be placed")
+	_check(internals.get_cell(Vector3i(3, 5, 2)) == ModularHull.Cell.ELEVATOR, "elevators can be placed")
 	_check(not internals.find_path(Vector3i(20, 5, 0), Vector3i(10, 3, 2)).is_empty(), "the new deck is reachable")
 	_check(editor.save_layout("user://test_layout.tres") == OK, "layouts save")
 	editor._new_layout(true)
@@ -378,11 +405,13 @@ func _test_crew() -> void:
 	# A repair job: the crew fixes the bridge on its own.
 	crew.auto_jobs = true
 	var bridge := _find_module(internals, "Bridge")
-	internals.damage_module(bridge, 4)
+	internals.repair_time_per_cost = 0.3
+	internals.set_module_operational(bridge, false)
 	await _wait_physics(900)
-	_check(internals.module_damage[bridge] == 0, "crew repair damaged modules (%d left)" % internals.module_damage[bridge])
+	_check(internals.is_module_operational(bridge), "crew repair offline modules (%d%% done)" % roundi(
+		internals.get_repair_progress(bridge) * 100.0))
 	var hole := Vector3i(30, 2, 0)
-	internals._open_breach(hole, ShipInternals.BreachKind.DECK)
+	internals._open_breach(hole, ModularHull.BreachKind.DECK)
 	walker.stop()
 	walker.set_deck(1)
 	await _wait_physics(1200)
@@ -404,16 +433,16 @@ func _test_spacing() -> void:
 	crew.crew_spaced.connect(func(_body: CrewBody, drifter: SpacedCrew) -> void: spaced.append(drifter))
 	crew.crew_died.connect(func(member: CrewMember) -> void: dead.append(member))
 	await _wait_physics(2)
-	internals._open_breach(Vector3i(30, 1, 0), ShipInternals.BreachKind.DECK)
+	internals._open_breach(Vector3i(30, 1, 0), ModularHull.BreachKind.DECK)
 	_check(spaced.size() == 1 and spaced[0].member.user_id == "near", "crew next to a new hole are sucked out")
 	_check(far in crew.bodies and below in crew.bodies, "crew far away or on another deck stay aboard")
 	_check(not near in crew.bodies, "the spaced crew member left the deck")
-	internals._open_breach(Vector3i(31, 2, 1), ShipInternals.BreachKind.WALL)
+	internals._open_breach(Vector3i(31, 2, 1), ModularHull.BreachKind.WALL)
 	_check(below in crew.bodies, "holes inside the ship don't space anyone")
 	await _wait_physics(60)
 	_check(dead.size() == 1, "a spaced crew member dies when the suit runs out")
 	crew.spaced_survival_time = -1.0
-	internals._open_breach(Vector3i(11, 10, 0), ShipInternals.BreachKind.HULL)
+	internals._open_breach(Vector3i(11, 10, 0), ModularHull.BreachKind.HULL)
 	await _wait_physics(120)
 	_check(spaced.size() == 2 and dead.size() == 1 and is_instance_valid(spaced[1]) and spaced[1].time_left == INF,
 		"with -1 survival time a spaced crew member lives on")
@@ -461,7 +490,7 @@ func _crew_frame_cost(count: int, walk: bool) -> Dictionary:
 	var cells := internals.get_walkable_cells()
 	# Damage first so there is work, then bring everyone aboard.
 	for i in 20:
-		internals.resolve_hit(64, ArmorGrid.DamageProfile.KINETIC)
+		internals.take_hit(64, ArmorGrid.DamageProfile.KINETIC)
 	for i in count:
 		crew.add_crew(_member("perf_%d" % i), cells[crew.rng.randi_range(0, cells.size() - 1)])
 	crew.auto_jobs = not walk

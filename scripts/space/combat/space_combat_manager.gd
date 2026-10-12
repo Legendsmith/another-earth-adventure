@@ -21,7 +21,7 @@ const MAX_WARNINGS := 6
 @export var drop_warp_on_threat: bool = true
 
 ## Contact the player's weapons fire at (cycled with combat_cycle_contact).
-var selected_contact: CombatHull
+var selected_contact: ShipHull
 ## Active warnings: {text, severity, time_left}.
 var warnings: Array[Dictionary] = []
 
@@ -58,10 +58,10 @@ func _process(delta: float) -> void:
 
 #region Queries
 
-func get_hulls() -> Array[CombatHull]:
-	var hulls: Array[CombatHull] = []
-	for node in get_tree().get_nodes_in_group(CombatHull.GROUP):
-		var hull := node as CombatHull
+func get_hulls() -> Array[ShipHull]:
+	var hulls: Array[ShipHull] = []
+	for node in get_tree().get_nodes_in_group(ShipHull.GROUP):
+		var hull := node as ShipHull
 		if hull and not hull.is_destroyed and hull.is_inside_tree():
 			hulls.append(hull)
 	return hulls
@@ -78,18 +78,18 @@ func get_munitions() -> Array[Munition]:
 func is_detected_by(faction: StringName, target: Object) -> bool:
 	if _network == null or not is_instance_valid(target):
 		return false
-	if target is CombatHull:
+	if target is ShipHull:
 		return target.faction == faction or _network.is_detected(faction, target.get_sensor_suite())
 	return _network.is_detected(faction, target)
 
 
 ## Hostile hulls `faction` currently detects, nearest to `from` first.
-func get_contacts(faction: StringName, from: Vector2) -> Array[CombatHull]:
-	var contacts: Array[CombatHull] = []
+func get_contacts(faction: StringName, from: Vector2) -> Array[ShipHull]:
+	var contacts: Array[ShipHull] = []
 	for hull in get_hulls():
 		if hull.is_hostile_to(faction) and is_detected_by(faction, hull):
 			contacts.append(hull)
-	contacts.sort_custom(func(a: CombatHull, b: CombatHull) -> bool:
+	contacts.sort_custom(func(a: ShipHull, b: ShipHull) -> bool:
 		return a.get_world_position().distance_squared_to(from) < b.get_world_position().distance_squared_to(from))
 	return contacts
 
@@ -98,15 +98,15 @@ func get_contacts(faction: StringName, from: Vector2) -> Array[CombatHull]:
 func get_detected_munitions(faction: StringName) -> Array[Munition]:
 	var found: Array[Munition] = []
 	for munition in get_munitions():
-		if CombatHull.factions_hostile(munition.faction, faction) and is_detected_by(faction, munition):
+		if ShipHull.factions_hostile(munition.faction, faction) and is_detected_by(faction, munition):
 			found.append(munition)
 	return found
 
 
 ## The player's hull, even once destroyed (it stays in the scene).
-func get_player_hull() -> CombatHull:
-	for node in get_tree().get_nodes_in_group(CombatHull.GROUP):
-		var hull := node as CombatHull
+func get_player_hull() -> ShipHull:
+	for node in get_tree().get_nodes_in_group(ShipHull.GROUP):
+		var hull := node as ShipHull
 		if hull and hull.faction == player_faction:
 			return hull
 	return null
@@ -141,7 +141,7 @@ func _on_scanned() -> void:
 
 
 ## Raises warnings for newly detected threats.
-func _update_player_view(hulls: Array[CombatHull], munitions: Array[Munition]) -> void:
+func _update_player_view(hulls: Array[ShipHull], munitions: Array[Munition]) -> void:
 	var player := get_player_hull()
 	var origin := player.get_world_position() if player else Vector2.ZERO
 	for hull in hulls:
@@ -153,7 +153,7 @@ func _update_player_view(hulls: Array[CombatHull], munitions: Array[Munition]) -
 			raise_warning("RAILGUN DETECTED: %s at %d px. Its rounds are nearly invisible in flight: keep moving."
 				% [hull.display_name, roundi(hull.get_world_position().distance_to(origin))], Severity.DANGER)
 	for munition in munitions:
-		if not CombatHull.factions_hostile(munition.faction, player_faction):
+		if not ShipHull.factions_hostile(munition.faction, player_faction):
 			continue
 		if is_detected_by(player_faction, munition) and not _munition_warned.has(munition):
 			_munition_warned[munition] = true
@@ -173,7 +173,7 @@ func _update_player_view(hulls: Array[CombatHull], munitions: Array[Munition]) -
 
 ## A weapon discharge (railgun shot) at `at` with signature `signature`, aimed at `target`.
 ## Every faction whose sensors catch the flash learns the shooter's position; the player is warned.
-func report_discharge(source: CombatHull, at: Vector2, signature: float, target: CombatHull, flight_time: float) -> void:
+func report_discharge(source: ShipHull, at: Vector2, signature: float, target: ShipHull, flight_time: float) -> void:
 	if not is_instance_valid(source):
 		return
 	source.add_emission(signature)
@@ -197,7 +197,7 @@ func raise_warning(text: String, severity: Severity = Severity.INFO) -> void:
 		_orbital_system.SetTimeWarpIndex(0)
 
 
-func _watch_hull(hull: CombatHull) -> void:
+func _watch_hull(hull: ShipHull) -> void:
 	_known_hulls[hull] = true
 	if hull.faction == player_faction:
 		hull.hit_taken.connect(func(damage: int, penetrating: int) -> void:
@@ -205,8 +205,8 @@ func _watch_hull(hull: CombatHull) -> void:
 				raise_warning("Hit for %d: %d through the armor" % [damage, penetrating], Severity.DANGER)
 			else:
 				raise_warning("Hit for %d: armor held" % damage, Severity.CAUTION))
-		hull.component_destroyed.connect(func(component: ShipComponent) -> void:
-			raise_warning("%s destroyed" % component.name, Severity.DANGER))
+		hull.module_offline.connect(func(index: int) -> void:
+			raise_warning("%s knocked out" % hull.get_module(index).name, Severity.DANGER))
 		hull.destroyed.connect(func() -> void: raise_warning("SHIP DESTROYED", Severity.DANGER))
 	else:
 		hull.destroyed.connect(func() -> void:

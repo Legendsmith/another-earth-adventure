@@ -31,12 +31,9 @@ const TURN_PROFILE := 0.9
 @export var fuel_capacity: float = 50.0
 @export var fuel: float = 50.0
 
-## Definition for the main engine
-@export var main_engine:EngineDefinition
-## Maximum allowable mass of the engine installed as the main drive
+## Maximum allowable mass of the engines installed as the main drive. The engines themselves are EngineModules of the
+## ship's ShipHull, which hands the ship its main drive and thrusters (main_engine, thrusters).
 @export var max_engine_mass:float = 1.5
-## Thrusters are lower power systems that provide secondary propulsion and turn the ship.
-@export var thrusters:EngineDefinition
 ## Maximum allowable mass of the engine installed as the ship's turning and maneuvering thrusters.
 @export var max_thruster_mass:float = 0.5
 
@@ -83,7 +80,11 @@ var manual_translation := Vector2.ZERO
 ## Facing in local space (radians, 0 = +x) and its rate of turn (rad/s). The map body itself never rotates.
 var facing := 0.0
 var spin := 0.0
-## Engines knocked out by combat damage (CombatHull) produce no thrust.
+## The ship's working main engines combined into one, set by its ShipHull (null when it has none).
+var main_engine: EngineModule
+## Thrusters are lower power systems that provide secondary propulsion and turn the ship. Set by its ShipHull.
+var thrusters: EngineModule
+## Engines knocked out by combat damage (see ShipHull) produce no thrust.
 var main_engine_online := true
 var thrusters_online := true
 
@@ -223,13 +224,9 @@ func _apply_manual_translation(delta: float) -> void:
 ## Mass without fuel: hull plus installed engines and combat armor.
 func get_dry_mass() -> float:
 	var total := dry_mass
-	if main_engine:
-		total += main_engine.mass
-	if thrusters:
-		total += thrusters.mass
 	for child in get_children():
-		if child is CombatHull:
-			total += child.armor_mass
+		if child is ShipHull:
+			total += child.armor_mass + child.get_engine_mass()
 	return total
 
 
@@ -238,10 +235,10 @@ func _update_mass() -> void:
 
 
 ## Engines that fire for `drive` (falls back to whichever engine is installed).
-func get_drive_engines(drive: Drive) -> Array[EngineDefinition]:
-	var main: EngineDefinition = main_engine if main_engine_online else null
-	var secondary: EngineDefinition = thrusters if thrusters_online else null
-	var engines: Array[EngineDefinition] = []
+func get_drive_engines(drive: Drive) -> Array[EngineModule]:
+	var main: EngineModule = main_engine if main_engine_online else null
+	var secondary: EngineModule = thrusters if thrusters_online else null
+	var engines: Array[EngineModule] = []
 	match drive:
 		Drive.MAIN:
 			engines.append(main if main else secondary)
@@ -250,7 +247,7 @@ func get_drive_engines(drive: Drive) -> Array[EngineDefinition]:
 		Drive.BOTH:
 			engines.append(main)
 			engines.append(secondary)
-	return engines.filter(func(e: EngineDefinition) -> bool: return e != null)
+	return engines.filter(func(e: EngineModule) -> bool: return e != null)
 
 
 func has_drive(drive: Drive) -> bool:
@@ -437,7 +434,7 @@ func get_sensor_signature() -> float:
 	var signature := 0.0
 	var firing: Array = get_drive_engines(_current_drive) if _current_thrust > 0.0 else []
 	var output := _current_thrust / maxf(get_drive_thrust(_current_drive), 1e-6)
-	for engine: EngineDefinition in [main_engine if main_engine_online else null, thrusters if thrusters_online else null]:
+	for engine: EngineModule in [main_engine if main_engine_online else null, thrusters if thrusters_online else null]:
 		if engine == null:
 			continue
 		signature += engine.active_sensor_signature
@@ -631,7 +628,7 @@ func _draw_hull() -> void:
 	draw_set_transform(Vector2.ZERO)
 
 
-func _draw_plume(at: Vector2, direction: Vector2, size: float, strength: float, engine: EngineDefinition) -> void:
+func _draw_plume(at: Vector2, direction: Vector2, size: float, strength: float, engine: EngineModule) -> void:
 	var length := size * (0.6 + 1.2 * clampf(strength, 0.0, 1.0)) * engine.flame_size
 	var side := Vector2(-direction.y, direction.x) * size * 0.3 * sqrt(engine.flame_size)
 	draw_colored_polygon(PackedVector2Array([at + side, at + direction * length, at - side]), engine.flame_color)

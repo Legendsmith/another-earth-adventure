@@ -53,9 +53,9 @@ func _physics_process(delta: float) -> void:
 	var world_position := SpaceScale.to_world(global_position)
 	_velocity = (world_position - _last_position) / delta
 	_last_position = world_position
-	for node in get_tree().get_nodes_in_group(CombatHull.GROUP):
-		var hull := node as CombatHull
-		if hull == null or hull.is_destroyed or hull.faction == CombatHull.DERELICT_FACTION:
+	for node in get_tree().get_nodes_in_group(ShipHull.GROUP):
+		var hull := node as ShipHull
+		if hull == null or hull.is_destroyed or hull.faction == ShipHull.DERELICT_FACTION:
 			continue
 		if hull.get_world_position().distance_squared_to(world_position) > radius * radius:
 			continue
@@ -96,27 +96,26 @@ func _add_derelict(index: int, at: Vector2) -> void:
 	wreck.name = "Derelict%d" % (index + 1)
 	wreck.position = SpaceScale.to_map(at)
 	add_child(wreck)
-	var hull := CombatHull.new()
-	hull.name = "CombatHull"
+	var hull := SimpleHull.new()
+	hull.name = "SimpleHull"
 	hull.display_name = "Derelict weapons platform"
-	hull.faction = CombatHull.DERELICT_FACTION
+	hull.faction = ShipHull.DERELICT_FACTION
 	hull.hide_host_when_undetected = false
 	hull.armor = derelict_armor
 	hull.armor_mass = 1.0
 	hull.armor_columns = 8
-	hull.components = [_component("Torpedo rack", ShipComponent.Kind.WEAPON, 2.0, 2),
-		_component("Automated sensors", ShipComponent.Kind.SENSORS, 1.0, 1),
-		_component("Torpedo magazine", ShipComponent.Kind.MAGAZINE, 1.0, 1),
-		_component("Wreck structure", ShipComponent.Kind.STRUCTURE, 4.0, 4)]
-	hull.hit_radius = 8.0
 	var launcher := TorpedoLauncher.new()
-	launcher.name = "TorpedoRack"
+	launcher.name = "Torpedo rack"
+	launcher.hits_to_kill = 2
 	launcher.magazine = 2
 	launcher.reload_time = 30.0
-	launcher.component_name = "Torpedo rack"
 	launcher.damage = 12
 	launcher.max_range = 2500.0
-	hull.add_child(launcher)
+	hull.modules = [launcher,
+		_component("Automated sensors", ShipModule.Kind.SENSORS, 1.0, 1),
+		_component("Torpedo magazine", ShipModule.Kind.MAGAZINE, 1.0, 1),
+		_component("Wreck structure", ShipModule.Kind.STRUCTURE, 4.0, 4)]
+	hull.hit_radius = 8.0
 	var ai := CombatAI.new()
 	ai.name = "CombatAI"
 	hull.add_child(ai)
@@ -132,12 +131,12 @@ func _add_derelict(index: int, at: Vector2) -> void:
 	wreck.add_child(sensors)
 
 
-static func _component(component_name: String, kind: ShipComponent.Kind, size: float, hit_to_kill: int) -> ShipComponent:
-	var component := ShipComponent.new()
+static func _component(component_name: String, kind: ShipModule.Kind, size: float, hit_to_kill: int) -> ShipModule:
+	var component := ShipModule.new()
 	component.name = component_name
 	component.kind = kind
 	component.size = size
-	component.hit_to_kill = hit_to_kill
+	component.hits_to_kill = hit_to_kill
 	return component
 
 

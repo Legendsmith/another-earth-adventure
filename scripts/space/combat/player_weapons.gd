@@ -1,13 +1,16 @@
 class_name PlayerWeapons
 extends Node
-## Player fire control for the parent CombatHull, driven by the combat mode's G.U.I.D.E actions: cycle or click a
-## detected hostile contact to target it, pick a weapon (slots 1-3 are the hull's weapons in order) and fire it.
+## Player fire control for the parent ShipHull, driven by the combat mode's G.U.I.D.E actions: cycle or click a
+## detected hostile contact to target it, pick a weapon group (slots 1-3 are the hull's groups in order, see
+## ShipHull.get_weapon_groups) and fire it. How a group fires is its mode (WeaponGroup.Mode): a linked group fires every
+## ready weapon at once, an alternating group the next ready weapon in turn, and an autofire group is switched on and off
+## by the fire command and, while on, fires each weapon at the selected contact whenever it is ready.
 ##
 ## Point defence groundwork: incoming munitions can be locked (click one, or lock every inbound one) and each lock is
 ## assessed for the chance it gets through the point defence net and strikes its target. With no point defence
-## mounts fitted the net stops nothing.
+## weapons fitted the net stops nothing.
 
-signal selected_weapon_changed(index: int)
+signal selected_group_changed(index: int)
 signal munition_locks_changed
 
 const CYCLE_CONTACT_ACTION: GUIDEAction = preload("res://ui/guide/combat_cycle_contact.tres")
@@ -19,14 +22,14 @@ const WEAPON_ACTIONS: Array[GUIDEAction] = [
 	preload("res://ui/guide/combat_select_weapon_3.tres"),
 ]
 
-var hull: CombatHull
-## Index into the hull's weapons of the one that fires.
-var selected_weapon := 0
+var hull: ShipHull
+## Index into the hull's weapon groups of the one that fires.
+var selected_group := 0
 ## Incoming munitions locked for point defence.
 var munition_locks: Array[Munition] = []
 
 
-static func find_on(combat_hull: CombatHull) -> PlayerWeapons:
+static func find_on(combat_hull: ShipHull) -> PlayerWeapons:
 	if combat_hull == null:
 		return null
 	for child in combat_hull.get_children():
@@ -36,39 +39,68 @@ static func find_on(combat_hull: CombatHull) -> PlayerWeapons:
 
 
 func _ready() -> void:
-	hull = get_parent() as CombatHull
+	hull = get_parent() as ShipHull
 	CYCLE_CONTACT_ACTION.just_triggered.connect(cycle_contact)
 	SELECT_ACTION.just_triggered.connect(_on_select_action)
 	FIRE_ACTION.just_triggered.connect(fire_selected)
 	for i in WEAPON_ACTIONS.size():
-		WEAPON_ACTIONS[i].just_triggered.connect(select_weapon.bind(i))
+		WEAPON_ACTIONS[i].just_triggered.connect(select_group.bind(i))
 
 
-func get_weapons() -> Array[WeaponMount]:
+func _physics_process(_delta: float) -> void:
+	if hull == null or hull.is_destroyed or not hull.is_in_command():
+		return
+	var manager := SpaceCombatManager.find(get_tree())
+	var target: ShipHull = manager.selected_contact if manager else null
+	if not is_instance_valid(target):
+		return
+	for group in get_weapon_groups():
+		if group.mode != WeaponGroup.Mode.AUTOFIRE or not group.active:
+			continue
+		for weapon in hull.get_group_weapons(group):
+			if weapon.can_engage(target):
+				weapon.fire_at(target)
+
+
+func get_weapons() -> Array[WeaponModule]:
 	if hull == null:
 		return []
 	return hull.get_weapons()
 
 
-## The weapons that fire together (one for now: the selected slot).
-func get_selected_weapons() -> Array[WeaponMount]:
-	var weapon := get_selected_weapon()
-	if weapon == null:
+func get_weapon_groups() -> Array[WeaponGroup]:
+	if hull == null:
 		return []
-	return [weapon]
+	return hull.get_weapon_groups()
 
 
-func get_selected_weapon() -> WeaponMount:
-	var weapons := get_weapons()
-	return weapons[selected_weapon] if selected_weapon < weapons.size() else null
+func get_selected_group() -> WeaponGroup:
+	var groups := get_weapon_groups()
+	return groups[selected_group] if selected_group < groups.size() else null
 
 
-func select_weapon(index: int) -> void:
-	if index >= get_weapons().size():
-		_warn("No weapon in slot %d" % (index + 1))
+## The weapons of the selected group.
+func get_selected_weapons() -> Array[WeaponModule]:
+	if hull == null:
+		return []
+	return hull.get_group_weapons(get_selected_group())
+
+
+## The selected group's first working weapon (its first weapon if none works), whose reach the overlay shows.
+func get_selected_weapon() -> WeaponModule:
+	var weapons := get_selected_weapons()
+	for weapon in weapons:
+		if weapon.is_operational():
+			return weapon
+	return weapons[0] if not weapons.is_empty() else null
+
+
+func select_group(index: int) -> void:
+	if index >= get_weapon_groups().size():
+		_warn("No weapon group in slot %d" % (index + 1))
 		return
-	selected_weapon = index
-	selected_weapon_changed.emit(index)
+	selected_group = index
+	selected_group_changed.emit(index)
 
 
 func cycle_contact() -> void:
@@ -92,21 +124,42 @@ func _on_select_action() -> void:
 		toggle_munition_lock(munition)
 
 
-## Fires the selected weapon at the selected contact, or says why it cannot.
+## Fires the selected group at the selected contact (an autofire group is switched on or off), or says why it
+## cannot.
 func fire_selected() -> void:
 	var manager := SpaceCombatManager.find(get_tree())
 	if manager == null or hull == null:
+		return
+	var group := get_selected_group()
+	var weapons := get_selected_weapons()
+	if group == null or weapons.is_empty():
+		_warn("No weapon fitted")
+		return
+	if group.mode == WeaponGroup.Mode.AUTOFIRE:
+		group.active = not group.active
+		_warn("%s: autofire %s" % [group.name, "on" if group.active else "off"], SpaceCombatManager.Severity.INFO)
 		return
 	var target := manager.selected_contact
 	if not is_instance_valid(target):
 		_warn("No contact selected (Tab or click one)")
 		return
-	var weapon := get_selected_weapon()
-	if weapon == null:
-		_warn("No weapon fitted")
+	if group.mode == WeaponGroup.Mode.LINKED:
+		var fired := false
+		for weapon in weapons:
+			fired = weapon.fire_at(target) or fired
+		if not fired:
+			_warn_cannot_fire(group, weapons[0], target)
 		return
-	if weapon.fire_at(target):
-		return
+	# Alternating: the next weapon in turn that fires.
+	for step in weapons.size():
+		var position := (group.next + step) % weapons.size()
+		if weapons[position].fire_at(target):
+			group.next = (position + 1) % weapons.size()
+			return
+	_warn_cannot_fire(group, weapons[group.next % weapons.size()], target)
+
+
+func _warn_cannot_fire(group: WeaponGroup, weapon: WeaponModule, target: ShipHull) -> void:
 	var reason := "not ready"
 	if not weapon.is_operational():
 		reason = "offline"
@@ -114,13 +167,13 @@ func fire_selected() -> void:
 		reason = "target out of range (%d px max)" % roundi(weapon.max_range)
 	elif weapon.is_ready():
 		reason = "no firing solution"
-	_warn("Cannot fire %s: %s" % [weapon.weapon_name, reason])
+	_warn("Cannot fire %s: %s" % [group.name if group.weapons.size() > 1 else weapon.name, reason])
 
 
-func _warn(text: String) -> void:
+func _warn(text: String, severity: SpaceCombatManager.Severity = SpaceCombatManager.Severity.CAUTION) -> void:
 	var manager := SpaceCombatManager.find(get_tree())
 	if manager:
-		manager.raise_warning(text, SpaceCombatManager.Severity.CAUTION)
+		manager.raise_warning(text, severity)
 
 
 #region Point defence
@@ -182,9 +235,9 @@ func clear_munition_locks() -> void:
 		munition_locks_changed.emit()
 
 
-## Point defence mounts on the hull (none until point defence is added).
-func get_point_defence_mounts() -> Array[WeaponMount]:
-	var mounts: Array[WeaponMount] = []
+## Point defence weapons on the hull (none until point defence is added).
+func get_point_defence_mounts() -> Array[WeaponModule]:
+	var mounts: Array[WeaponModule] = []
 	for weapon in get_weapons():
 		if weapon.is_point_defence() and weapon.is_operational():
 			mounts.append(weapon)
@@ -195,7 +248,7 @@ func get_point_defence_mounts() -> Array[WeaponMount]:
 ## hit_chance (strikes if nothing stops it), pd_kill_chance (the net stops it), strike_chance (gets through the net
 ## and strikes its target)}. Straight-line estimate; guided torpedoes are assumed to home in.
 func assess_munition(munition: Munition) -> Dictionary:
-	var target: CombatHull = munition.target if munition.has_valid_target() else hull
+	var target: ShipHull = munition.target if munition.has_valid_target() else hull
 	var relative := munition.get_world_position() - target.get_world_position()
 	var relative_velocity := munition.get_world_velocity() - target.get_world_velocity()
 	var speed_squared := relative_velocity.length_squared()

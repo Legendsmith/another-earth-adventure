@@ -37,14 +37,14 @@ func _process(_delta: float) -> void:
 
 
 ## The detected hostile contact nearest the mouse, within the pick distance, or null.
-func contact_under_mouse() -> CombatHull:
+func contact_under_mouse() -> ShipHull:
 	var manager := SpaceCombatManager.find(get_tree())
-	var player: CombatHull = manager.get_player_hull() if manager else null
+	var player: ShipHull = manager.get_player_hull() if manager else null
 	if player == null:
 		return null
 	var mouse := SpaceScale.to_world(get_global_mouse_position())
 	var pixel := 1.0 / SpaceScale.world_zoom(self)
-	var best: CombatHull = null
+	var best: ShipHull = null
 	var best_distance := INF
 	for contact in manager.get_contacts(manager.player_faction, player.get_world_position()):
 		var distance := mouse.distance_to(contact.get_world_position())
@@ -93,7 +93,7 @@ func _draw() -> void:
 
 
 ## Filled bands from the ship out to the weapon's reach, each edge ringed and labelled.
-func _draw_range_bands(at: Vector2, weapon: WeaponMount, s: float) -> void:
+func _draw_range_bands(at: Vector2, weapon: WeaponModule, s: float) -> void:
 	var bands := weapon.get_range_bands()
 	for i in bands.size():
 		var inner: float = bands[i].inner
@@ -116,10 +116,10 @@ func _draw_munition_lock(munition: Munition, assessment: Dictionary, s: float) -
 	_label(at + Vector2(10.0, 12.0) * s, "PD lock  strike %d%%" % roundi(assessment.strike_chance * 100.0), LOCK_COLOR, s)
 
 
-func _draw_target(player: CombatHull, target: CombatHull, weapons: PlayerWeapons, s: float) -> void:
+func _draw_target(player: ShipHull, target: ShipHull, weapons: PlayerWeapons, s: float) -> void:
 	var from := player.get_world_position()
 	var to := target.get_world_position()
-	var weapon: WeaponMount = weapons.get_selected_weapon() if weapons else null
+	var weapon: WeaponModule = weapons.get_selected_weapon() if weapons else null
 	var in_range := weapon == null or weapon.in_range(target)
 	var color := TARGET_COLOR if in_range else OUT_OF_RANGE_COLOR
 	# Target line, stopping short of both hulls.

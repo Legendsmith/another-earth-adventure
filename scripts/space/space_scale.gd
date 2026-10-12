@@ -8,7 +8,7 @@ class_name SpaceScale
 ## LOCAL SPACE is the full-scale frame around the player's ship, in world pixels. It owns the ship's facing (see
 ## Spaceship: attitude is not simulated on the map) and the thrust, whose velocity change moves the ship on the map
 ## scaled by MAP_SCALE. Gameplay reasons in world pixels (weapon ranges, sensor reach, hit radii, explosion sizes), so
-## combat and sensor code reads positions through world accessors (CombatHull.get_world_position() and friends),
+## combat and sensor code reads positions through world accessors (ShipHull.get_world_position() and friends),
 ## which convert from the map.
 ##
 ## The space view shows either the map (zoomed out, no ship facing) or local space (a camera on the ship at world

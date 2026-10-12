@@ -1,6 +1,6 @@
 class_name CombatAI
 extends Node
-## Fires a CombatHull's automatic weapons (its parent's WeaponMounts with auto_fire) at the nearest hostile contact
+## Fires a ShipHull's automatic weapons (its parent's WeaponMounts with auto_fire) at the nearest hostile contact
 ## its faction has detected. Stops when the hull loses its bridge.
 ## Runs silent until its side picks up a hostile, then switches its active sensors on to hold the contact (which also
 ## lights it up on everyone else's passive sensors).
@@ -12,12 +12,12 @@ extends Node
 ## Switch active sensors on while a hostile contact is held.
 @export var go_active_on_contact: bool = true
 
-var hull: CombatHull
+var hull: ShipHull
 var _timer := 0.0
 
 
 func _ready() -> void:
-	hull = get_parent() as CombatHull
+	hull = get_parent() as ShipHull
 	_timer = randf() * think_interval
 
 
@@ -49,7 +49,7 @@ func _physics_process(delta: float) -> void:
 				break
 
 
-func _torpedoes_at(manager: SpaceCombatManager, contact: CombatHull) -> int:
+func _torpedoes_at(manager: SpaceCombatManager, contact: ShipHull) -> int:
 	var count := 0
 	for munition in manager.get_munitions():
 		if munition is Torpedo and munition.target == contact and munition.faction == hull.faction:

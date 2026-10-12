@@ -157,7 +157,7 @@ func get_ghost_lifetime(track: SensorTrack) -> float:
 			return explosion_ghost_lifetime
 		SensorTrack.Kind.MUNITION:
 			return munition_ghost_lifetime
-	if track.identified and not CombatHull.factions_hostile(track.get_faction(), player_faction):
+	if track.identified and not ShipHull.factions_hostile(track.get_faction(), player_faction):
 		return non_threat_ghost_lifetime
 	return ghost_lifetime
 

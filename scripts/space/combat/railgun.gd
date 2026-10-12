@@ -1,5 +1,5 @@
 class_name Railgun
-extends WeaponMount
+extends WeaponModule
 ## Hypervelocity railgun firing RailCanister rounds. Each shot needs `shot_energy` from the hull's power supply
 ## (reactors and power-generating drives), so only hulls with serious power can run one. Every shot is a huge
 ## electromagnetic discharge that sensors pick up from far away, even though the round itself is nearly invisible.
@@ -69,7 +69,7 @@ var charge := 0.0
 var barrel_angle := 0.0
 var _rng := RandomNumberGenerator.new()
 var _orbital_system: Node
-var _track: CombatHull
+var _track: ShipHull
 ## Last firing solution for _track: {direction, time, closing_speed}; empty when there is none.
 var _solution: Dictionary = {}
 var _solution_age := INF
@@ -77,22 +77,28 @@ var _next_solve_ms := 0
 
 
 func _init() -> void:
-	weapon_name = "Railgun"
+	name = "Railgun"
+	kind = Kind.WEAPON
+	size = 4.0
+	hits_to_kill = 2
 	max_range = 4000.0
 
 
-func _ready() -> void:
-	super._ready()
+func bind(owner: ShipHull, module_index: int) -> void:
+	super.bind(owner, module_index)
 	_rng.randomize()
-	_orbital_system = get_tree().get_first_node_in_group(Constants.ORBITAL_SYSTEM_GROUP)
+	var tree := get_tree()
+	_orbital_system = tree.get_first_node_in_group(Constants.ORBITAL_SYSTEM_GROUP) if tree else null
 
 
-func _physics_process(delta: float) -> void:
+func tick(delta: float) -> void:
 	if is_operational() and charge < shot_energy:
 		charge = minf(charge + hull.get_power_supply() * delta, shot_energy)
 	_update_tracking(delta)
-	if show_arc and arc_half_angle < PI:
-		queue_redraw()
+
+
+func wants_redraw() -> bool:
+	return show_arc and arc_half_angle < PI
 
 
 func is_ready() -> bool:
@@ -145,7 +151,7 @@ func get_arc_center() -> Vector2:
 			var up: Vector2 = origin - SpaceScale.to_world(_orbital_system.GetBodyPosition(body, _orbital_system.StateTime))
 			if up.length_squared() > 1e-6:
 				return up.normalized()
-	var host: Node2D = hull.host if hull and hull.host else self
+	var host: Node2D = hull.host if hull.host else hull
 	if host is Spaceship:
 		return (host as Spaceship).get_nose()
 	return Vector2.RIGHT.rotated(host.global_rotation)
@@ -180,7 +186,7 @@ func _update_tracking(delta: float) -> void:
 		barrel_angle = move_toward(barrel_angle, wanted, traverse_rate * delta)
 
 
-func _solve(target: CombatHull) -> void:
+func _solve(target: ShipHull) -> void:
 	_solution_age = 0.0
 	_next_solve_ms = Time.get_ticks_msec() + SOLVE_MIN_REAL_INTERVAL_MS
 	var mu := 0.0
@@ -198,7 +204,7 @@ func _solve(target: CombatHull) -> void:
 #endregion
 
 
-func fire_at(target: CombatHull) -> bool:
+func fire_at(target: ShipHull) -> bool:
 	if not can_engage(target):
 		return false
 	if target != _track or (_solution_age >= solve_interval and Time.get_ticks_msec() >= _next_solve_ms):
@@ -230,7 +236,7 @@ func fire_at(target: CombatHull) -> bool:
 	canister.lifetime = flight_time + 5.0
 	Munition.launch(canister, hull, origin + aim * (hull.hit_radius + 2.0), own_velocity + aim * muzzle_velocity)
 	charge = 0.0
-	var manager := SpaceCombatManager.find(get_tree())
+	var manager := SpaceCombatManager.find(get_tree()) if get_tree() else null
 	if manager:
 		manager.report_discharge(hull, origin, discharge_signature, target, flight_time)
 	return true
@@ -317,17 +323,15 @@ static func _coast(start_position: Vector2, start_velocity: Vector2, time: float
 #endregion
 
 
-func _draw() -> void:
-	if not show_arc or arc_half_angle >= PI or hull == null or hull.is_destroyed:
+func draw(canvas: CanvasItem) -> void:
+	if not show_arc or arc_half_angle >= PI or hull.is_destroyed:
 		return
-	var length := arc_draw_length / get_canvas_transform().get_scale().x
-	# Draw in world orientation from the gun's position.
-	draw_set_transform(Vector2.ZERO, -global_rotation)
+	var length := arc_draw_length / canvas.get_canvas_transform().get_scale().x
 	var center := get_arc_center().angle()
 	var points := PackedVector2Array([Vector2.ZERO])
 	var segments := 24
 	for i in segments + 1:
 		points.append(Vector2.from_angle(center - arc_half_angle + 2.0 * arc_half_angle * i / segments) * length)
-	draw_colored_polygon(points, arc_color)
+	canvas.draw_colored_polygon(points, arc_color)
 	var barrel_color := Color(arc_color, minf(arc_color.a * 5.0, 1.0))
-	draw_line(Vector2.ZERO, get_barrel_direction() * length, barrel_color, -1.0)
+	canvas.draw_line(Vector2.ZERO, get_barrel_direction() * length, barrel_color, -1.0)

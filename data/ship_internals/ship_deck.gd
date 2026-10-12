@@ -8,7 +8,7 @@ extends Resource
 @export var doors: Array[Vector2i] = []
 ## Elevator cells. Crew ride an elevator to the deck above or below when that deck has an elevator on the same cell.
 @export var elevators: Array[Vector2i] = []
-@export var modules: Array[ShipModule] = []
+@export var modules: Array[ModulePlacement] = []
 @export var rooms: Array[ShipRoom] = []
 
 

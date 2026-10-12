@@ -1,10 +1,10 @@
 class_name ArmorSurfaceRect
 extends TextureRect
-## Shows a ShipInternals armor surface: the hull unrolled, length across and circumference down, one pixel per armor
+## Shows a ModularHull armor surface: the hull unrolled, length across and circumference down, one pixel per armor
 ## column. White is intact armor, darker is a deeper pit, black is a hole through. Scaled with nearest-neighbour
 ## filtering so every column stays a sharp block at any size.
 
-@export var internals: ShipInternals
+@export var internals: ModularHull
 
 
 func _ready() -> void:
@@ -15,7 +15,7 @@ func _ready() -> void:
 	bind(internals)
 
 
-func bind(new_internals: ShipInternals) -> void:
+func bind(new_internals: ModularHull) -> void:
 	internals = new_internals
 	texture = null
 	if internals == null:
@@ -23,4 +23,4 @@ func bind(new_internals: ShipInternals) -> void:
 	if not internals.is_node_ready():
 		await internals.ready
 	# The armor's ImageTexture is updated in place, so the rect follows the damage on its own.
-	texture = internals.armor.texture
+	texture = internals.surface.texture

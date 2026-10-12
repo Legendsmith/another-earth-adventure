@@ -2,46 +2,45 @@
 
 [ext_resource type="PackedScene" path="res://entities/space/spaceship.tscn" id="1_ship"]
 [ext_resource type="Resource" path="res://data/engines/fusion_drive.tres" id="2_fusion"]
-[ext_resource type="Script" uid="uid://b1m8bchjbxn2j" path="res://scripts/space/combat/combat_hull.gd" id="4_hull"]
+[ext_resource type="Script" path="res://scripts/space/combat/simple_hull.gd" id="4_hull"]
 [ext_resource type="Script" uid="uid://4l7rh470ahb5" path="res://scripts/space/combat/torpedo_launcher.gd" id="6_launcher"]
 [ext_resource type="Script" uid="uid://b4quxlo3fymv1" path="res://scripts/space/combat/combat_ai.gd" id="7_ai"]
-[ext_resource type="Script" uid="uid://5yu4xlegvbdy" path="res://data/ship_component.gd" id="8_component"]
+[ext_resource type="Script" uid="uid://5yu4xlegvbdy" path="res://data/modules/ship_module.gd" id="8_component"]
+[ext_resource type="Resource" path="res://data/engines/chemical_thrusters.tres" id="3_thrusters"]
 [ext_resource type="Resource" path="res://data/armor/ceramic_laminate.tres" id="9_armor"]
 [ext_resource type="Script" uid="uid://dgy2n7q3inia" path="res://scripts/space/sensors/sensor_suite.gd" id="10_sensors"]
 [ext_resource type="Resource" path="res://data/components/bridge.tres" id="c1_bridge"]
 [ext_resource type="Resource" path="res://data/components/crew_quarters.tres" id="c2_crew_quarters"]
 [ext_resource type="Resource" path="res://data/components/fuel_tank.tres" id="c3_fuel_tank"]
-[ext_resource type="Resource" path="res://data/components/main_engine.tres" id="c4_main_engine"]
-[ext_resource type="Resource" uid="uid://tx3gcc8pkuo7" path="res://data/components/thrusters.tres" id="c5_thrusters"]
 [ext_resource type="Resource" path="res://data/components/sensors.tres" id="c6_sensors"]
 [ext_resource type="Resource" path="res://data/components/reactor.tres" id="c7_reactor"]
-[ext_resource type="Resource" path="res://data/components/torpedo_tubes.tres" id="c9_torpedo_tubes"]
 [ext_resource type="Resource" path="res://data/components/torpedo_magazine.tres" id="c10_torpedo_magazine"]
 [ext_resource type="Resource" path="res://data/components/structure.tres" id="c11_structure"]
+
+[sub_resource type="Resource" id="Resource_tubes"]
+script = ExtResource("6_launcher")
+name = "Torpedo Tubes"
+kind = 6
+size = 2.0
 
 [node name="Gunship" unique_id=1561842384 instance=ExtResource("1_ship")]
 dry_mass = 14.0
 fuel_capacity = 8.0
 fuel = 8.0
-main_engine = ExtResource("2_fusion")
 hull_color = Color(1, 0.45, 0.4, 1)
 hull_size = 12.0
 
-[node name="CombatHull" type="Node2D" parent="." index="1" unique_id=1483579689]
+[node name="SimpleHull" type="Node2D" parent="." index="1" unique_id=1483579689]
 script = ExtResource("4_hull")
 display_name = "Gunship"
 armor = ExtResource("9_armor")
 armor_mass = 3.0
 armor_columns = 16
-components = Array[ExtResource("8_component")]([ExtResource("c1_bridge"), ExtResource("c2_crew_quarters"), ExtResource("c3_fuel_tank"), ExtResource("c4_main_engine"), ExtResource("c5_thrusters"), ExtResource("c6_sensors"), ExtResource("c7_reactor"), ExtResource("c9_torpedo_tubes"), ExtResource("c10_torpedo_magazine"), ExtResource("c11_structure")])
+modules = Array[ExtResource("8_component")]([ExtResource("c1_bridge"), ExtResource("c2_crew_quarters"), ExtResource("c3_fuel_tank"), ExtResource("2_fusion"), ExtResource("3_thrusters"), ExtResource("c6_sensors"), ExtResource("c7_reactor"), SubResource("Resource_tubes"), ExtResource("c10_torpedo_magazine"), ExtResource("c11_structure")])
 structure = 32
 hit_radius = 9.0
 
-[node name="TorpedoLauncher" type="Node2D" parent="CombatHull" index="0" unique_id=1102252167]
-script = ExtResource("6_launcher")
-component_name = "Torpedo Tubes"
-
-[node name="CombatAI" type="Node" parent="CombatHull" index="1" unique_id=200265313]
+[node name="CombatAI" type="Node" parent="SimpleHull" index="0" unique_id=200265313]
 script = ExtResource("7_ai")
 
 [node name="SensorSuite" type="Node" parent="." index="2" unique_id=1955623279]

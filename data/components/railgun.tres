@@ -1,10 +1,11 @@
-[gd_resource type="Resource" script_class="ShipComponent" format=3]
+[gd_resource type="Resource" script_class="Railgun" format=3]
 
-[ext_resource type="Script" uid="uid://5yu4xlegvbdy" path="res://data/ship_component.gd" id="1_component"]
+[ext_resource type="Script" uid="uid://b26stp8afe7wd" path="res://scripts/space/combat/railgun.gd" id="1_weapon"]
 
 [resource]
-script = ExtResource("1_component")
+script = ExtResource("1_weapon")
 name = "Railgun"
 kind = 6
 size = 4.0
-hit_to_kill = 2
+hits_to_kill = 2
+color = Color(0.5, 0.6, 0.9, 1)

@@ -1,14 +1,14 @@
 class_name ShipInternalsView
 extends Node2D
-## Top-down view of one deck of a ShipInternals (`deck`): hull, walls, doors and elevators, the modules (darkening as
-## they are damaged), holes for the crew to patch and the tracks of rounds that bored through. It is a plain 2D scene,
+## Top-down view of one deck of a ModularHull (`deck`): hull, walls, doors and elevators, the modules (crossed out while
+## offline, brightening back as their repair goes on), holes for the crew to patch and the tracks of rounds that bored through. It is a plain 2D scene,
 ## so it can be embedded in a SubViewport inside any other scene.
 ##
 ## It also gives crew a world to move in, for every deck at once. All decks share these coordinates, and each deck has
 ## its own physics layers, one for its walls (get_deck_layer) and one for its crew (get_crew_layer), so crew only meet
 ## the walls (and, if they collide with each other, the crew) of their own deck: hull, walls and modules are solid (a
 ## StaticBody2D per deck), each module and each hole has an Area2D that reports crew touching it,
-## and ShipInternals.find_path finds routes over open deck and by elevator between decks (convert with cell_to_local
+## and ModularHull.find_path finds routes over open deck and by elevator between decks (convert with cell_to_local
 ## and local_to_cell). Crew (ShipCrew) are drawn only on the deck shown.
 
 signal module_touched(index: int, body: Node2D)
@@ -28,8 +28,9 @@ const SPACE_BREACH_COLOR := Color(1.0, 0.25, 0.2)
 const WALL_BREACH_COLOR := Color(1.0, 0.6, 0.2)
 const TRACK_COLOR := Color(1.0, 0.85, 0.5)
 
-## The internals shown. Left empty, the view makes its own with the default layout (handy for testing the scene).
-@export var internals: ShipInternals
+## The hull shown. Left empty, the view makes its own standalone one with the default layout (handy for testing the
+## scene).
+@export var internals: ModularHull
 @export var cell_size: float = 16.0
 ## The deck shown.
 @export var deck: int = 0:
@@ -55,15 +56,19 @@ func _ready() -> void:
 	add_child(_overlay)
 	move_child(_overlay, 0)
 	if internals == null:
-		var own := ShipInternals.new()
-		own.name = "ShipInternals"
-		add_child(own)
+		var own := ModularHull.new()
+		own.name = "ModularHull"
+		# Under a plain Node it has no host: a standalone hull that never breaks up.
+		var holder := Node.new()
+		holder.name = "StandaloneHull"
+		add_child(holder)
+		holder.add_child(own)
 		internals = own
 	bind(internals)
 
 
-## Shows another ShipInternals (for example the player hull's, once the space scene has one).
-func bind(new_internals: ShipInternals) -> void:
+## Shows another ModularHull (for example the player hull's, once the space scene has one).
+func bind(new_internals: ModularHull) -> void:
 	if internals and internals != new_internals:
 		_disconnect(internals)
 	internals = new_internals
@@ -126,25 +131,25 @@ func _process(delta: float) -> void:
 
 #region Signals
 
-func _connect(target: ShipInternals) -> void:
+func _connect(target: ModularHull) -> void:
 	target.breach_opened.connect(_on_breach_opened)
 	target.breach_patched.connect(_on_breach_patched)
-	target.module_damaged.connect(_on_module_changed)
-	target.module_repaired.connect(_on_module_changed)
+	target.module_offline.connect(_on_module_changed)
+	target.module_restored.connect(_on_module_changed)
 	target.round_tracked.connect(_on_round_tracked)
 	target.layout_changed.connect(_on_layout_changed)
 
 
-func _disconnect(target: ShipInternals) -> void:
+func _disconnect(target: ModularHull) -> void:
 	for connection in [[target.breach_opened, _on_breach_opened],
-			[target.breach_patched, _on_breach_patched], [target.module_damaged, _on_module_changed],
-			[target.module_repaired, _on_module_changed], [target.round_tracked, _on_round_tracked],
+			[target.breach_patched, _on_breach_patched], [target.module_offline, _on_module_changed],
+			[target.module_restored, _on_module_changed], [target.round_tracked, _on_round_tracked],
 			[target.layout_changed, _on_layout_changed]]:
 		if (connection[0] as Signal).is_connected(connection[1]):
 			(connection[0] as Signal).disconnect(connection[1])
 
 
-func _on_breach_opened(cell: Vector3i, _kind: ShipInternals.BreachKind) -> void:
+func _on_breach_opened(cell: Vector3i, _kind: ModularHull.BreachKind) -> void:
 	_add_breach_area(cell)
 	_overlay.queue_redraw()
 
@@ -180,7 +185,8 @@ func _rebuild_bodies() -> void:
 		body.queue_free()
 	_walls.clear()
 	for area in _module_areas:
-		area.queue_free()
+		if area:
+			area.queue_free()
 	_module_areas.clear()
 	for area in _breach_areas.values():
 		area.queue_free()
@@ -203,7 +209,10 @@ func _rebuild_bodies() -> void:
 					_add_box(walls, Rect2(Vector2(start, y) * cell_size, Vector2(x - start, 1) * cell_size))
 					start = -1
 	for i in internals.get_module_count():
-		var rect := internals.get_module(i).rect
+		if not internals.is_module_placed(i):
+			_module_areas.append(null)
+			continue
+		var rect := internals.get_module_rect(i)
 		var area := _make_area("Module%d" % i, internals.get_module_deck(i),
 			Rect2(Vector2(rect.position) * cell_size, Vector2(rect.size) * cell_size).grow(cell_size * 0.25))
 		area.body_entered.connect(func(body: Node2D) -> void: module_touched.emit(i, body))
@@ -255,18 +264,18 @@ func _draw() -> void:
 			var cell := Vector3i(x, y, deck)
 			var rect := Rect2(Vector2(x, y) * cell_size, Vector2.ONE * cell_size)
 			match internals.get_cell(cell):
-				ShipInternals.Cell.HULL:
+				ModularHull.Cell.HULL:
 					draw_rect(rect, HULL_COLOR)
-				ShipInternals.Cell.WALL:
+				ModularHull.Cell.WALL:
 					draw_rect(rect, WALL_COLOR)
-				ShipInternals.Cell.DOOR:
+				ModularHull.Cell.DOOR:
 					draw_rect(rect, FLOOR_COLOR)
 					draw_rect(rect.grow(-cell_size * 0.3), DOOR_COLOR)
-				ShipInternals.Cell.ELEVATOR:
+				ModularHull.Cell.ELEVATOR:
 					draw_rect(rect, FLOOR_COLOR)
 					draw_rect(rect.grow(-cell_size * 0.1), ELEVATOR_COLOR, false, 2.0)
-					var up := internals.get_cell(cell - Vector3i(0, 0, 1)) == ShipInternals.Cell.ELEVATOR
-					var down := internals.get_cell(cell + Vector3i(0, 0, 1)) == ShipInternals.Cell.ELEVATOR
+					var up := internals.get_cell(cell - Vector3i(0, 0, 1)) == ModularHull.Cell.ELEVATOR
+					var down := internals.get_cell(cell + Vector3i(0, 0, 1)) == ModularHull.Cell.ELEVATOR
 					var c := rect.get_center()
 					var h := cell_size * 0.25
 					if up:
@@ -312,7 +321,8 @@ func _draw_overlay() -> void:
 
 func _draw_module(index: int, font: Font) -> void:
 	var module := internals.get_module(index)
-	var rect := Rect2(Vector2(module.rect.position) * cell_size, Vector2(module.rect.size) * cell_size).grow(-1.0)
+	var module_rect := internals.get_module_rect(index)
+	var rect := Rect2(Vector2(module_rect.position) * cell_size, Vector2(module_rect.size) * cell_size).grow(-1.0)
 	var condition := internals.get_module_condition(index)
 	var color := module.color.darkened(0.6 * (1.0 - condition))
 	if not internals.is_module_operational(index):
@@ -333,9 +343,9 @@ func _draw_module(index: int, font: Font) -> void:
 		rect.size.x - 4.0, int(cell_size * 0.5), Color(0.05, 0.05, 0.08))
 
 
-func _draw_breach(cell: Vector3i, kind: ShipInternals.BreachKind) -> void:
+func _draw_breach(cell: Vector3i, kind: ModularHull.BreachKind) -> void:
 	var centre := cell_to_local(cell)
-	var to_space := ShipInternals.is_open_to_space(kind)
+	var to_space := ModularHull.is_open_to_space(kind)
 	var color := SPACE_BREACH_COLOR if to_space else WALL_BREACH_COLOR
 	# Holes open to space are black inside; holes in walls and floors show the deck through them.
 	_overlay.draw_circle(centre, cell_size * 0.38, Color.BLACK if to_space else FLOOR_COLOR)

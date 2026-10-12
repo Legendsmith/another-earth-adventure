@@ -2,7 +2,7 @@
 class_name AsteroidEmplacement
 extends Node2D
 ## Space hazard: an asteroid hollowed out into a weapons emplacement. The rock itself is in plain sight, but the
-## emplacement inside (its CombatHull child) runs cold and is only picked up by sensors at short range, or when its
+## emplacement inside (its ShipHull child) runs cold and is only picked up by sensors at short range, or when its
 ## torpedoes launch. Place it as a child of a planet or moon so it moves with that body, or of an OrbitAnchor so it
 ## orbits.
 

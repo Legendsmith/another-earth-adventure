@@ -1,72 +1,128 @@
 [gd_resource type="Resource" script_class="ShipLayout" format=3 uid="uid://dguc7l6vginpo"]
 
 [ext_resource type="Script" uid="uid://3rbq27st6blg" path="res://data/ship_internals/ship_deck.gd" id="1_b5301"]
-[ext_resource type="Script" uid="uid://p38hvoriupjv" path="res://data/ship_internals/ship_module.gd" id="2_q7vy7"]
+[ext_resource type="Script" uid="uid://p38hvoriupjv" path="res://data/ship_internals/module_placement.gd" id="2_q7vy7"]
 [ext_resource type="Script" uid="uid://0ww6lq06bqh5" path="res://data/ship_internals/ship_room.gd" id="3_wyi7r"]
 [ext_resource type="Script" uid="uid://bw1isnbxi30j6" path="res://data/ship_internals/ship_layout.gd" id="4_o7md2"]
+[ext_resource type="Script" uid="uid://5yu4xlegvbdy" path="res://data/modules/ship_module.gd" id="5_module"]
+[ext_resource type="Script" uid="uid://ddejdm73conwp" path="res://data/modules/engine_module.gd" id="6_engine"]
+[ext_resource type="Script" uid="uid://b26stp8afe7wd" path="res://scripts/space/combat/railgun.gd" id="7_railgun"]
+[ext_resource type="Script" uid="uid://4l7rh470ahb5" path="res://scripts/space/combat/torpedo_launcher.gd" id="8_tubes"]
+
+[sub_resource type="Resource" id="Resource_1dn2n_module"]
+script = ExtResource("6_engine")
+name = "Fusion Drive"
+kind = 1
+size = 8.0
+hits_to_kill = 12
+color = Color(0.85, 0.55, 0.3, 1)
+max_thrust = 160.0
+exhaust_velocity = 5000.0
+mass = 0.75
+flame_color = Color(0.85, 0.75, 1, 1)
+flame_size = 4.0
+maintenance_interval = 10000.0
+power_generation = 10.0
+active_sensor_signature = 10.0
+max_sensor_signature = 250.0
+warmup_time = 30.0
 
 [sub_resource type="Resource" id="Resource_1dn2n"]
 script = ExtResource("2_q7vy7")
-name = "Main Engine"
+module = SubResource("Resource_1dn2n_module")
 rect = Rect2i(1, 1, 4, 2)
-component_name = "Main Engine"
-hit_points = 12
-color = Color(0.85, 0.55, 0.3, 1)
+
+[sub_resource type="Resource" id="Resource_3rq05_module"]
+script = ExtResource("5_module")
+name = "Reactor"
+kind = 3
+size = 6.0
+hits_to_kill = 16
+power_output = 40.0
+color = Color(0.4, 0.85, 0.5, 1)
 
 [sub_resource type="Resource" id="Resource_3rq05"]
 script = ExtResource("2_q7vy7")
-name = "Reactor"
+module = SubResource("Resource_3rq05_module")
 rect = Rect2i(10, 1, 3, 2)
-component_name = "Reactor"
-hit_points = 16
-color = Color(0.4, 0.85, 0.5, 1)
+
+[sub_resource type="Resource" id="Resource_l8law_module"]
+script = ExtResource("5_module")
+name = "Fuel Tank"
+kind = 4
+size = 14.0
+hits_to_kill = 1
+color = Color(0.75, 0.7, 0.3, 1)
 
 [sub_resource type="Resource" id="Resource_l8law"]
 script = ExtResource("2_q7vy7")
-name = "Fuel Tank"
-type = 1
+module = SubResource("Resource_l8law_module")
 rect = Rect2i(9, 9, 7, 2)
-component_name = "Fuel Tank"
-color = Color(0.75, 0.7, 0.3, 1)
+
+[sub_resource type="Resource" id="Resource_qllq0_module"]
+script = ExtResource("5_module")
+name = "Torpedo Magazine"
+kind = 7
+size = 6.0
+hits_to_kill = 8
+color = Color(0.85, 0.35, 0.35, 1)
 
 [sub_resource type="Resource" id="Resource_qllq0"]
 script = ExtResource("2_q7vy7")
-name = "Torpedo Magazine"
+module = SubResource("Resource_qllq0_module")
 rect = Rect2i(17, 1, 3, 2)
-component_name = "Torpedo Magazine"
-hit_points = 8
-color = Color(0.85, 0.35, 0.35, 1)
+
+[sub_resource type="Resource" id="Resource_7lfxe_module"]
+script = ExtResource("8_tubes")
+name = "Torpedo Tubes"
+kind = 6
+size = 4.0
+hits_to_kill = 8
+color = Color(0.75, 0.45, 0.4, 1)
 
 [sub_resource type="Resource" id="Resource_7lfxe"]
 script = ExtResource("2_q7vy7")
-name = "Torpedo Tubes"
+module = SubResource("Resource_7lfxe_module")
 rect = Rect2i(22, 1, 2, 2)
-component_name = "Torpedo Tubes"
-hit_points = 8
-color = Color(0.75, 0.45, 0.4, 1)
+
+[sub_resource type="Resource" id="Resource_4o03e_module"]
+script = ExtResource("7_railgun")
+name = "Railgun"
+kind = 6
+size = 10.0
+hits_to_kill = 12
+color = Color(0.5, 0.6, 0.9, 1)
 
 [sub_resource type="Resource" id="Resource_4o03e"]
 script = ExtResource("2_q7vy7")
-name = "Railgun"
+module = SubResource("Resource_4o03e_module")
 rect = Rect2i(17, 9, 5, 2)
-component_name = "Railgun"
-hit_points = 12
-color = Color(0.5, 0.6, 0.9, 1)
+
+[sub_resource type="Resource" id="Resource_s41pl_module"]
+script = ExtResource("5_module")
+name = "Bridge"
+kind = 9
+size = 4.0
+hits_to_kill = 10
+color = Color(0.55, 0.8, 0.95, 1)
 
 [sub_resource type="Resource" id="Resource_s41pl"]
 script = ExtResource("2_q7vy7")
-name = "Bridge"
+module = SubResource("Resource_s41pl_module")
 rect = Rect2i(37, 1, 2, 2)
-component_name = "Bridge"
-color = Color(0.55, 0.8, 0.95, 1)
+
+[sub_resource type="Resource" id="Resource_6f5ns_module"]
+script = ExtResource("5_module")
+name = "Sensors"
+kind = 5
+size = 4.0
+hits_to_kill = 6
+color = Color(0.6, 0.5, 0.9, 1)
 
 [sub_resource type="Resource" id="Resource_6f5ns"]
 script = ExtResource("2_q7vy7")
-name = "Sensors"
+module = SubResource("Resource_6f5ns_module")
 rect = Rect2i(37, 9, 2, 2)
-component_name = "Sensors"
-hit_points = 6
-color = Color(0.6, 0.5, 0.9, 1)
 
 [sub_resource type="Resource" id="Resource_igj0q"]
 script = ExtResource("3_wyi7r")
@@ -136,13 +192,28 @@ elevators = Array[Vector2i]([Vector2i(3, 5), Vector2i(36, 6)])
 modules = Array[ExtResource("2_q7vy7")]([SubResource("Resource_1dn2n"), SubResource("Resource_3rq05"), SubResource("Resource_l8law"), SubResource("Resource_qllq0"), SubResource("Resource_7lfxe"), SubResource("Resource_4o03e"), SubResource("Resource_s41pl"), SubResource("Resource_6f5ns")])
 rooms = Array[ExtResource("3_wyi7r")]([SubResource("Resource_igj0q"), SubResource("Resource_75lfb"), SubResource("Resource_t5xdu"), SubResource("Resource_tnxdn"), SubResource("Resource_yc27m"), SubResource("Resource_knt6d"), SubResource("Resource_wbg8f"), SubResource("Resource_5qyew"), SubResource("Resource_4mpmn"), SubResource("Resource_7bk4a"), SubResource("Resource_1b5pf")])
 
+[sub_resource type="Resource" id="Resource_j6ucn_module"]
+script = ExtResource("6_engine")
+name = "Fusion Drive"
+kind = 1
+size = 8.0
+hits_to_kill = 12
+color = Color(0.85, 0.55, 0.3, 1)
+max_thrust = 160.0
+exhaust_velocity = 5000.0
+mass = 0.75
+flame_color = Color(0.85, 0.75, 1, 1)
+flame_size = 4.0
+maintenance_interval = 10000.0
+power_generation = 10.0
+active_sensor_signature = 10.0
+max_sensor_signature = 250.0
+warmup_time = 30.0
+
 [sub_resource type="Resource" id="Resource_j6ucn"]
 script = ExtResource("2_q7vy7")
-name = "Main Engine"
+module = SubResource("Resource_j6ucn_module")
 rect = Rect2i(1, 1, 4, 2)
-component_name = "Main Engine"
-hit_points = 12
-color = Color(0.85, 0.55, 0.3, 1)
 
 [sub_resource type="Resource" id="Resource_kjjsx"]
 script = ExtResource("3_wyi7r")

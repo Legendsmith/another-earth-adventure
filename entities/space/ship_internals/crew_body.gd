@@ -8,7 +8,7 @@ extends RigidBody2D
 ## decisions (picking a job, pathfinding, working) run once every `skip_frames + 1` physics frames, staggered by a random
 ## tick offset so the crew spread their thinking over different frames. Idle bodies sleep.
 ##
-## Paths come from ShipInternals.find_path and may ride elevators: stepping onto an elevator whose next waypoint is on
+## Paths come from ModularHull.find_path and may ride elevators: stepping onto an elevator whose next waypoint is on
 ## another deck moves the body to that deck. Jobs (patching holes, repairing modules) are handed out by the ShipCrew.
 
 signal state_changed(state: State)
@@ -36,7 +36,7 @@ const ANIM_IDLE:String = "idle_"
 @export var speed_cells: float = 3.0
 ## Physics frames skipped between decisions.
 @export var skip_frames: int = 8
-## Module damage repaired per second of work.
+## Repair work done per second (a module takes ModularHull.get_repair_time of work).
 @export var repair_rate: float = 1.0
 ## Seconds of work to patch a hole.
 @export var patch_time: float = 3.0
@@ -209,11 +209,9 @@ func _do_work(elapsed: float) -> void:
 	match job.get("type"):
 		&"module":
 			var index: int = job.index
-			while _work >= 1.0 / repair_rate and internals.module_damage[index] > 0:
-				_work -= 1.0 / repair_rate
-				internals.repair_module(index)
-			if internals.module_damage[index] <= 0:
+			if internals.add_repair_work(index, _work * repair_rate):
 				stop()
+			_work = 0.0
 		&"breach":
 			if not internals.is_breached(job.cell):
 				stop()

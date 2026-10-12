@@ -1,5 +1,5 @@
 class_name TorpedoLauncher
-extends WeaponMount
+extends WeaponModule
 ## Launches Torpedo munitions from a magazine. See Torpedo for the flight profile.
 
 @export var magazine: int = 4
@@ -23,16 +23,18 @@ var _reload := 0.0
 
 
 func _init() -> void:
-	weapon_name = "Torpedoes"
+	name = "Torpedo Tubes"
+	kind = Kind.WEAPON
+	size = 2.0
 	max_range = 6000.0
 
 
-func _ready() -> void:
-	super._ready()
+func bind(owner: ShipHull, module_index: int) -> void:
+	super.bind(owner, module_index)
 	ammo = magazine
 
 
-func _physics_process(delta: float) -> void:
+func tick(delta: float) -> void:
 	if _reload > 0.0:
 		_reload = maxf(_reload - delta, 0.0)
 
@@ -47,7 +49,7 @@ func get_readiness() -> float:
 	return 1.0 - _reload / reload_time if reload_time > 0.0 else 1.0
 
 
-func fire_at(target: CombatHull) -> bool:
+func fire_at(target: ShipHull) -> bool:
 	if not can_engage(target):
 		return false
 	var origin := hull.get_world_position()
