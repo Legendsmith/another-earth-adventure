@@ -9,15 +9,15 @@ const SECTION_CONTROLS: String = "Controls"
 
 var config: ConfigFile = ConfigFile.new()
 
-# Gameplay
-## Modifies how quickly text gets revealed in dialog. When set to 0, text gets instantly revealed.
+# General
+## Modifies how quickly text is revealed in dialog. When set to 0, text is instantly revealed.
 var text_speed_modifier: float = 1: set = set_text_speed_modifier
-## Indicates how fast batle animations are playing.
-var battle_animation_speed: float = 1.0: set = set_battle_animation_speed
-## Indicates if the player character is automatically running by default.
-var auto_run_enabled: bool = false
 ## Determines scale at which vibrations are sent to the player's input device.
 var vibration_strength: float = 0.5: set = set_vibration_strength
+
+# Adventure Gameplay settings
+## Indicates if the player character is automatically running by default.
+var auto_run_enabled: bool = false
 ## Indicates if the interactions with other npcs should be controlled via mouse or keyboard direction.
 var mouse_interaction_enabled:bool = false
 
@@ -49,7 +49,6 @@ func load_settings() -> Error:
 	var load_result := config.load(CONFIG_PATH)
 
 	text_speed_modifier = config.get_value(SECTION_GAMEPLAY, "text_speed_modifier", text_speed_modifier)
-	battle_animation_speed = config.get_value(SECTION_GAMEPLAY, "battle_animation_speed", battle_animation_speed)
 	auto_run_enabled = config.get_value(SECTION_GAMEPLAY, "auto_run_enabled", auto_run_enabled)
 	vibration_strength = config.get_value(SECTION_GAMEPLAY, "vibration_strength", vibration_strength)
 
@@ -68,7 +67,6 @@ func load_settings() -> Error:
 ## Saves the current used settings to disk.
 func save_settings() -> Error:
 	config.set_value(SECTION_GAMEPLAY, "text_speed_modifier", text_speed_modifier)
-	config.set_value(SECTION_GAMEPLAY, "battle_animation_speed", battle_animation_speed)
 	config.set_value(SECTION_GAMEPLAY, "auto_run_enabled", auto_run_enabled)
 	config.set_value(SECTION_GAMEPLAY, "vibration_strength", vibration_strength)
 	
@@ -97,12 +95,6 @@ func set_text_speed_modifier(modifier: float) -> void:
 	text_speed_modifier = maxf(0.0, modifier)
 	
 	Dialogic.Settings.text_speed = 0.0 if modifier == 0.0 else BASE_REVEAL_TIME / modifier
-
-# TODO: Current implementation is a prediction for how it's used. 
-# 		When it's actually used, please revisit this.
-## Sets the speed at which battle animations play.
-func set_battle_animation_speed(speed: float) -> void:
-	battle_animation_speed = maxf(0.1, speed)
 
 
 ## Sets the intensity modifier at which input device vibration feedback is given. Ranges from 0 to 1.
@@ -158,4 +150,4 @@ func set_sfx_volume(volume: float) -> void:
 func set_character_voice_volume(volume: float) -> void:
 	character_voice_volume = clampf(volume, 0.0, 1.0)
 	
-	AudioServer.set_bus_volume_linear(Constants.CHARACTER_VOICING_INDEX, character_voice_volume)
+	AudioServer.set_bus_volume_linear(Constants.VOICES_BUS_INDEX, character_voice_volume)

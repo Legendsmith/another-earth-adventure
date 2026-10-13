@@ -52,7 +52,7 @@ const CHARACTER_VOICING: StringName = &"Voices"
 const MASTER_BUS_INDEX: int = 0
 const MUSIC_BUS_INDEX: int = 1
 const SFX_BUS_INDEX: int = 2
-const CHARACTER_VOICING_INDEX: int = 3
+const VOICES_BUS_INDEX: int = 3
 
 #endregion
 

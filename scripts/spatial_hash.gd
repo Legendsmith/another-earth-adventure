@@ -20,7 +20,7 @@ func _init(_agent: Node2D) -> void:
 	agent = _agent
 	SpatialMap.request_hashmap_near.connect(on_request_hashmap_near)
 	SpatialMap.request_hashmap_near_filter.connect(on_request_hashmap_near_filter)
-	if agent is BattleAgent:
+	if agent is AdventureAgent:
 		hash_location_changed.connect(on_hash_location_changed)
 		SpatialMap.hashmap_faction_check.connect(on_hashmap_faction_check)
 

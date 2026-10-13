@@ -42,7 +42,7 @@ func _draw() -> void:
 	if debug_draw and is_instance_valid(tile_map):
 		flow_field.debug_draw(self,tile_map,tile_map.global_position-global_position)
 
-func on_agent_request_flow_field(agent:BattleAgent,spatial_hash:Vector2i):
+func on_agent_request_flow_field(agent:AdventureAgent,spatial_hash:Vector2i):
 	if agent.target == self and tile_map.hash_rect.has_point(spatial_hash):
 		agent.flow_field = flow_field
 	

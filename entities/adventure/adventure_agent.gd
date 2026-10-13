@@ -1,5 +1,5 @@
-class_name BattleAgent
-extends RigidBody2D
+class_name AdventureAgent
+extends RapierRigidBody2D
 const MAX_BT_DELTA:float = 2.0
 enum Facing{RIGHT,DOWN,LEFT,UP}
 signal contact(me:Node2D,who:Node2D,delta:float)
@@ -23,8 +23,6 @@ var dialogic_timeline_label:String=""
 @export var speed:float = 64
 @export var max_speed:float = 64
 var desired_velocity:Vector2 = Vector2.ZERO
-
-var damage_inflicted:float = 0
 
 var bt_delta: float = 0
 var thinking: bool = false
@@ -170,7 +168,7 @@ func follow_flow_field() -> void:
 	desired_velocity = dir * min(distance,speed)
 	#agent.linear_damp = MAX_LINEAR_DAMP * flow_field.get_move_multiplier(flow_field.get_grid_coords(agent.global_position))
 	move(desired_velocity)
-	animation_player.play("move_"+str(BattleAgent.get_direction_index(dir)),-1,max(0.25,linear_velocity.length_squared()/(max_speed*max_speed)))
+	animation_player.play("move_"+str(AdventureAgent.get_direction_index(dir)),-1,max(0.25,linear_velocity.length_squared()/(max_speed*max_speed)))
 
 ## Spatial Hash related
 func _exit_tree() -> void:
@@ -198,7 +196,7 @@ static func get_direction_index(input_vector: Vector2) -> int:
 		angle += 2 * PI
 	return int((angle + PI/SPRITE_DIR) / SPRITE_DIR_COEF) % SPRITE_DIR
 
-static func teleport(body:RigidBody2D,new_global_position:Vector2):
+static func teleport(body:RapierRigidBody2D,new_global_position:Vector2):
 	PhysicsServer2D.body_set_state(body.get_rid(),PhysicsServer2D.BODY_STATE_TRANSFORM,Transform2D.IDENTITY.translated(new_global_position))
 	body.reset_physics_interpolation()
 	body.on_hash_location_changed(Vector2i(new_global_position/Constants.SPATIAL_HASH_SIZE))

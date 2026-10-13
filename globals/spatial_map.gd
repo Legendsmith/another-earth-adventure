@@ -18,7 +18,7 @@ signal request_tilemap(requester:Node,coordinates:Vector2i)
 ## Activate flowfields to this location.
 signal activate_flow_path(faction:StringName,spatial_hash:Vector2i)
 ## Used by agents to get the appropriate flowfields for where they are.
-signal agent_request_flow_field(agent:BattleAgent,spatial_hash:Vector2i)
+signal agent_request_flow_field(agent:AdventureAgent,spatial_hash:Vector2i)
 ## Used to determine if a battle should occur by checking if everyone in a given location is the same faction. If not: Battle!
 signal hashmap_faction_check(faction:Pointer.StringNamePtr,check:Pointer.BoolPtr,coordinates: Vector2i)
 

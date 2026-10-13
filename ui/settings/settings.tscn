@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://bx2ds5egaym3g"]
 
-[ext_resource type="Theme" uid="uid://3wclxr72g4rm" path="res://ui/settings/setings_theme.tres" id="1_fayoa"]
+[ext_resource type="Theme" uid="uid://3wclxr72g4rm" path="res://ui/settings/settings_theme.tres" id="1_fayoa"]
 [ext_resource type="Theme" uid="uid://d2rlegeqi7jag" path="res://ui/title_screen/title_screen_theme.tres" id="1_hrs25"]
 [ext_resource type="Script" uid="uid://evg6pbg06fiv" path="res://ui/settings/settings.gd" id="2_fayoa"]
 
@@ -25,11 +25,10 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme = ExtResource("1_hrs25")
-current_tab = 1
+current_tab = 0
 metadata/_edit_use_anchors_ = true
 
 [node name="Gamplay" type="Control" parent="TabContainer" unique_id=1872537284]
-visible = false
 layout_mode = 2
 metadata/_tab_index = 0
 
@@ -89,32 +88,6 @@ size_flags_horizontal = 3
 text = "instant"
 horizontal_alignment = 1
 
-[node name="BattleAnimationSpeed" type="Label" parent="TabContainer/Gamplay/MarginContainer/GameplaySettingsContainer" unique_id=448021841]
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Battle Animation Speed"
-horizontal_alignment = 2
-
-[node name="BattleAnimationSlider" type="HSlider" parent="TabContainer/Gamplay/MarginContainer/GameplaySettingsContainer" unique_id=532595679]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 4
-size_flags_stretch_ratio = 2.5
-max_value = 4.0
-rounded = true
-scrollable = false
-tick_count = 5
-ticks_on_borders = true
-ticks_position = 3
-
-[node name="BattleAnimationSpeedLabel" type="Label" parent="TabContainer/Gamplay/MarginContainer/GameplaySettingsContainer" unique_id=1365925551]
-unique_name_in_owner = true
-layout_mode = 2
-size_flags_horizontal = 3
-text = "instant"
-horizontal_alignment = 1
-
 [node name="Vibration Strength" type="Label" parent="TabContainer/Gamplay/MarginContainer/GameplaySettingsContainer" unique_id=585738192]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -145,7 +118,7 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"HeaderSmall"
-text = "Gameplay"
+text = "Adventure Gameplay"
 horizontal_alignment = 1
 
 [node name="HSeparator2" type="HSeparator" parent="TabContainer/Gamplay/MarginContainer/GameplaySettingsContainer" unique_id=1009292840]
@@ -213,6 +186,7 @@ size_flags_stretch_ratio = 2.5
 text = "Automatically Run."
 
 [node name="Controls" type="Control" parent="TabContainer" unique_id=1806708968]
+visible = false
 layout_mode = 2
 metadata/_tab_index = 1
 

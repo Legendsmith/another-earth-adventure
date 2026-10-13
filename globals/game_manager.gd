@@ -10,16 +10,16 @@ var scene_changing:bool = false
 var game_interface:Control
 
 ## Music Variables
-const MUSIC_BUS_NAME:String = "Music"
+const MUSIC_BUS_NAME:StringName = Constants.MUSIC_BUS
 const ARTIST_SEPARATOR:String = ", "
 const DEFAULT_FADE_TIME:float = 1.5
 var music_attribution:Dictionary[String,PackedStringArray]
 
-@onready var player1: AudioStreamPlayer = %MusicPlayer1
-@onready var player2: AudioStreamPlayer = %MusicPlayer2
+@onready var music_player1: AudioStreamPlayer = %MusicPlayer1
+@onready var music_player2: AudioStreamPlayer = %MusicPlayer2
 
-@onready var current_player: AudioStreamPlayer = player1
-@onready var next_player: AudioStreamPlayer = player2
+@onready var current_player: AudioStreamPlayer = music_player1
+@onready var next_player: AudioStreamPlayer = music_player2
 
 var _playlist:Array[AudioStream]
 var _playlist_idx:int = -1
@@ -185,7 +185,7 @@ func fade_out_and_pause(player: AudioStreamPlayer)->Tween:
 	return fade_out_tween
 
 func stop_all_music():
-	for player in [player1, player2]:
+	for player in [music_player1, music_player2]:
 		if player.playing:
 			fade_out(player)
 	music_now_playing.emit("")
