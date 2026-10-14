@@ -13,6 +13,9 @@
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_26vpt"]
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5mdms"]
+bg_color = Color(0.43710002, 0.93, 0.93, 1)
+
 [sub_resource type="StyleBoxLine" id="StyleBoxLine_5mdms"]
 color = Color(1, 1, 1, 0.78431374)
 grow_begin = -1.0
@@ -430,17 +433,22 @@ toggle_mode = true
 button_group = SubResource("ButtonGroup_26vpt")
 text = "Command & Control"
 
+[node name="CombatReadinessLabel" type="Label" parent="MainLayout/PanelContainer/HudBar/LeftBar" unique_id=364627822]
+layout_mode = 2
+text = "Combat Readiness"
+
+[node name="CombatReadinessBar" type="ProgressBar" parent="MainLayout/PanelContainer/HudBar/LeftBar" unique_id=434184792]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_styles/fill = SubResource("StyleBoxFlat_5mdms")
+value = 100.0
+
 [node name="SilentRunningToggleButton" type="CheckButton" parent="MainLayout/PanelContainer/HudBar/LeftBar" unique_id=1459683284]
 layout_mode = 2
 tooltip_text = "Disable Engines and all Active Sensors"
 text = "Silent Running"
-
-[node name="PauseLabel" type="Label" parent="MainLayout/PanelContainer/HudBar/LeftBar" unique_id=760945528]
-unique_name_in_owner = true
-visible = false
-layout_mode = 2
-theme_override_colors/font_color = Color(1, 0.82, 0.48, 1)
-text = "PAUSED (P)"
 
 [node name="VSeparator" type="VSeparator" parent="MainLayout/PanelContainer/HudBar" unique_id=2040173738]
 layout_mode = 2
@@ -586,5 +594,18 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_type_variation = &"ClearButton"
+
+[node name="PauseLabel" type="Label" parent="." unique_id=760945528]
+unique_name_in_owner = true
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -43.0
+offset_right = 43.0
+offset_bottom = 23.0
+grow_horizontal = 2
+theme_override_colors/font_color = Color(1, 0.82, 0.48, 1)
+text = "PAUSED (P)"
+horizontal_alignment = 1
 
 [editable path="MainLayout/SplitContainer/SpaceView/SubViewport/PlanetOrbitSpace"]
