@@ -8,3 +8,5 @@ name = "Sensors"
 kind = 5
 size = 1.0
 hits_to_kill = 1
+crew_required = 1
+power_draw = 4.0

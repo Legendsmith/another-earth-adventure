@@ -9,3 +9,5 @@ kind = 6
 size = 4.0
 hits_to_kill = 2
 color = Color(0.5, 0.6, 0.9, 1)
+crew_required = 2
+power_draw = 15.0

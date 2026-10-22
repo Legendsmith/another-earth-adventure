@@ -473,10 +473,10 @@ func park(body: int = -1) -> bool:
 	var rel_vel: Vector2 = linear_velocity - orbital_system.GetBodyVelocity(body, now)
 	if rel.length() >= orbital_system.GetBodySphereOfInfluence(body):
 		return false
-	var spin := 1.0 if rel.cross(rel_vel) >= 0.0 else -1.0
+	var _spin := 1.0 if rel.cross(rel_vel) >= 0.0 else -1.0
 	_park_body = body
 	_park_radius = rel.length()
-	_park_rate = spin * sqrt(orbital_system.GetBodyMu(body) / pow(_park_radius, 3.0))
+	_park_rate = _spin * sqrt(orbital_system.GetBodyMu(body) / pow(_park_radius, 3.0))
 	_park_angle0 = rel.angle()
 	_park_t0 = now
 	_held_heading = Vector2.ZERO

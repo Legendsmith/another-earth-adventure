@@ -16,12 +16,13 @@ extends Resource
 ## Module resources are designs: a hull works on its own copies (ShipHull.get_module), so state like a weapon's charge
 ## is per hull.
 
-enum Kind { STRUCTURE, MAIN_ENGINE, THRUSTERS, REACTOR, FUEL_TANK, SENSORS, WEAPON, MAGAZINE, CREW, BRIDGE }
+enum Kind { STRUCTURE, MAIN_ENGINE, THRUSTERS, REACTOR, FUEL_TANK, SENSORS, WEAPON, MAGAZINE, CREW, BRIDGE, CARGO,
+	MEDICAL, IMPLANT_STATION }
 ## What a bigger installation improves (see size_bonus).
 enum Category { NONE, WEAPON, ENGINEERING, ELECTRONICS }
 
 const KIND_NAMES := ["Structure", "Main engine", "Thrusters", "Reactor", "Fuel tank", "Sensors", "Weapon",
-	"Magazine", "Crew quarters", "Bridge"]
+	"Magazine", "Crew quarters", "Bridge", "Cargo hold", "Medical bay", "Combat implant station"]
 
 ## Installed size at which the size bonus is at its maximum, as a multiple of the base size.
 const MAX_BONUS_SIZE := 4.0
@@ -41,6 +42,12 @@ const ELECTRONICS_MAX_EFFECTIVENESS := 1.5
 @export var maintenance_cost: float = 10.0
 ## Power produced by a reactor (same units as EngineModule.power_generation).
 @export var power_output: float = 0.0
+## Crew needed to run the module (Orbital Gameplay, Loss: every module has crew requirements).
+@export var crew_required: int = 0
+## Orbital seconds between maintenance; 0 uses the campaign default (GameConfig.default_maintenance_interval).
+@export var maintenance_interval: float = 0.0
+## Power the module draws while running (reactors and fusion drives produce power instead).
+@export var power_draw: float = 0.0
 ## Colour on the deck plan.
 @export var color: Color = Color(0.45, 0.6, 0.75)
 

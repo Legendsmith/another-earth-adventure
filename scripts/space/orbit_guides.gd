@@ -13,6 +13,12 @@ extends Node2D
 	set(value):
 		rotation_period = value
 		queue_redraw()
+## The FTL limit in geostationary orbit radii (1.5 for most planets); 0 hides it.
+@export var ftl_limit_factor: float = 1.5:
+	set(value):
+		ftl_limit_factor = value
+		queue_redraw()
+@export var ftl_limit_color: Color = Color(1.0, 0.75, 0.3, 0.5)
 @export var low_orbit_color: Color = Color(0.35, 0.9, 0.6, 0.08)
 @export var geostationary_color: Color = Color(0.5, 0.75, 1.0, 0.45)
 @export var label_color: Color = Color(0.75, 0.85, 1.0, 0.8)
@@ -59,6 +65,9 @@ func _draw() -> void:
 	if geostationary > 0.0:
 		draw_arc(Vector2.ZERO, geostationary, 0.0, TAU, 384, geostationary_color, -1.0)
 		_label(Vector2(0.0, -geostationary), "GEOSTATIONARY ORBIT", screen)
+		if ftl_limit_factor > 0.0:
+			draw_arc(Vector2.ZERO, geostationary * ftl_limit_factor, 0.0, TAU, 384, ftl_limit_color, -1.0)
+			_label(Vector2(0.0, -geostationary * ftl_limit_factor), "FTL LIMIT", screen)
 
 
 ## Text at a constant screen size, centred above `at`.

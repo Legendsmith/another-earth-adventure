@@ -17,8 +17,6 @@ extends ShipModule
 @export var flame_color: Color = Color(1.0, 0.6, 0.2)
 ## Visual size of the exhaust plume relative to a standard chemical rocket.
 @export var flame_size: float = 1.0
-## Time between required maintenance on the engine to maintain top performance. Not yet Implemented
-@export var maintenance_interval: float
 ##  Amount of electrical power the engine provides to the ship. Only fusion drives will provide positive power generation. Some engines (eg ion drives) will have negative power generation instead.
 @export var power_generation: float = 0
 ## Emissions the engine adds to the ship's sensor signature when ready. This is zero for cold gas systems.

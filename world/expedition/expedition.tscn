@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://cf5sccw88nr4b"]
+
+[ext_resource type="Script" uid="uid://ec7o1obpmy43" path="res://world/expedition/expedition.gd" id="1_expedition"]
+
+[node name="Expedition" type="Node2D" unique_id=855834345]
+script = ExtResource("1_expedition")

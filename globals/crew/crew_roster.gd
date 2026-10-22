@@ -139,12 +139,26 @@ func retire(member: CrewMember) -> void:
 		_fill_open_slots()
 
 
+## The crewmember this chatter controlled died: the slot is lost and the chatter goes to the back of the queue.
+func send_to_back(user_id: String) -> void:
+	var member: CrewMember = members.get(user_id)
+	if member == null:
+		return
+	member.extra["back_of_queue"] = true
+	if member.is_on_crew():
+		slots[member.slot] = null
+		member.slot = -1
+		crew_retired.emit(member)
+	_mark_changed()
+
+
 func _try_assign_slot(member: CrewMember) -> bool:
 	var free_slot: int = slots.find(null)
 	if free_slot == -1:
 		return false
 	slots[free_slot] = member
 	member.slot = free_slot
+	member.extra.erase("back_of_queue")
 	crew_joined.emit(member)
 	return true
 
@@ -192,7 +206,13 @@ func get_waiting() -> Array[CrewMember]:
 	for member: CrewMember in members.values():
 		if member.is_waiting():
 			waiting.append(member)
-	waiting.sort_custom(func(a: CrewMember, b: CrewMember) -> bool: return a.freshness > b.freshness)
+	# Chatters whose crewmember died wait behind everyone else.
+	waiting.sort_custom(func(a: CrewMember, b: CrewMember) -> bool:
+		var a_back: bool = a.extra.get("back_of_queue", false)
+		var b_back: bool = b.extra.get("back_of_queue", false)
+		if a_back != b_back:
+			return b_back
+		return a.freshness > b.freshness)
 	return waiting
 
 

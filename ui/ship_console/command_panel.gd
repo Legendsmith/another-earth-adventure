@@ -23,6 +23,24 @@ func setup(owner_console: ShipHud) -> void:
 	Crew.roster_changed.connect(func() -> void: _crew_dirty = true)
 	Crew.freshness_updated.connect(func() -> void: _crew_dirty = true)
 	visibility_changed.connect(func() -> void: _crew_dirty = true)
+	if Campaign.active:
+		# The campaign replaces collecting rewards straight from orbit: expeditions bring them back.
+		_collect_button.visible = false
+		_rewards_log.visible = false
+		_planet_info.visible = false
+		for placeholder: String in ["ExpeditionSeparator", "ExpeditionHeader", "ExpeditionInfo", "AssignExpeditionButton"]:
+			var node := get_node_or_null(placeholder) as CanvasItem
+			if node:
+				node.visible = false
+		var scroll := ScrollContainer.new()
+		scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		scroll.custom_minimum_size = Vector2(0, 420)
+		var panel := CampaignPanel.new()
+		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		scroll.add_child(panel)
+		add_child(scroll)
+		move_child(scroll, _planet_info.get_index() + 1)
 
 
 func _process(_delta: float) -> void:
@@ -47,6 +65,8 @@ func get_orbited_planet() -> Planet:
 
 
 func _update_planet() -> void:
+	if Campaign.active:
+		return
 	var planet := get_orbited_planet()
 	if planet == null:
 		_planet_info.text = "Not in low orbit of a planet. Low orbit is the ring around each planet."

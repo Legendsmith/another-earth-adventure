@@ -38,6 +38,7 @@
 [ext_resource type="Script" path="res://scripts/space/space_views.gd" id="34_views"]
 [ext_resource type="PackedScene" path="res://entities/space/combat/orbital_gun_platform.tscn" id="32_platform"]
 [ext_resource type="PackedScene" path="res://entities/space/combat/drone.tscn" id="33_drone"]
+[ext_resource type="Script" path="res://scripts/space/campaign_orbit.gd" id="40_campaign"]
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_planet"]
 radius = 300.0
@@ -53,6 +54,9 @@ reload_time = 8.0
 auto_fire = false
 
 [node name="PlanetOrbitSpace" type="Node2D"]
+
+[node name="CampaignOrbit" type="Node" parent="."]
+script = ExtResource("40_campaign")
 
 [node name="OrbitalSystem" type="Node" parent="."]
 script = ExtResource("1_system")

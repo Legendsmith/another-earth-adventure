@@ -19,3 +19,4 @@ power_generation = -5.0
 active_sensor_signature = 1.0
 max_sensor_signature = 6.0
 warmup_time = 10.0
+crew_required = 1

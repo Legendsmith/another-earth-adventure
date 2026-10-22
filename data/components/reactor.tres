@@ -9,3 +9,4 @@ kind = 3
 size = 3.0
 hits_to_kill = 2
 power_output = 40.0
+crew_required = 1

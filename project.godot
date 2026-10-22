@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Another Earth AdVenture"
-run/main_scene="uid://d2iyh546mhb4c"
+run/main_scene="res://ui/main_menu/main_menu.tscn"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 config/icon="res://icon.svg"
 
@@ -28,6 +28,7 @@ VerySimpleTwitch="*uid://b67spqib1p8ar"
 Cursor="*uid://cged1pq4dniq6"
 SaveSystem="*uid://obs3nso70vxb"
 Crew="*uid://gj563spw5ay5"
+Campaign="*res://globals/campaign/campaign.gd"
 
 [dialogic]
 
