@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://bx2ds5egaym3g"]
 
 [ext_resource type="Theme" uid="uid://3wclxr72g4rm" path="res://ui/settings/settings_theme.tres" id="1_fayoa"]
-[ext_resource type="Theme" uid="uid://d2rlegeqi7jag" path="res://ui/title_screen/title_screen_theme.tres" id="1_hrs25"]
+[ext_resource type="Theme" uid="uid://d2rlegeqi7jag" path="res://ui/title_screen_theme.tres" id="1_hrs25"]
 [ext_resource type="Script" uid="uid://evg6pbg06fiv" path="res://ui/settings/settings.gd" id="2_fayoa"]
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_fayoa"]
