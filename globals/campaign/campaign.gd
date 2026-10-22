@@ -28,7 +28,6 @@ const SCENE_TITLE := "res://ui/title_screen/title_screen.tscn"
 const SCENE_FTL_MAP := "res://ui/ftl_map/ftl_map.tscn"
 const SCENE_ORBIT := "res://ui/ship_console/ship_hud.tscn"
 const SCENE_EXPEDITION := "res://world/expedition/expedition.tscn"
-const SCENE_PLANNER := "res://ui/expedition_planner/expedition_planner.tscn"
 const SCENE_GAME_OVER := "res://ui/game_over/game_over.tscn"
 
 const STANCE_COMMANDS := ["!explore", "!defend", "!attack", "!rescue", "!heal", "!medic"]
@@ -53,6 +52,8 @@ var log_lines: PackedStringArray = []
 var active: bool = false
 ## Twitch chat routing is on (off in tests).
 var listen_to_chat: bool = true
+## Scene changes happen (off in tests, which drive scenes themselves).
+var auto_scene_changes: bool = true
 
 var _syncing_roster := false
 
@@ -186,6 +187,8 @@ func go_to_phase_scene() -> void:
 
 
 func change_scene(path: String) -> void:
+	if not auto_scene_changes:
+		return
 	var manager: Node = get_node_or_null("/root/GameManager")
 	if manager and manager.has_method("change_scene"):
 		manager.change_scene(path)
@@ -339,6 +342,9 @@ func finish_expedition(result: Dictionary) -> Dictionary:
 	if intro:
 		post("The ship is yours. Climbing to low orbit.")
 		orbit_stage = OrbitStage.LOW_ORBIT
+	elif orbit_stage == OrbitStage.FLYBY:
+		# The flyby carried the ship on past the planet.
+		orbit_stage = OrbitStage.IN_TRANSIT
 	set_phase(Phase.ORBIT)
 	crew_changed.emit()
 	autosave()
@@ -701,6 +707,8 @@ func end_game(victory: bool, reason: String) -> void:
 	set_phase(Phase.VICTORY if victory else Phase.GAME_OVER)
 	post(reason, 0 if victory else 2)
 	game_over.emit(victory, reason)
+	if auto_scene_changes:
+		go_to_phase_scene.call_deferred()
 
 #endregion
 

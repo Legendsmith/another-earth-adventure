@@ -193,6 +193,7 @@ func _campaign() -> Node:
 func _test_campaign() -> void:
 	var campaign := _campaign()
 	campaign.listen_to_chat = false
+	campaign.auto_scene_changes = false
 	campaign.new_game(1234)
 	check(campaign.phase == campaign.Phase.INTRO, "new game starts in the intro dungeon")
 	check(campaign.star_map.sites.size() == campaign.config.map_systems, "star map has all its systems")

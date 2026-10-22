@@ -122,6 +122,7 @@ var _activity: float = 0.0
 var _was_down := false
 var _died_emitted := false
 var _steering := false
+var _implant_cooldown := 0.0
 var _arrive_distance := 24.0
 var _anim_time := 0.0
 var _sprite: Sprite2D
@@ -351,6 +352,12 @@ func _step_body(dt: float) -> void:
 	if expedition and expedition.is_lava(global_position):
 		body.take_damage(10.0 * dt, MedicalBody.DamageType.BURN, [MedicalBody.LEG_L, MedicalBody.LEG_R][rng.randi() % 2])
 	body.step(dt, _activity)
+	# The Combat Implant Station's implant: stimulants, painkillers and oxygen when things get dire.
+	if expedition and expedition.implants and role != Role.ENEMY and _implant_cooldown <= 0.0 			and body.get_status() >= MedicalBody.Status.CRITICAL and not body.dead:
+		_implant_cooldown = 90.0
+		body.implant_injection()
+		say("*implant hiss*", 2.0)
+	_implant_cooldown -= dt
 	var down := is_down()
 	if down and not _was_down:
 		_on_went_down()

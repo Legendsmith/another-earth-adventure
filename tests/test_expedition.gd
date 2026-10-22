@@ -73,6 +73,7 @@ func _run(seconds: float, scene: Expedition, each: Callable = Callable()) -> voi
 func _test_intro() -> void:
 	var campaign := _campaign()
 	campaign.listen_to_chat = false
+	campaign.auto_scene_changes = false
 	campaign.new_game(2024)
 	var scene := await _start_scene()
 	check(scene.mode == Expedition.Mode.INTRO, "new game starts with the intro dungeon")

@@ -61,7 +61,15 @@ func is_in_low_orbit() -> bool:
 	return not _in_orbit.is_empty()
 
 
+func _campaign_active() -> bool:
+	var campaign := get_node_or_null(^"/root/Campaign")
+	return campaign != null and campaign.active
+
+
 func can_collect() -> bool:
+	# In a campaign, rewards come back from expeditions instead.
+	if _campaign_active():
+		return false
 	return is_in_low_orbit() and not data.collected
 
 
@@ -85,7 +93,7 @@ func _update_label() -> void:
 	var abbreviation:String = planet_type.abbreviation if planet_type else ""
 	if data.collected:
 		type_label.text = "%s\n%s" % [abbreviation, COLLECTED_HINT]
-	elif is_in_low_orbit():
+	elif is_in_low_orbit() and not _campaign_active():
 		type_label.text = "%s\n%s" % [abbreviation, COLLECT_HINT]
 	else:
 		type_label.text = abbreviation

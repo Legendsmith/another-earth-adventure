@@ -47,6 +47,8 @@ var eruption: float = 0.0
 var eruption_countdown: float = -1.0
 var toxic: bool = false
 var lava_world: bool = false
+## The ship has a working Combat Implant Station: the crew carry its implant.
+var implants: bool = false
 var is_over: bool = false
 var outcome: String = ""
 var tile_layer: TileMapLayer
@@ -82,6 +84,8 @@ func _ready() -> void:
 	time_limit = float(plan.get("flyby_seconds", 0.0))
 	toxic = PlanetRules.get_rule(site.kind, "needs_oxygen", false) and mode != Mode.BOARDING
 	lava_world = PlanetRules.get_rule(site.kind, "eruption", false) and mode != Mode.BOARDING
+	if campaign:
+		implants = campaign.ship.has_working(ShipModule.Kind.IMPLANT_STATION)
 	rng.seed = site.system_seed + (1000 if mode == Mode.BOARDING else 0) + int(campaign.orbital_time if campaign else 0)
 	_build_dungeon()
 	_build_tiles()
