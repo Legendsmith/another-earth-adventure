@@ -213,8 +213,8 @@ func _make_actor() -> ExpeditionActor:
 	return actor
 
 
-func _add_actor(actor: ExpeditionActor, position: Vector2) -> void:
-	actor.position = position
+func _add_actor(actor: ExpeditionActor, _position: Vector2) -> void:
+	actor.position = _position
 	actors.append(actor)
 	add_child(actor)
 	actor.went_down.connect(_on_actor_down)
@@ -784,10 +784,10 @@ func on_actor_hit(actor: ExpeditionActor, part: StringName, amount: float, _atta
 
 
 ## Any explosion makes the area less stable (Lava worlds' eruption gauge).
-func on_explosion(_position: Vector2, scale: float = 1.0) -> void:
+func on_explosion(_position: Vector2, _scale: float = 1.0) -> void:
 	if not lava_world or eruption_countdown >= 0.0:
 		return
-	eruption = minf(100.0, eruption + config.eruption_per_explosion * scale)
+	eruption = minf(100.0, eruption + config.eruption_per_explosion * _scale)
 	if eruption >= 100.0:
 		eruption_countdown = config.eruption_countdown_seconds
 		comms("Ship", "The ground is giving way! Eruption in %d seconds!" % roundi(eruption_countdown),
@@ -795,10 +795,10 @@ func on_explosion(_position: Vector2, scale: float = 1.0) -> void:
 
 
 ## Gunfire wakes up enemies within earshot.
-func alert_noise(position: Vector2, radius: float, source_faction: StringName) -> void:
+func alert_noise(_position: Vector2, radius: float, source_faction: StringName) -> void:
 	for actor: ExpeditionActor in actors:
 		if actor.faction != source_faction and actor.is_enemy() and not actor.alerted and not actor.gone \
-				and actor.global_position.distance_to(position) < radius:
+				and actor.global_position.distance_to(_position) < radius:
 			actor.alerted = true
 
 

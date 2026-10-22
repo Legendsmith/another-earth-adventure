@@ -81,7 +81,7 @@ func _ready() -> void:
 
 
 func _map_to_screen(point: Vector2) -> Vector2:
-	var scale := minf(_map_rect.size.x / StarMap.MAP_SIZE.x, _map_rect.size.y / StarMap.MAP_SIZE.y)
+	var _scale := minf(_map_rect.size.x / StarMap.MAP_SIZE.x, _map_rect.size.y / StarMap.MAP_SIZE.y)
 	return _map_rect.position + point * scale
 
 
@@ -112,15 +112,15 @@ func _refresh() -> void:
 	_status.text = "Fuel %.0f/%.0f   Metal %.0f   Supplies %.0f\nCrew %d/%d needed to go home, fuel %.0f/%.0f needed." % [
 		stores.fuel, stores.fuel_capacity(), stores.metal, stores.supplies, campaign.rescued_crew_count(),
 		campaign.config.crew_to_win, stores.fuel, campaign.config.fuel_to_win]
-	var show := hovered if hovered >= 0 else selected
+	var _show := hovered if hovered >= 0 else selected
 	var map: StarMap = campaign.star_map
-	if show >= 0:
-		var site: PlanetSite = map.get_site(show)
+	if _show >= 0:
+		var site: PlanetSite = map.get_site(_show)
 		var text := site.describe()
-		if show == map.current:
+		if _show == map.current:
 			text += "\n[color=#88ccff]You are here.[/color]"
-		elif map.in_range(map.current, show):
-			text += "\nJump cost: [b]%.0f fuel[/b]" % map.jump_cost(map.current, show, campaign.config, stores.mass())
+		elif map.in_range(map.current, _show):
+			text += "\nJump cost: [b]%.0f fuel[/b]" % map.jump_cost(map.current, _show, campaign.config, stores.mass())
 		else:
 			text += "\n[color=#ff8866]Out of FTL range from here.[/color]"
 		_info.text = text

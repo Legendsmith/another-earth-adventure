@@ -268,14 +268,14 @@ func needs_medical() -> bool:
 	return body.total_bleed() > 0.03 or body.cardiac_arrest or not body.is_conscious()
 
 
-func skill(name: StringName) -> float:
+func skill(_name: StringName) -> float:
 	if record:
-		return record.skills.get(name, 0.0)
+		return record.skills.get(_name, 0.0)
 	return 1.0 if role == Role.ENEMY and enemy_kind == &"dl_trooper" else 0.0
 
 
-func skill_speed(name: StringName) -> float:
-	return record.skill_speed(name) if record else 1.0
+func skill_speed(_name: StringName) -> float:
+	return record.skill_speed(_name) if record else 1.0
 
 #endregion
 
