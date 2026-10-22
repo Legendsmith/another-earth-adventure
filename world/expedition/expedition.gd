@@ -9,6 +9,8 @@ extends Node2D
 signal finished(result: Dictionary)
 signal comms_line(sender: String, text: String, color: Color, kind: StringName)
 
+@warning_ignore_start("integer_division")
+
 enum Mode { EXPEDITION, INTRO, BOARDING }
 
 const PLANET_COLORS := {
