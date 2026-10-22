@@ -8,3 +8,5 @@ name = "Bridge"
 kind = 9
 size = 1.0
 hits_to_kill = 1
+crew_required = 2
+power_draw = 2.0
