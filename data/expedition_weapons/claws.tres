@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ExpeditionWeapon" format=3]
+
+[ext_resource type="Script" uid="uid://dyqygeo6ynns6" path="res://scripts/expedition_weapon.gd" id="1_weapon"]
+
+[resource]
+script = ExtResource("1_weapon")
+display_name = "Claws"
+melee = true
+damage = 14.0
+type = 2
+weapon_range = 70.0
+cooldown = 0.42
+accuracy = 0.9

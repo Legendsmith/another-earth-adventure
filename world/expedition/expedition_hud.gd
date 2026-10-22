@@ -154,7 +154,7 @@ func _update_top() -> void:
 	var carried: PackedStringArray = []
 	for key: Variant in p.carried:
 		carried.append("%s %.0f" % [str(key).capitalize(), p.carried[key]])
-	lines.append("You: %s  %s  Ammo %d  Dressings %d  Stims %d  |  Carrying %s (%.1f/%.1f)" % [p.get_weapon().name,
+	lines.append("You: %s  %s  Ammo %d  Dressings %d  Stims %d  |  Carrying %s (%.1f/%.1f)" % [p.get_weapon().display_name,
 		p.body.get_status_name(), p.ammo, p.dressings, p.stimulants, ", ".join(carried) if carried.size() else "nothing",
 		p.carry_weight(), p.carry_capacity()])
 	if ex.lava_world:

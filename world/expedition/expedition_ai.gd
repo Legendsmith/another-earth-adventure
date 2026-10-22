@@ -245,8 +245,8 @@ static func _engage(a: ExpeditionActor, enemy: ExpeditionActor) -> void:
 	var weapon := a.get_weapon()
 	var distance := a.global_position.distance_to(enemy.global_position)
 	var in_sight: bool = a.expedition.dungeon.has_line_of_sight(a.global_position, enemy.global_position)
-	if distance > weapon.range * 0.85 or not in_sight:
-		a.move_to(enemy.global_position, weapon.range * 0.5)
+	if distance > weapon.weapon_range * 0.85 or not in_sight:
+		a.move_to(enemy.global_position, weapon.weapon_range * 0.5)
 	else:
 		a.stop()
 		a.facing = a.global_position.direction_to(enemy.global_position)
@@ -259,11 +259,11 @@ static func _pick_weapon(a: ExpeditionActor, enemy: ExpeditionActor) -> void:
 	var close := enemy != null and a.global_position.distance_to(enemy.global_position) < 80.0
 	if a.ammo <= 0 or close:
 		for id: StringName in a.weapons:
-			if ExpeditionActor.WEAPONS[id].melee:
+			if ExpeditionWeapon.find(id).melee:
 				a.weapon_id = id
 				return
 	for id: StringName in a.weapons:
-		if not ExpeditionActor.WEAPONS[id].melee:
+		if not ExpeditionWeapon.find(id).melee:
 			a.weapon_id = id
 			return
 
@@ -299,14 +299,14 @@ static func think_enemy(a: ExpeditionActor, _dt: float) -> void:
 	var distance := a.global_position.distance_to(a.target.global_position)
 	var in_sight: bool = ex.dungeon.has_line_of_sight(a.global_position, a.target.global_position)
 	if weapon.melee:
-		if distance <= weapon.range + a.target.radius:
+		if distance <= weapon.weapon_range + a.target.radius:
 			a.stop()
 			a.attack(a.target)
 		else:
-			a.move_to(a.target.global_position, weapon.range * 0.6)
+			a.move_to(a.target.global_position, weapon.weapon_range * 0.6)
 	else:
-		if not in_sight or distance > weapon.range * 0.8:
-			a.move_to(a.target.global_position, weapon.range * 0.5)
+		if not in_sight or distance > weapon.weapon_range * 0.8:
+			a.move_to(a.target.global_position, weapon.weapon_range * 0.5)
 		elif distance < 220.0:
 			a.move_to(a.global_position + a.target.global_position.direction_to(a.global_position) * 150.0, 10.0)
 			a.attack(a.target)

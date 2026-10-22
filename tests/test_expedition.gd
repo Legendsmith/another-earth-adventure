@@ -19,6 +19,7 @@ func _initialize() -> void:
 	await process_frame
 	_test_generator()
 	await _test_intro()
+	await _test_intro_death()
 	await _test_expedition()
 	await _test_boarding()
 	print("expedition: %d checks, %d failures" % [_checks, _failures])
@@ -77,7 +78,9 @@ func _test_intro() -> void:
 	campaign.new_game(2024)
 	var scene := await _start_scene()
 	check(scene.mode == Expedition.Mode.INTRO, "new game starts with the intro dungeon")
-	check(scene.player != null and scene.player.weapon_id == &"claws", "the captain starts with claws")
+	check(scene.player != null and scene.player.weapon_id == &"pistol" and scene.player.weapons.has(&"claws"),
+		"the captain starts with a pistol and claws")
+	check(scene.player.get_weapon().display_name == "Pistol", "weapons come from their resource files")
 	var cells := scene.loot.filter(func(p: LootPile) -> bool: return p.kind == LootPile.Kind.CELL)
 	check(cells.size() == 1 and cells[0].prisoners.size() >= campaign.config.intro_rescued_crew, "prisoners wait in a cell")
 	# Make the walk safe: remove the enemies, then free the prisoners and walk them to the ship.
@@ -113,6 +116,23 @@ func _test_intro() -> void:
 		"crew_rescued": cell.prisoners.size()})
 	check(campaign.phase == campaign.Phase.ORBIT, "back to orbit after the intro")
 	check(campaign.rescued_crew_count() >= result_crew, "the freed prisoners join the crew")
+	scene.queue_free()
+	await process_frame
+
+
+## Going down in the intro is the one game over an expedition can cause: there is no emergency teleport yet.
+func _test_intro_death() -> void:
+	var campaign := _campaign()
+	campaign.new_game(2025)
+	var scene := await _start_scene()
+	scene.player.body.cardiac_arrest = true
+	scene.player.body.step(30.0)
+	var frames := 0
+	while campaign.phase != campaign.Phase.GAME_OVER and frames < 600:
+		await physics_frame
+		frames += 1
+	check(campaign.phase == campaign.Phase.GAME_OVER, "the captain going down in the intro is a game over")
+	check(not scene.player.gone, "no emergency teleport in the intro")
 	scene.queue_free()
 	await process_frame
 

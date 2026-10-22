@@ -246,8 +246,9 @@ func _spawn_party() -> void:
 		var actor := _make_actor()
 		actor.setup_crew(record, record.is_player)
 		if mode == Mode.INTRO and record.is_player:
-			actor.weapons = [&"claws"]
-			actor.weapon_id = &"claws"
+			# The captain starts with a pistol and their natural claws.
+			actor.weapons.assign([&"pistol", &"claws"])
+			actor.weapon_id = &"pistol"
 		if armored.has(record.id):
 			actor.armor_factor = 0.65
 		actor.has_oxygen = true
@@ -461,7 +462,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_Q:
 				var i := player.weapons.find(player.weapon_id)
 				player.weapon_id = player.weapons[(i + 1) % player.weapons.size()]
-				comms("You", "Switched to %s." % player.get_weapon().name, Color(0.8, 0.8, 0.8), &"system")
+				comms("You", "Switched to %s." % player.get_weapon().display_name, Color(0.8, 0.8, 0.8), &"system")
 			KEY_F:
 				var patient := _patient_under_mouse()
 				if hud:
@@ -498,7 +499,7 @@ func player_attack() -> void:
 		if weapon.melee:
 			# Melee hits whatever is in reach towards the cursor.
 			var ahead := player.global_position.direction_to(aim).dot(player.global_position.direction_to(other.global_position))
-			if to_player <= weapon.range + other.radius and ahead > 0.3 and to_player < best_d:
+			if to_player <= weapon.weapon_range + other.radius and ahead > 0.3 and to_player < best_d:
 				best_d = to_player
 				best = other
 		elif to_cursor < 90.0 + other.radius and to_cursor < best_d:
@@ -510,7 +511,7 @@ func player_attack() -> void:
 	# Swing or shoot at nothing (or at ice).
 	player.facing = player.global_position.direction_to(aim)
 	player.cooldown = weapon.cooldown
-	var reach: float = weapon.range if weapon.melee else minf(weapon.range, player.global_position.distance_to(aim))
+	var reach: float = weapon.weapon_range if weapon.melee else minf(weapon.weapon_range, player.global_position.distance_to(aim))
 	var end := player.global_position + player.facing * reach
 	if weapon.melee:
 		add_swipe(player.global_position, end, player.color)
@@ -652,11 +653,28 @@ func _check_emergencies() -> void:
 			continue
 		var special := actor.is_player() or (actor.record and actor.record.special)
 		if special and (actor.body.get_status() == MedicalBody.Status.DYING or not actor.body.is_conscious()):
+			if actor.is_player() and mode == Mode.INTRO:
+				_intro_lost()
+				return
 			teleport_out(actor, "Emergency teleport!")
 			if actor.is_player():
 				comms("Ship", "The captain is down: emergency teleport. Recalling the team.", Color(1.0, 0.5, 0.3), &"system")
 				end_expedition("captain_down")
 				return
+
+
+## The one way to lose on an expedition: the ship can't teleport anyone out until enough crew are rescued to bring it
+## fully online, so the captain going down in the intro ends the run.
+func _intro_lost() -> void:
+	if is_over:
+		return
+	is_over = true
+	outcome = "intro_lost"
+	comms("Ship", "No teleport lock: the ship isn't fully online yet...", Color(1.0, 0.3, 0.3), &"system")
+	if campaign == null:
+		return
+	await get_tree().create_timer(2.5).timeout
+	campaign.end_game(false, "The captain fell before reaching the ship. With too few crew to bring it fully online, there was no emergency teleport.")
 
 
 func _trickle(delta: float) -> void:

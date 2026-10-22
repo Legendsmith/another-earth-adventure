@@ -27,27 +27,7 @@ const DASH_COOLDOWN := 1.1
 const LOOT_WEIGHT := 0.1
 const CORE_WEIGHT := 2.0
 
-## Enemy and weapon definitions. damage_type is a MedicalBody.DamageType.
-const WEAPONS := {
-	&"claws": {"name": "Claws", "melee": true, "damage": 14.0, "type": MedicalBody.DamageType.CUT, "range": 70.0,
-		"cooldown": 0.42, "accuracy": 0.9},
-	&"knife": {"name": "Knife", "melee": true, "damage": 9.0, "type": MedicalBody.DamageType.CUT, "range": 60.0,
-		"cooldown": 0.5, "accuracy": 0.8},
-	&"rifle": {"name": "Rifle", "melee": false, "damage": 10.0, "type": MedicalBody.DamageType.PIERCE,
-		"range": 650.0, "cooldown": 0.32, "accuracy": 0.6},
-	&"pistol": {"name": "Pistol", "melee": false, "damage": 8.0, "type": MedicalBody.DamageType.PIERCE,
-		"range": 500.0, "cooldown": 0.45, "accuracy": 0.55},
-	&"bandit_rifle": {"name": "Rifle", "melee": false, "damage": 8.0, "type": MedicalBody.DamageType.PIERCE,
-		"range": 600.0, "cooldown": 0.6, "accuracy": 0.42},
-	&"bite": {"name": "Bite", "melee": true, "damage": 10.0, "type": MedicalBody.DamageType.CUT, "range": 58.0,
-		"cooldown": 0.8, "accuracy": 0.75},
-	&"void_claw": {"name": "Crystal claw", "melee": true, "damage": 9.0, "type": MedicalBody.DamageType.CUT,
-		"range": 60.0, "cooldown": 0.7, "accuracy": 0.75},
-	&"ogre_hammer": {"name": "Hammer fists", "melee": true, "damage": 30.0, "type": MedicalBody.DamageType.BLUNT,
-		"range": 95.0, "cooldown": 1.6, "accuracy": 0.7, "huge": true, "splash": 70.0},
-	&"dl_rifle": {"name": "Military rifle", "melee": false, "damage": 12.0, "type": MedicalBody.DamageType.PIERCE,
-		"range": 700.0, "cooldown": 0.38, "accuracy": 0.62},
-}
+## Enemy definitions. Weapons are ExpeditionWeapon files in data/expedition_weapons/, named by id.
 const ENEMY_KINDS := {
 	&"bandit": {"name": "Bandit", "weapon": &"bandit_rifle", "speed": 190.0, "hp": 1.0, "color": Color(0.85, 0.45, 0.35),
 		"flees": true, "sprite": true},
@@ -233,8 +213,9 @@ func is_hostile_to(other: ExpeditionActor) -> bool:
 	return other != null and other.faction != faction
 
 
-func get_weapon() -> Dictionary:
-	return WEAPONS.get(weapon_id, WEAPONS[&"knife"])
+func get_weapon() -> ExpeditionWeapon:
+	var weapon := ExpeditionWeapon.find(weapon_id)
+	return weapon if weapon else ExpeditionWeapon.find(&"knife")
 
 
 func carry_capacity() -> float:
@@ -451,7 +432,7 @@ func can_attack(other: ExpeditionActor) -> bool:
 		return false
 	var weapon := get_weapon()
 	var distance := global_position.distance_to(other.global_position)
-	if distance > weapon.range + other.radius:
+	if distance > weapon.weapon_range + other.radius:
 		return false
 	if not weapon.melee and expedition and not expedition.dungeon.has_line_of_sight(global_position, other.global_position):
 		return false
@@ -473,7 +454,7 @@ func attack(other: ExpeditionActor) -> bool:
 	var chance: float = weapon.accuracy * body.aim_multiplier() * (1.0 + skill(CrewRecord.COMBAT) * 0.07)
 	var distance := global_position.distance_to(other.global_position)
 	if not weapon.melee:
-		chance *= 1.0 - 0.45 * distance / weapon.range
+		chance *= 1.0 - 0.45 * distance / weapon.weapon_range
 		# Someone lying down is harder to hit with projectiles.
 		if other.is_down():
 			chance *= 0.5
@@ -488,10 +469,10 @@ func attack(other: ExpeditionActor) -> bool:
 			expedition.add_tracer(global_position + facing * radius, end, Color(1.0, 0.9, 0.5) if faction == PLAYER_FACTION else Color(1.0, 0.45, 0.35))
 			expedition.alert_noise(global_position, 700.0, faction)
 	if hit:
-		other.take_hit(weapon.damage * rng.randf_range(0.8, 1.2), weapon.type, weapon.melee, self, weapon.get("huge", false))
+		other.take_hit(weapon.damage * rng.randf_range(0.8, 1.2), weapon.type, weapon.melee, self, weapon.huge)
 		if record:
 			record.train(CrewRecord.COMBAT, 1.0)
-	if weapon.has("splash") and expedition:
+	if weapon.splash > 0.0 and expedition:
 		for nearby: ExpeditionActor in expedition.actors_near(end, weapon.splash):
 			if nearby != other and nearby.faction != faction:
 				nearby.take_hit(weapon.damage * 0.5, MedicalBody.DamageType.BLUNT, true, self, false)

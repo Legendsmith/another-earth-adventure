@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ExpeditionWeapon" format=3]
+
+[ext_resource type="Script" uid="uid://dyqygeo6ynns6" path="res://scripts/expedition_weapon.gd" id="1_weapon"]
+
+[resource]
+script = ExtResource("1_weapon")
+display_name = "Military rifle"
+damage = 12.0
+type = 1
+weapon_range = 700.0
+cooldown = 0.38
+accuracy = 0.62
