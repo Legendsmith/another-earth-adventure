@@ -297,7 +297,12 @@ func maintain() -> void:
 
 func status_text() -> String:
 	var parts: PackedStringArray = []
-	parts.append("ONLINE" if online else "OFFLINE")
+	if online:
+		parts.append("ONLINE")
+	elif repair_progress > 0.0:
+		parts.append("OFFLINE, repairing %d%%" % roundi(100.0 * repair_progress / maxf(repair_time(), 0.01)))
+	else:
+		parts.append("OFFLINE")
 	if not powered:
 		parts.append("unpowered")
 	var interval := maintenance_interval()

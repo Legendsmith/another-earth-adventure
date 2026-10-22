@@ -13,6 +13,7 @@ var _modules: VBoxContainer
 var _crew: VBoxContainer
 var _log: RichTextLabel
 var _dirty := true
+var _module_timer := 0.0
 var _timer := 0.0
 var _planner: PanelContainer
 
@@ -70,6 +71,10 @@ func _process(delta: float) -> void:
 		return
 	_timer = 0.5
 	_update_status()
+	_module_timer -= 0.5
+	if _module_timer <= 0.0:
+		_module_timer = 2.0
+		_dirty = true
 	if _dirty and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		_dirty = false
 		_rebuild_actions()
@@ -155,8 +160,9 @@ func _rebuild_modules() -> void:
 		var module := state.modules[i]
 		var row := HBoxContainer.new()
 		var label := Label.new()
-		label.text = "%s [%s] crew %d - %s" % [module.get_module_name(), Manufacturers.display_name_of(module.manufacturer),
-			module.crew_required(), module.status_text()]
+		var reason := orbit.module_status(i) if orbit else ""
+		label.text = "%s [%s] crew %d - %s%s" % [module.get_module_name(), Manufacturers.display_name_of(module.manufacturer),
+			module.crew_required(), module.status_text(), (" - " + reason.to_upper()) if reason and module.online else ""]
 		label.tooltip_text = Manufacturers.describe(module.manufacturer, module.get_kind(), module.military)
 		label.mouse_filter = Control.MOUSE_FILTER_PASS
 		label.add_theme_font_size_override("font_size", 12)

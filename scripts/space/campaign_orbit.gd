@@ -333,15 +333,27 @@ func _sync_modules() -> void:
 	var state: ShipState = campaign.ship
 	state.assign_crew(campaign.crew)
 	_syncing = true
+	var reasons := {}
 	for i: int in mini(state.modules.size(), hull.get_module_count()):
 		var module := state.modules[i]
-		var want := module.online and state.is_manned(i, campaign.crew)
+		var manned := state.is_manned(i, campaign.crew)
+		var want := module.online and manned
+		if not module.online and module.repair_progress >= module.repair_time():
+			reasons[i] = "repaired, needs %.1f supplies for maintenance" % module.maintenance_cost()
+		elif not module.online:
+			reasons[i] = "repairing %d%%" % roundi(100.0 * module.repair_progress / maxf(module.repair_time(), 0.01)) 				if module.repair_progress > 0.0 else "waiting for repair crew"
+		elif not manned:
+			reasons[i] = "no crew (needs %d)" % module.crew_required()
 		if module.is_weapon() and not state.weapons_loaded:
 			# Loading the weapons draws ammunition from Supplies.
 			want = false
+			if module.online and manned:
+				reasons[i] = "not loaded"
 		if hull.get_module_bit(i) != ShipHull.NO_BIT and hull.is_module_operational(i) != want:
 			hull.set_module_operational(i, want)
 	_syncing = false
+	# Why each module is down, for the Combat and Command readouts.
+	hull.set_meta(&"module_status", reasons)
 	var readiness := get_tree().root.find_child("CombatReadinessBar", true, false) as ProgressBar
 	if readiness:
 		readiness.max_value = 100.0
@@ -358,6 +370,13 @@ func _on_module_offline(index: int) -> void:
 
 func _on_module_restored(_index: int) -> void:
 	pass
+
+
+## Why module `index` is not running ("" when it is).
+func module_status(index: int) -> String:
+	if hull == null or not hull.has_meta(&"module_status"):
+		return ""
+	return hull.get_meta(&"module_status").get(index, "")
 
 
 ## Crew working at a module that is hit can be hurt: the easiest way to beat a ship is to put its crew out of action.
@@ -583,6 +602,9 @@ func _stand_down() -> void:
 	boarding_countdown = -1.0
 	boarding_hull = null
 	campaign.post("No hostiles in range. Standing down from combat power.")
+	# The fight used up the loaded ammunition: the crew reload from Supplies.
+	campaign.ship.weapons_loaded = false
+	load_weapons()
 	_store_armor()
 	campaign.autosave()
 	encounter_changed.emit()

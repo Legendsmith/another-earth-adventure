@@ -201,7 +201,8 @@ func _test_campaign() -> void:
 	var result := {"fuel": 10.0, "metal": 5.0, "supplies": 5.0, "crew_rescued": 6, "completed": true}
 	campaign.finish_expedition(result)
 	check(campaign.phase == campaign.Phase.ORBIT and campaign.is_in_low_orbit(), "after the intro the ship is in low orbit")
-	check(campaign.rescued_crew_count() == 6, "rescued crew join")
+	check(campaign.rescued_crew_count() == maxi(6, campaign.ship.total_crew_required()),
+		"rescued crew join, topped up so every station is crewed")
 	check(campaign.lose_reason().is_empty(), "a fresh crew is not a loss")
 	# FTL.
 	campaign.reach_ftl_limit()
@@ -251,7 +252,8 @@ func _test_roster() -> void:
 	roster.slots.fill(null)
 	campaign.new_game(5)
 	campaign.finish_expedition({"crew_rescued": 6})
-	check(roster.crew_size == 6, "one chat slot per generic crewmember")
+	var slots: int = campaign.rescued_crew_count()
+	check(roster.crew_size == slots, "one chat slot per generic crewmember")
 	roster.register_message("u1", "alice", "Alice", "hello")
 	roster.register_message("u2", "bob", "Bob", "hi")
 	var controlled: Array = campaign.crew.filter(func(r: CrewRecord) -> bool: return r.is_chat_controlled())
@@ -267,7 +269,7 @@ func _test_roster() -> void:
 	roster.register_message("u3", "carol", "Carol", "yo")
 	var bob: CrewRecord = campaign.crew.filter(func(r: CrewRecord) -> bool: return r.controller_id == "u2")[0]
 	campaign.kill(bob, "test")
-	check(roster.crew_size == 5, "a dead crewmember's slot is lost")
+	check(roster.crew_size == slots - 1, "a dead crewmember's slot is lost")
 	check(roster.get_member("u2").extra.get("back_of_queue", false) or roster.get_member("u2").is_on_crew(),
 		"the chatter goes to the back of the queue")
 	campaign.listen_to_chat = false
@@ -284,6 +286,7 @@ func _test_save_load() -> void:
 	record.skills[CrewRecord.REPAIR] = 2.0
 	campaign.ship.modules[0].maintenance_clock = -5.0
 	campaign.ship.modules[0].malfunctions.append(ModuleState.Malfunction.FUEL_LEAK)
+	var crew_count: int = campaign.crew.size()
 	var data: Dictionary = campaign.to_dict()
 	# Through the same path as the SaveSystem: store_var and back.
 	var bytes := var_to_bytes(data)
@@ -292,7 +295,7 @@ func _test_save_load() -> void:
 	campaign.new_game(1)
 	campaign.load_dict(restored)
 	check(is_equal_approx(campaign.stores.fuel, fuel), "stores survive a save")
-	check(campaign.crew.size() == 7, "crew survive a save")
+	check(campaign.crew.size() == crew_count, "crew survive a save")
 	check(campaign.crew[1].skills[CrewRecord.REPAIR] == 2.0, "skills survive a save")
 	check(campaign.crew[1].body.parts[MedicalBody.ARM_L].hp < 30.0, "injuries survive a save")
 	check(campaign.ship.modules[0].malfunctions.has(ModuleState.Malfunction.FUEL_LEAK), "malfunctions survive a save")

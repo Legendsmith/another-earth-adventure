@@ -41,6 +41,8 @@ static func create_starting_ship(game_config: GameConfig) -> ShipState:
 	var ship := ShipState.new(game_config)
 	for entry: Array in STARTING_MODULES:
 		ship.install(ModuleState.create(entry[0], entry[1], game_config))
+	# The ship starts with its weapons loaded; reloading after a fight costs Supplies.
+	ship.weapons_loaded = true
 	return ship
 
 
@@ -114,12 +116,15 @@ func assign_crew(crew: Array[CrewRecord]) -> Dictionary:
 func _crew_priority(module: ModuleState) -> int:
 	if module.is_essential():
 		return 0
+	# The medical bay comes right after the essentials: without it the wounded never get back on their feet.
 	match module.get_kind():
-		ShipModule.Kind.WEAPON, ShipModule.Kind.SENSORS:
-			return 1
 		ShipModule.Kind.MEDICAL:
+			return 1
+		ShipModule.Kind.SENSORS:
 			return 2
-	return 3
+		ShipModule.Kind.WEAPON:
+			return 3
+	return 4
 
 
 ## Modules whose crew requirement is met (a module without crew can't run).

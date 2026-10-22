@@ -11,7 +11,7 @@ extends Resource
 ## Systems on the FTL map.
 @export var map_systems: int = 18
 ## Generic crew rescued in the intro dungeon, on top of the main character.
-@export var intro_rescued_crew: int = 6
+@export var intro_rescued_crew: int = 8
 
 @export_group("Starting stores")
 @export var start_fuel: float = 60.0

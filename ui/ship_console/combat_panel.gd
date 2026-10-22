@@ -168,7 +168,8 @@ func _internals_line(hull: ShipHull) -> String:
 			var weakened := hull.get_module_performance(i) < 1.0 or (module.is_fuel_tank() and hull.fuel_lost > 0.0)
 			parts.append("[color=%s]%s[/color]" % ["#ffd27a" if weakened else "#9fdf9f", module.name])
 		else:
-			parts.append("[color=#ff6b5e][s]%s[/s][/color]" % module.name)
+			var reason: String = hull.get_meta(&"module_status", {}).get(i, "")
+			parts.append("[color=#ff6b5e][s]%s[/s][/color]%s" % [module.name, " (%s)" % reason if reason else ""])
 	return "Internals: " + ", ".join(parts)
 
 

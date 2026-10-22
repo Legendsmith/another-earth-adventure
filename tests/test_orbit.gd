@@ -57,6 +57,7 @@ func _initialize() -> void:
 		orbit._max_range(gunship), orbit.contacts.values(), campaign.phase])
 	check(orbit.encounter == CampaignOrbit.Encounter.DEMAND, "pirates make demands when in range (%d)" % orbit.encounter)
 	check(paused, "the game pauses for the demand")
+	campaign.ship.weapons_loaded = false
 	orbit.answer_demand(false)
 	check(gunship.faction == Constants.ENEMY_GROUP and orbit.encounter == CampaignOrbit.Encounter.PREPARING, "refusing starts combat preparation")
 	check(campaign.ship.weapons_loaded and campaign.stores.supplies < supplies, "weapons are loaded from supplies")

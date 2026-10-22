@@ -312,9 +312,9 @@ func finish_expedition(result: Dictionary) -> Dictionary:
 		rescued += 1
 	var intro := bool(pending_expedition.get("intro", false))
 	if intro:
-		# Survivors who hid aboard the ship make sure there is a crew to fly it.
+		# Survivors who hid aboard the ship make sure every station starts out crewed.
 		var hid := 0
-		while rescued_crew_count() < ship.essential_crew_required() + 1:
+		while rescued_crew_count() < ship.total_crew_required():
 			recruit(-1, rng)
 			hid += 1
 		if hid:
