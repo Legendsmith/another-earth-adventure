@@ -24,7 +24,7 @@ const SAVE_KEY := "campaign"
 const SAVE_VERSION := 1
 const CONFIG_PATH := "res://data/game_config.tres"
 
-const SCENE_TITLE := "res://ui/title_screen/title_screen.tscn"
+const SCENE_TITLE := "res://ui/main_menu/main_menu.tscn"
 const SCENE_FTL_MAP := "res://ui/ftl_map/ftl_map.tscn"
 const SCENE_ORBIT := "res://ui/ship_console/ship_hud.tscn"
 const SCENE_EXPEDITION := "res://world/expedition/expedition.tscn"

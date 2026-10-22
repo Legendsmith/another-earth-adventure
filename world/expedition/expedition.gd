@@ -626,7 +626,7 @@ func _update_rooms() -> void:
 	if Engine.get_physics_frames() % 10 != 0:
 		return
 	for actor: ExpeditionActor in actors:
-		if actor.faction != ExpeditionActor.PLAYER_FACTION or actor.gone or actor.is_down():
+		if actor.faction != ExpeditionActor.PLAYER_FACTION or actor.gone or actor.is_down() or actor.state == &"captive":
 			continue
 		var room := dungeon.room_at(actor.global_position)
 		if room and not room.explored:
