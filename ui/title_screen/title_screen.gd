@@ -16,6 +16,7 @@ var _play_highlight_queued: bool = false
 
 func _ready() -> void:
 	setup_signals()
+	continue_button.disabled = not Campaign.has_save()
 	GameManager.play_music(background_music)
 
 func setup_signals() -> void:
@@ -40,10 +41,12 @@ func setup_signals() -> void:
 #region Callbacks
 
 func _on_continue_pressed() -> void:
-	pass
+	if Campaign.continue_game() != OK:
+		continue_button.disabled = true
 
 func _on_new_game_pressed() -> void:
-	GameManager.change_scene(new_game_scene,"instant")
+	Campaign.new_game()
+	Campaign.go_to_phase_scene()
 
 func _on_settings_pressed() -> void:
 	pass

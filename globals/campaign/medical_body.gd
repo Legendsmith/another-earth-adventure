@@ -146,7 +146,8 @@ func step(dt: float, activity: float = 0.0) -> void:
 	_step_heart(dt, effective_activity)
 	_step_brain(dt)
 	_update_awareness()
-	stamina = clampf(stamina + (12.0 - effective_activity * 30.0) * dt, 0.0, 100.0)
+	# Walking is free; fighting and sprinting wear you out.
+	stamina = clampf(stamina + (10.0 - maxf(0.0, effective_activity - 0.6) * 40.0) * dt, 0.0, 100.0)
 
 
 func _step_wounds(dt: float) -> void:

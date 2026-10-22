@@ -127,6 +127,18 @@ func new_game(game_seed: int = 0) -> void:
 	stores_changed.emit()
 
 
+## A prisoner freed on an expedition joins the crew as they are (injuries and all).
+func add_rescued(record: CrewRecord) -> void:
+	record.id = _take_crew_id()
+	record.config = config
+	record.status = CrewRecord.Status.HEALING if record.body.healing_needed() > 0.5 else CrewRecord.Status.ACTIVE
+	if record.body.dead:
+		return
+	crew.append(record)
+	sync_roster()
+	crew_changed.emit()
+
+
 func _take_crew_id() -> int:
 	next_crew_id += 1
 	return next_crew_id - 1
@@ -286,12 +298,24 @@ func finish_expedition(result: Dictionary) -> Dictionary:
 	for resource: StringName in ShipStores.ALL:
 		var amount := float(result.get(String(resource), 0.0))
 		stored[resource] = stores.add(resource, amount)
-	var rescued := int(result.get("crew_rescued", 0))
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
-	for i: int in rescued:
+	var rescued_records: Array = result.get("rescued_records", [])
+	var rescued := rescued_records.size()
+	for record: Variant in rescued_records:
+		add_rescued(record)
+	for i: int in maxi(0, int(result.get("crew_rescued", 0)) - rescued):
 		recruit(site.kind if site else -1, rng)
+		rescued += 1
 	var intro := bool(pending_expedition.get("intro", false))
+	if intro:
+		# Survivors who hid aboard the ship make sure there is a crew to fly it.
+		var hid := 0
+		while rescued_crew_count() < ship.essential_crew_required() + 1:
+			recruit(-1, rng)
+			hid += 1
+		if hid:
+			post("%d survivor%s hiding aboard the ship join the crew." % [hid, "s" if hid > 1 else ""])
 	if site and bool(result.get("completed", false)):
 		site.expedition_done = true
 	if site:
@@ -320,6 +344,41 @@ func finish_expedition(result: Dictionary) -> Dictionary:
 	autosave()
 	check_game_over()
 	return stored
+
+
+## A boarding action is over: repelled, or lost (the enemy takes resources and maybe non-essential modules).
+func finish_boarding(result: Dictionary) -> void:
+	for record: CrewRecord in crew:
+		if record.is_alive() and record.body.dead:
+			kill(record, "died repelling boarders")
+		elif record.is_alive() and record.body.healing_needed() > 0.5:
+			record.status = CrewRecord.Status.HEALING
+	if not bool(result.get("repelled", false)):
+		apply_loss_penalty(true)
+	else:
+		post("Boarders repelled.")
+	pending_expedition = {}
+	set_phase(Phase.ORBIT)
+	crew_changed.emit()
+	check_game_over()
+
+
+## Penalties of losing an engagement (Orbital Game Flow): resources lost, and in the harsher case non-essential
+## modules torn out as well.
+func apply_loss_penalty(harsh: bool) -> void:
+	var supplies := stores.drain(ShipStores.SUPPLIES, stores.supplies * config.surrender_supplies_share)
+	var metal := stores.drain(ShipStores.METAL, stores.metal * config.surrender_metal_share)
+	var text := "Lost %.0f supplies and %.0f metal." % [supplies, metal]
+	if harsh:
+		var candidates: Array[ModuleState] = []
+		for module: ModuleState in ship.modules:
+			if not module.is_essential() and module.get_kind() not in [ShipModule.Kind.STRUCTURE, ShipModule.Kind.FUEL_TANK]:
+				candidates.append(module)
+		if not candidates.is_empty():
+			var taken: ModuleState = candidates[randi() % candidates.size()]
+			ship.remove(taken)
+			text += " They stripped the %s." % taken.get_module_name()
+	post(text, 2)
 
 
 ## Module cores recovered on expeditions wait in the hold until installed (see install_core).
