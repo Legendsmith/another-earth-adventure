@@ -126,7 +126,7 @@ public partial class CelestialBody : AnimatableBody2D
 			surface = new CollisionShape2D { Name = "Surface" };
 			AddChild(surface);
 		}
-		surface.Shape = new CircleShape2D { Radius = (float)Radius };
+		SetCircle(surface, Radius);
 
 		if (_gravityWell == null)
 		{
@@ -142,8 +142,24 @@ public partial class CelestialBody : AnimatableBody2D
 		// Godot point gravity: g(d) = gravity * (unit_distance / d)^2  ==  Mu / d^2
 		_gravityWell.GravityPointUnitDistance = (float)Radius;
 		_gravityWell.Gravity = (float)(Mu / (Radius * Radius));
-		_wellShape.Shape = new CircleShape2D { Radius = (float)gravityRadius };
+		SetCircle(_wellShape, gravityRadius);
 		QueueRedraw();
+	}
+
+	/// <summary>Gives a CollisionShape2D a circle of <paramref name="radius"/>, resizing the one it has when it can.
+	/// The C# wrapper of a new shape is disposed straight away (the node keeps its own reference): left to the garbage
+	/// collector, the last reference to a replaced shape would be dropped on the finalizer thread, and freeing a physics
+	/// shape off the main thread crashes the Rapier physics server.</summary>
+	private static void SetCircle(CollisionShape2D node, double radius)
+	{
+		using Shape2D current = node.Shape;
+		if (current is CircleShape2D circle)
+		{
+			circle.Radius = (float)radius;
+			return;
+		}
+		using var shape = new CircleShape2D { Radius = (float)radius };
+		node.Shape = shape;
 	}
 
 	public override void _Draw()

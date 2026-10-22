@@ -94,7 +94,10 @@ public partial class OrbitalSystem : Node
 		_baseTimeScale = Engine.TimeScale;
 		if (ZeroSpaceGravity)
 		{
-			_space = GetViewport().World2D.Space;
+			// Dispose the wrapper here: finalized by the GC, it could free the world (and its physics space) off the main
+			// thread, which crashes the Rapier physics server.
+			using World2D world = GetViewport().World2D;
+			_space = world.Space;
 			_savedGravity = PhysicsServer2D.AreaGetParam(_space, PhysicsServer2D.AreaParameter.Gravity);
 			_savedLinearDamp = PhysicsServer2D.AreaGetParam(_space, PhysicsServer2D.AreaParameter.LinearDamp);
 			_savedAngularDamp = PhysicsServer2D.AreaGetParam(_space, PhysicsServer2D.AreaParameter.AngularDamp);
